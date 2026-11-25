@@ -45,7 +45,8 @@ let PB = null;                        // ставка на партнёра: {id
 let BT = null;                        // голос в битве вкусов: {key: «пара1|пара2», pick}
 let RX = null;                        // последняя отправленная реакция: {to:{seed, idx}, e, at}
 let WATCHING = false;                 // смотрю ли сейчас турнир партнёра
-let HINT = null;                      // подсказка партнёру из просмотра: {to:{seed, idx}, side, at}
+let HINT = null;
+let LB = null;                        // ставки в прямом эфире: {bets:[{s:seed, i:дуэль, p:сторона, k:ставка, free, r:итог, w:угадано}]}                      // подсказка партнёру из просмотра: {to:{seed, idx}, side, at}
 let SY = null;                        // общий турнир: {id, host, cfg, v:[[первый голос, переголосовка], …]}
 const ui = {screen:'scr-start', cur:null, lock:false, ack:false, toastKey:'', introKey:'', off:new Set(), bet:null, betRoster:null, betRemoved:null, mode:'play', swipeHinted:false};
 
@@ -871,6 +872,7 @@ async function roomJoin(){
 function enterRoom(fresh){
   setCtx('room');
   G = store.get(guessKey(sess.code)); PB = store.get(pbetKey(sess.code)); BT = store.get(battleKey(sess.code)); SY = store.get(syKey(sess.code));
+  LB = store.get(lbKey()) || {bets:[]};
   if (sub) sub.close();
   sub = Room.subscribe(sess.code, sess, () => fetchRoom(), slots => { online = new Set(slots); if (ui.screen === 'scr-room') renderRoom(); renderPartnerChip(); });
   clearInterval(pollT); pollT = setInterval(() => { if (!document.hidden) fetchRoom(); }, 20000);
@@ -878,7 +880,7 @@ function enterRoom(fresh){
 }
 function leaveRoom(){
   if (sub) sub.close(); sub = null; clearInterval(pollT);
-  sstore.del('rp-session'); sess = null; roomData = null; G = null; PB = null; BT = null; RX = null; SY = null;
+  sstore.del('rp-session'); sess = null; roomData = null; G = null; PB = null; BT = null; RX = null; SY = null; LB = null;
   hideLive(); live.key = ''; live.shown = null;
   setCtx('solo'); show('scr-start'); refreshStart();
 }
@@ -889,6 +891,7 @@ async function fetchRoom(){
   if (ui.screen === 'scr-room') renderRoom();
   if (ui.screen === 'scr-compare') renderCompare();
   renderPartnerChip();
+  live.resolved = lbResolve();
   checkLive();
   syncOnFetch();
   if (ui.mode === 'watch') renderWatch();
@@ -909,6 +912,7 @@ function myState(){
   if (SY) st.sync = SY;
   if (WATCHING) st.watching = true;
   if (HINT) st.hint = HINT;
+  if (LB && LB.bets.length) st.hearts = {bal:lbBalance(), won:LB.bets.filter(b => b.w).length, n:LB.bets.filter(b => b.r != null && !b.v).length};
   const dm = dailyMine(), dk = Object.keys(dm).sort().slice(-60);
   if (dk.length){ st.daily = {}; dk.forEach(k => st.daily[k] = dm[k]); }
   return st;
@@ -942,6 +946,8 @@ function renderRoom(){
     if (ps.status === 'done') body = `<div class="champ">${face(ps.m.champ)}<div><small class="muted">Пара в Рунтерре</small><br><b>${esc(name(ps.m.champ))}</b></div></div>`;
     const gs = (me ? (G && {correct:G.picks.filter(x => x.ok).length, total:G.list.length, done:G.done}) : (p.state && p.state.guess));
     if (gs && gs.done) body += `<p class="muted">Угадал(а) выборы партнёра: ${gs.correct} из ${gs.total}</p>`;
+    const hs = me ? (LB && LB.bets.length ? {bal:lbBalance(), won:LB.bets.filter(b => b.w).length, n:LB.bets.filter(b => b.r != null && !b.v).length} : null) : (p.state && p.state.hearts);
+    if (hs && hs.bal != null) body += `<p class="muted">Ставки в плей-офф: <b class="hearts">${hs.bal} ❤</b>${hs.n ? ` · угадано ${hs.won} из ${hs.n}` : ''}</p>`;
     if (me && PB && BY[PB.id]){
       const pst = playerState(partner());
       body += `<p class="muted">Ставка на пару партнёра: <b>${esc(name(PB.id))}</b>${pst.status === 'done' ? ' — ' + (PB.id === pst.m.champ ? 'угадано!' : (pst.m.order.indexOf(PB.id) + 1 ? `${pst.m.order.indexOf(PB.id) + 1}-е место` : 'не участвовал(а)')) : ''}</p>`;
@@ -1167,9 +1173,10 @@ function showLive(o){
   const faces = o.done ? face(o.champ) : face(o.m.a) + face(o.m.b);
   const top = o.done ? `${esc(o.pp.name)} нашёл(ла) пару` : `${esc(o.pp.name)} ${liveWhere(o.m)}`;
   const main = o.done ? esc(name(o.champ)) : `${esc(name(o.m.a))} или ${esc(name(o.m.b))}?`;
-  const was = o.chose && !o.done ? `<small class="live-was">Выбор: ${esc(name(o.chose))}</small>` : '';
+  const was = o.chose && !o.done ? `<small class="live-was">Выбор: ${esc(name(o.chose))}${lbLine()}</small>` : o.done && lbText() ? `<small class="live-was">${lbText()}</small>` : '';
   el.innerHTML = `<div class="live-faces">${faces}</div>
     <div class="live-txt">${was}<small>${top}</small><b>${main}</b>
+      ${o.done ? '' : '<div class="lb" id="liveLb"></div>'}
       <div class="live-re">${REACTS.map(r => `<button type="button" data-r="${r}" aria-label="Ответить реакцией ${r}">${r}</button>`).join('')}</div>
       ${o.done ? '' : '<button class="live-watch" type="button">Смотреть вживую</button>'}
       <button class="live-off" type="button">Выключить эти новости</button>
@@ -1178,6 +1185,7 @@ function showLive(o){
   el.querySelectorAll('[data-r]').forEach(b => b.addEventListener('click', () => sendReaction(o, b.dataset.r)));
   el.querySelector('.live-x').addEventListener('click', hideLive);
   const lw = el.querySelector('.live-watch'); if (lw) lw.addEventListener('click', () => { hideLive(); startWatch(); });
+  if (!o.done) lbRender($('#liveLb'), o.to.seed, o.to.idx, o.m.a, o.m.b);
   el.querySelector('.live-off').addEventListener('click', () => { setLive(false); toast('Новости из плей-офф выключены. Включить можно в комнате'); });
   el.hidden = false; void el.offsetWidth; el.classList.add('on');
   clearTimeout(live.t); live.t = setTimeout(hideLive, o.done ? 16000 : 14000);
@@ -1310,6 +1318,49 @@ function renderDaily(box, inRoom){
   box.querySelectorAll('.dcard:not(:disabled)').forEach(btn => btn.addEventListener('click', () => dailyVote(+btn.dataset.side)));
 }
 
+/* ================= ставки в прямом эфире: сердечки на выбор партнёра в плей-офф ================= */
+const LB_START = 10;
+const lbKey = () => 'rp-lbets-' + (sess ? sess.code + '-' + sess.slot : '');
+const lbBalance = () => LB_START + (LB ? LB.bets.reduce((t, b) => t + (b.r || 0), 0) : 0);
+const lbFind = (seed, idx) => LB && LB.bets.find(b => b.s === seed && b.i === idx);
+/* разбираем ставки, по которым партнёр уже сделал выбор; если он начал турнир заново, ставка возвращается */
+function lbResolve(){
+  if (!LB || !LB.bets.length) return [];
+  const ps = playerState(partner()), out = [];
+  LB.bets.forEach(b => {
+    if (b.r != null || !ps.s) return;
+    if (ps.s.cfg.seed !== b.s){ b.r = 0; b.v = true; return; }
+    const dec = ps.s.dec || [];
+    if (dec.length > b.i){ b.w = dec[b.i] === b.p; b.r = b.w ? b.k : b.free ? 0 : -b.k; out.push(b); }
+  });
+  if (out.length || LB.bets.some(b => b.v)){ LB.bets = LB.bets.slice(-200); store.set(lbKey(), LB); if (out.length) pushState(true); }
+  return out;
+}
+/* строчка про только что разыгранную ставку */
+function lbText(){
+  const b = (live.resolved || [])[0]; if (!b) return '';
+  return b.w ? `Ставка сыграла: +${b.k} ❤` : b.free ? 'Ставка не сыграла' : `Ставка не сыграла: −${b.k} ❤`;
+}
+const lbLine = () => lbText() ? ' · ' + lbText().toLowerCase() : '';
+function lbRender(box, seed, idx, a, bId){
+  if (!box || !LB) return;
+  const bet = lbFind(seed, idx), bal = lbBalance();
+  if (bet){ box.innerHTML = `<span class="lb-h">Ставка: ${bet.k} ❤ — ${esc(name(bet.p ? bId : a))}${bet.free ? ' (бесплатная)' : ''} · у тебя ${bal} ❤</span>`; return; }
+  const k = Math.max(1, Math.min(ui.lbK || 1, bal || 1));
+  box.innerHTML = `<span class="lb-h">${bal > 0 ? `Поставь сердечки на выбор · у тебя ${bal} ❤` : 'Сердечки кончились, но одна ставка — бесплатно'}</span>
+    <span class="lb-k" role="group" aria-label="Сколько сердечек" ${bal > 0 ? '' : 'hidden'}>${[1, 2, 3].map(n => `<button type="button" data-k="${n}" class="${n === k ? 'on' : ''}" ${n > Math.max(1, bal) ? 'disabled' : ''}>${n}</button>`).join('')}</span>
+    <span class="lb-p"><button type="button" data-p="0">❤ ${esc(name(a))}</button><button type="button" data-p="1">❤ ${esc(name(bId))}</button></span>`;
+  box.querySelectorAll('[data-k]').forEach(btn => btn.addEventListener('click', () => { ui.lbK = +btn.dataset.k; lbRender(box, seed, idx, a, bId); }));
+  box.querySelectorAll('[data-p]').forEach(btn => btn.addEventListener('click', () => {
+    if (lbFind(seed, idx)) return;
+    const cur = lbBalance(), free = cur <= 0;
+    LB.bets.push({s:seed, i:idx, p:+btn.dataset.p, k:free ? 1 : Math.min(k, cur), free});
+    store.set(lbKey(), LB); Sound.pick(0); pushState(true);
+    lbRender(box, seed, idx, a, bId);
+    if (box.id === 'liveLb'){ clearTimeout(live.t); live.t = setTimeout(hideLive, 6000); }
+  }));
+}
+
 /* ================= совместный просмотр: турнир партнёра в прямом эфире ================= */
 const watchedKey = () => 'rp-watched-' + (sess ? sess.code + '-' + sess.slot : '');
 function startWatch(){
@@ -1339,9 +1390,11 @@ function renderWatch(){
     ui.watchAnim = true; ui.watch = null;
     cards[side].classList.add('chosen'); cards[1 - side].classList.add('lost');
     r.className = 'reveal ok'; r.textContent = `${pp.name} ${ps.status === 'done' ? 'нашёл(ла) пару' : 'выбрал(а)'}: ${name(side ? prev.b : prev.a)}`;
+    const wl = $('#watchLb'), lt = lbText();
+    if (lt && !wl.hidden) wl.innerHTML = `<span class="lb-h lb-res${live.resolved[0].w ? ' win' : ''}">${lt} · у тебя ${lbBalance()} ❤</span>`;
     Sound.pick(prev.level || 0);
     if (ps.status === 'done'){ Sound.fanfare(); FX.celebrate(); }
-    setTimeout(() => { ui.watchAnim = false; renderWatch(); }, ps.status === 'done' ? 2600 : 1100);
+    setTimeout(() => { ui.watchAnim = false; renderWatch(); }, ps.status === 'done' ? 2600 : lt ? 2200 : 1100);
     return;
   }
   if (ps.status !== 'play'){
@@ -1371,6 +1424,7 @@ function renderWatch(){
   const chip = $('#partnerChip'), on = online.has(pp.slot); chip.hidden = false;
   chip.innerHTML = `<span class="dot ${on ? 'on' : ''}"></span><b>${esc(pp.name)}</b> · ${on ? 'в сети' : 'не в сети — ждём'}`;
   const wb = $('#watchBar'); wb.hidden = false;
+  const wl = $('#watchLb'); wl.hidden = !inPlayoff(m); if (inPlayoff(m)) lbRender(wl, seed, dec.length, m.a, m.b);
   if (fresh || !$('#watchRe').childElementCount) $('#watchRe').innerHTML = REACTS.map(e => `<button type="button" data-r="${e}" aria-label="Реакция ${e}">${e}</button>`).join('');
   $('#watchRe').querySelectorAll('[data-r]').forEach(b => b.onclick = () => {
     sendReaction({to:{seed, idx:dec.length}}, b.dataset.r);

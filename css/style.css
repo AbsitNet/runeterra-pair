@@ -902,3 +902,20 @@ body::before{content:"";position:fixed;inset:-20vmax;z-index:0;pointer-events:no
 .daily-duel .dvs{position:absolute;left:50%;top:40%;width:38px;height:38px;transform:translate(-50%,-50%) rotate(45deg);display:grid;place-items:center;background:var(--night);border:1px solid var(--gold);z-index:2;pointer-events:none}
 .daily-duel .dvs span{transform:rotate(-45deg);font-family:var(--f-display);font-size:14px;color:var(--gold-hi)}
 @media (max-width:700px){.daily{grid-template-columns:minmax(0,1fr)}}
+
+/* ================= ставки в прямом эфире ================= */
+.lb{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;margin-top:8px}
+.lb-h{flex:1 1 100%;font-size:12.5px;color:var(--gold)}
+.lb-k{display:inline-flex;gap:4px}
+.lb-k button,.lb-p button{min-height:32px;padding:4px 10px;border:1px solid var(--line-hi);background:var(--deep);color:var(--text);font:600 13px/1 var(--f-ui);cursor:pointer;transition:border-color .2s,background .2s}
+.lb-k button{width:32px;padding:4px 0}
+.lb-k button.on{border-color:var(--rose);background:color-mix(in srgb,var(--rose) 16%,var(--deep));color:var(--gold-hi)}
+.lb-k button:disabled{opacity:.35;cursor:not-allowed}
+.lb-p{display:inline-flex;flex-wrap:wrap;gap:6px}
+.lb-p button{color:var(--gold-hi)}
+@media (hover:hover){.lb-k button:not(:disabled):hover,.lb-p button:hover{border-color:var(--gold)}}
+.watch-bar .lb{justify-content:center}
+.watch-bar .lb-h{text-align:center}
+b.hearts{color:var(--rose);font-weight:600}
+.lb-res{font-size:13.5px;color:var(--text)}
+.lb-res.win{color:#5ED39A}

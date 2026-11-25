@@ -476,6 +476,12 @@ function renderResult(m){
   $('#wImg').src = img(w.id); $('#wImg').alt = w.name;
   $('#wName').textContent = w.name; $('#wTitle').textContent = w.title;
   $('#wLong').textContent = pr[4];
+  const q = quoteOf(m.champ), wq = $('#wQuote');
+  wq.hidden = !q;
+  if (q){
+    wq.querySelector('p').innerHTML = q.lines.map(l => `<span>«${esc(l)}»</span>`).join('');
+    wq.querySelector('cite').textContent = q.by ? `— ${q.by}` : '';
+  }
   const beat = [...new Set(m.st[w.id].beat)].filter(id => id !== m.runner), lost = [...new Set(m.st[w.id].lost)], shown = beat.slice(-8);
   let path = '';
   if (shown.length) path += `По дороге к победе ${verb(w.id,'оказалась','оказался')} сильнее, чем ${listNames(shown)}${beat.length > shown.length ? ' и другие' : ''}. `;

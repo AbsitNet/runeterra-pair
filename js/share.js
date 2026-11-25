@@ -20,6 +20,27 @@ const Share = (() => {
     while (cx.measureText(text).width > max && s > 9){ s--; cx.font = `${weight} ${s}px ${font}`; }
     return s;
   }
+  function wrapWords(cx, text, max){
+    const out = []; let line = '';
+    for (const w of text.split(' ')){
+      const t = line ? line + ' ' + w : w;
+      if (line && cx.measureText(t).width > max){ out.push(line); line = w; } else line = t;
+    }
+    if (line) out.push(line);
+    return out;
+  }
+  /* цитата победителя: самый крупный кегль, при котором она влезает в отведённую высоту */
+  function quoteBlock(cx, q, max, room){
+    let best;
+    for (const s of [28, 26, 24, 22, 20, 18]){
+      cx.font = `${s}px ${FD}`;
+      const lines = q.lines.flatMap(l => wrapWords(cx, `«${l}»`, max));
+      best = { lines, s, lh: Math.round(s * 1.3), by: q.by };
+      best.h = lines.length * best.lh + (q.by ? 30 : 0);
+      if (best.h <= room) break;
+    }
+    return best;
+  }
   function bg(cx, w, h){
     cx.fillStyle = C.night; cx.fillRect(0, 0, w, h);
     const g = cx.createRadialGradient(w / 2, -h * .05, 10, w / 2, -h * .05, h * .7);
@@ -146,31 +167,40 @@ const Share = (() => {
     cx.strokeStyle = C.lo; cx.lineWidth = 1; cx.strokeRect(52, 52, W - 104, H - 104);
     [[52,52],[W-52,52],[52,H-52],[W-52,H-52]].forEach(([x,y]) => { cx.save(); cx.translate(x, y); cx.rotate(Math.PI / 4); cx.fillStyle = C.night; cx.fillRect(-12, -12, 24, 24); cx.strokeStyle = C.gold; cx.lineWidth = 2; cx.strokeRect(-12, -12, 24, 24); cx.restore(); });
     cx.textAlign = 'center';
-    cx.fillStyle = C.gold; cx.font = `600 20px ${FU}`; cx.fillText('ПАРА ИЗ РУНТЕРРЫ', W / 2, 120);
-    cx.fillStyle = C.hi; cx.font = `72px ${FD}`; cx.fillText('Сертификат', W / 2, 205);
-    cx.font = `40px ${FD}`; cx.fillStyle = C.gold; cx.fillText('о совместимости сердец', W / 2, 255);
+    cx.fillStyle = C.gold; cx.font = `600 20px ${FU}`; cx.fillText('ПАРА ИЗ РУНТЕРРЫ', W / 2, 112);
+    cx.fillStyle = C.hi; cx.font = `72px ${FD}`; cx.fillText('Сертификат', W / 2, 192);
+    cx.font = `40px ${FD}`; cx.fillStyle = C.gold; cx.fillText('о совместимости сердец', W / 2, 240);
     cx.fillStyle = C.text; cx.font = `24px ${FU}`;
     const who = (person || '').trim() || 'предъявителя сего';
     fitText(cx, `Настоящим удостоверяется, что сердце ${who}`, W - 200, 24, FU);
-    cx.fillText(`Настоящим удостоверяется, что сердце ${who}`, W / 2, 320);
-    cx.font = `24px ${FU}`; cx.fillText('по итогам честного турнира отдано', W / 2, 356);
+    cx.fillText(`Настоящим удостоверяется, что сердце ${who}`, W / 2, 300);
+    cx.font = `24px ${FU}`; cx.fillText('по итогам честного турнира отдано', W / 2, 334);
     /* портрет */
-    const pw = 330, ph = 540, px = W / 2 - pw / 2, py = 392;
+    const pw = 300, ph = 430, px = W / 2 - pw / 2, py = 366;
     cx.save(); cx.shadowColor = 'rgba(232,102,138,.5)'; cx.shadowBlur = 50; cx.fillStyle = C.deep; cx.fillRect(px, py, pw, ph); cx.restore();
     cover(cx, im, px, py, pw, ph, .3);
     cx.strokeStyle = C.gold; cx.lineWidth = 3; cx.strokeRect(px, py, pw, ph);
-    const gr = cx.createLinearGradient(0, py + ph - 160, 0, py + ph); gr.addColorStop(0, 'rgba(9,14,21,0)'); gr.addColorStop(1, 'rgba(9,14,21,.92)');
-    cx.fillStyle = gr; cx.fillRect(px, py + ph - 160, pw, 160);
-    cx.fillStyle = C.hi; fitText(cx, champ.name.toUpperCase(), W - 160, 92, FD); cx.fillText(champ.name.toUpperCase(), W / 2, py + ph + 96);
-    cx.fillStyle = C.gold; cx.font = `30px ${FD}`; cx.fillText(champ.title, W / 2, py + ph + 140);
+    const gr = cx.createLinearGradient(0, py + ph - 140, 0, py + ph); gr.addColorStop(0, 'rgba(9,14,21,0)'); gr.addColorStop(1, 'rgba(9,14,21,.92)');
+    cx.fillStyle = gr; cx.fillRect(px, py + ph - 140, pw, 140);
+    cx.fillStyle = C.hi; fitText(cx, champ.name.toUpperCase(), W - 160, 92, FD); cx.fillText(champ.name.toUpperCase(), W / 2, py + ph + 84);
+    cx.fillStyle = C.gold; cx.font = `30px ${FD}`; cx.fillText(champ.title, W / 2, py + ph + 126);
+    /* цитата победителя — между титулом и строкой совместимости, не заходя на печать */
+    const q = quoteOf(m.champ);
+    if (q){
+      const top = py + ph + 152, room = 104, b = quoteBlock(cx, q, 760, room);
+      let y = top + (room - b.h) / 2 + b.s;
+      cx.fillStyle = C.text; cx.font = `${b.s}px ${FD}`;
+      b.lines.forEach(l => { cx.fillText(l, W / 2, y); y += b.lh; });
+      if (b.by){ cx.fillStyle = C.muted; cx.font = `19px ${FU}`; cx.fillText(`— ${b.by}`, W / 2, y - b.lh + 30); }
+    }
     /* «совместимость» — по доле побед победителя */
     const st = m.st[m.champ], wins = st.beat.length, losses = st.lost.length;
     const pct = Math.min(100, Math.round(90 + 10 * wins / Math.max(1, wins + losses)));
     cx.fillStyle = C.text; cx.font = `24px ${FU}`;
-    cx.fillText(`Совместимость: ${pct}% · побед в дуэлях: ${wins}`, W / 2, py + ph + 192);
+    cx.fillText(`Совместимость: ${pct}% · побед в дуэлях: ${wins}`, W / 2, 1104);
     const wit = [m.order[1], m.order[2]].filter(Boolean).map(id => BY[id].name).join(' и ');
     cx.fillStyle = C.muted; cx.font = `22px ${FU}`;
-    cx.fillText(`Свидетели: ${wit}`, W / 2, py + ph + 230);
+    cx.fillText(`Свидетели: ${wit}`, W / 2, 1142);
     /* печать и регистратор — того края, откуда родом победитель */
     const region = (PROFILE[m.champ] || ['rt'])[0], seal = SEAL[region] || SEAL.rt;
     const stamp = await drawSeal(region, m.champ);

@@ -25,6 +25,7 @@ const store = {
 const SOLO_KEY = 'rp-solo-v3';
 const roomKey = code => 'rp-room-' + code + '-' + (sess ? sess.slot : 0);
 const guessKey = code => 'rp-guess-' + code + '-' + (sess ? sess.slot : 0);
+const pbetKey = code => 'rp-pbet-' + code + '-' + (sess ? sess.slot : 0);
 /* сессия комнаты: в локальном режиме проверки — своя у каждой вкладки */
 const sstore = Room.localMode ? {
   get(k){ try { return JSON.parse(sessionStorage.getItem(k) || 'null'); } catch(e){ return null; } },
@@ -38,6 +39,7 @@ let ctx = 'solo';                     // 'solo' | 'room'
 let sess = sstore.get('rp-session');   // {code, slot, token, name}
 let roomData = null, online = new Set(), sub = null, pollT = 0, saveT = 0;
 let G = null;                         // «Угадай мой выбор»: {target, list, picks:[], done}
+let PB = null;                        // ставка на партнёра: {id, on: слот партнёра}
 const ui = {screen:'scr-start', cur:null, lock:false, ack:false, toastKey:'', introKey:'', off:new Set(), bet:null, betRoster:null, betRemoved:null, mode:'play', swipeHinted:false};
 
 function validTournament(v){
@@ -218,7 +220,16 @@ function refreshFilter(){
 }
 
 /* ================= ставка ================= */
-function openBet(roster, removed){
+function betTexts(forPartner){
+  ui.betFor = forPartner ? 'partner' : null;
+  $('#betEyebrow').textContent = forPartner ? 'Ставка на партнёра' : 'Ставка на старте';
+  $('#betTitle').innerHTML = forPartner ? 'Кто станет парой партнёра?' : 'Кто, <span class="nowrap">по-твоему,</span> победит?';
+  $('#betText').textContent = forPartner ? 'Выбери, кто, по-твоему, окажется на первом месте у партнёра. Партнёр увидит ставку только после своего финала, а итог будет на экране сравнения.' : 'Выбери того, кого сердце называет заранее. В конце узнаешь, сработала ли интуиция.';
+  $('#bskip').textContent = forPartner ? 'Отмена' : 'Без ставки';
+  $('#bstart').textContent = forPartner ? 'Поставить' : 'Начать турнир';
+}
+function openBet(roster, removed, forPartner){
+  betTexts(forPartner);
   ui.betRoster = roster; ui.betRemoved = removed; ui.bet = null;
   const g = $('#bgrid'); g.innerHTML = '';
   roster.forEach(id => {
@@ -236,6 +247,7 @@ function openBet(roster, removed){
   });
   $('#betSearch').value = ''; $('#bcnt').textContent = 'Ставка не выбрана'; $('#bstart').disabled = true;
   show('scr-bet');
+  if (forPartner && PB && roster.includes(PB.id)) g.querySelector(`[data-id="${PB.id}"]`).click();
 }
 function newTournament(roster, removed, bet){
   const s = settings();
@@ -597,7 +609,7 @@ async function roomJoin(){
 }
 function enterRoom(fresh){
   setCtx('room');
-  G = store.get(guessKey(sess.code));
+  G = store.get(guessKey(sess.code)); PB = store.get(pbetKey(sess.code));
   if (sub) sub.close();
   sub = Room.subscribe(sess.code, sess, () => fetchRoom(), slots => { online = new Set(slots); if (ui.screen === 'scr-room') renderRoom(); renderPartnerChip(); });
   clearInterval(pollT); pollT = setInterval(() => { if (!document.hidden) fetchRoom(); }, 20000);
@@ -605,7 +617,7 @@ function enterRoom(fresh){
 }
 function leaveRoom(){
   if (sub) sub.close(); sub = null; clearInterval(pollT);
-  sstore.del('rp-session'); sess = null; roomData = null; G = null;
+  sstore.del('rp-session'); sess = null; roomData = null; G = null; PB = null;
   setCtx('solo'); show('scr-start'); refreshStart();
 }
 async function fetchRoom(){
@@ -625,6 +637,7 @@ function myState(){
     Object.assign(st, {cfg:S.cfg, dec:S.dec, played:m.played != null ? m.played : m.total, est:m.est || m.total, done:m.kind === 'done', champ:m.kind === 'done' ? m.champ : null});
   }
   if (G) st.guess = {target:G.target, total:G.list.length, correct:G.picks.filter(p => p.ok).length, answered:G.picks.length, done:!!G.done};
+  if (PB) st.pbet = PB.id;
   return st;
 }
 function queueSync(){ if (!sess) return; clearTimeout(saveT); saveT = setTimeout(() => pushState(), 1200); }
@@ -654,6 +667,14 @@ function renderRoom(){
     if (ps.status === 'done') body = `<div class="champ">${face(ps.m.champ)}<div><small class="muted">Пара в Рунтерре</small><br><b>${esc(name(ps.m.champ))}</b></div></div>`;
     const gs = (me ? (G && {correct:G.picks.filter(x => x.ok).length, total:G.list.length, done:G.done}) : (p.state && p.state.guess));
     if (gs && gs.done) body += `<p class="muted">Угадал(а) выборы партнёра: ${gs.correct} из ${gs.total}</p>`;
+    if (me && PB && BY[PB.id]){
+      const pst = playerState(partner());
+      body += `<p class="muted">Ставка на пару партнёра: <b>${esc(name(PB.id))}</b>${pst.status === 'done' ? ' — ' + (PB.id === pst.m.champ ? 'угадано!' : (pst.m.order.indexOf(PB.id) + 1 ? `${pst.m.order.indexOf(PB.id) + 1}-е место` : 'не участвовал(а)')) : ''}</p>`;
+    }
+    if (!me && p.state && p.state.pbet && BY[p.state.pbet]){
+      const myDone = !!S.cfg && simulate(S.cfg, S.dec).kind === 'done';
+      body += `<p class="muted">Сделал(а) ставку на твою пару${myDone ? `: <b>${esc(name(p.state.pbet))}</b>` : ' — узнаешь после своего финала'}</p>`;
+    }
     return `<div class="pcard ${me ? 'me' : ''}"><div class="who"><span class="dot ${on ? 'on' : ''}"></span>${esc(p.name)} ${me ? '<small>это ты</small>' : on ? '<small>в сети</small>' : ''}</div>${body}</div>`;
   };
   $('#rPlayers').innerHTML = players.map(card).join('') + (pp ? '' : '<div class="pcard"><div class="who"><span class="dot"></span>Ждём партнёра…</div><p class="muted">Когда партнёр войдёт по коду, он появится здесь.</p></div>');
@@ -665,15 +686,39 @@ function renderRoom(){
   if (pp && their.status === 'done'){
     if (!G || !G.done) acts.push(`<button class="btn" type="button" data-act="guess">${G && G.picks.length ? 'Продолжить угадывать' : 'Угадать выборы: ' + esc(pp.name)}</button>`);
   }
+  if (pp && their.status !== 'done') acts.push(`<button class="btn" type="button" data-act="pbet">${PB ? 'Изменить ставку на пару партнёра' : 'Поставить на пару партнёра'}</button>`);
   if (mine && mine.kind === 'done' && their.status === 'done') acts.push(`<button class="btn" type="button" data-act="compare">Сравнить результаты</button>`);
   else if (pp) acts.push(`<button class="btn ghost" type="button" disabled>Сравнение откроется, когда оба закончат</button>`);
   $('#rActions').innerHTML = acts.join('');
   $('#rActions').querySelectorAll('[data-act]').forEach(b => b.addEventListener('click', () => roomAction(b.dataset.act)));
 }
+/* ставка на партнёра: пока партнёр не закончил, можно поставить и передумать */
+function openPartnerBet(){
+  const pp = partner(), ps = playerState(pp);
+  if (!pp) return toast('Сначала дождись партнёра в комнате');
+  if (ps.status === 'done') return toast('Партнёр уже закончил — ставки закрыты');
+  const roster = ps.status === 'play' ? ps.s.cfg.roster.slice() : CH.map(c => c[0]);
+  openBet(roster, [], true);
+}
+function savePartnerBet(id){
+  const pp = partner(); if (!pp || !id) return;
+  PB = {id, on:pp.slot}; store.set(pbetKey(sess.code), PB); pushState(true);
+  show('scr-room'); renderRoom(); toast('Ставка принята');
+}
+function betRows(){
+  const pp = partner(), mine = S.cfg ? simulate(S.cfg, S.dec) : null, their = playerState(pp), rows = [];
+  const verdict = (id, m) => { const pl = m.order.indexOf(id) + 1; return id === m.champ ? 'угадано!' : pl ? `${pl}-е место` : 'не участвовал(а)'; };
+  if (PB && their.status === 'done') rows.push({who:sess.name, id:PB.id, txt:verdict(PB.id, their.m), win:PB.id === their.m.champ});
+  const tb = pp && pp.state && pp.state.pbet;
+  if (tb && BY[tb] && mine && mine.kind === 'done') rows.push({who:pp.name, id:tb, txt:verdict(tb, mine), win:tb === mine.champ});
+  return rows;
+}
+
 function roomAction(a){
   if (a === 'start'){ setCtx('room'); show('scr-start'); refreshStart(); }
   if (a === 'resume' || a === 'result'){ setCtx('room'); preloadAll(S.cfg.roster); go(); }
   if (a === 'guess') startGuess();
+  if (a === 'pbet') openPartnerBet();
   if (a === 'compare'){ show('scr-compare'); renderCompare(); }
 }
 function renderPartnerChip(){
@@ -704,6 +749,9 @@ function renderCompare(){
   const myG = G && G.done ? `<p>${esc(sess.name)} угадывает выборы партнёра: <b>${G.picks.filter(x => x.ok).length} из ${G.list.length}</b>.</p>` : '';
   const thG = pp.state && pp.state.guess && pp.state.guess.done ? `<p>${esc(pp.name)} угадывает выборы партнёра: <b>${+pp.state.guess.correct || 0} из ${+pp.state.guess.total || 0}</b>.</p>` : '';
   $('#cGuess').innerHTML = (myG + thG) || '<p class="muted">Пока никто не сыграл. Кнопка «Угадать выборы» — в комнате.</p>';
+  const br = betRows();
+  $('#cBetSec').hidden = !br.length;
+  $('#cBets').innerHTML = br.map(r => `<div class="lrow bet-row ${r.win ? 'win' : ''}">${face(r.id)}<div><small class="who">${esc(r.who)} ставит</small><b>${esc(name(r.id))}</b></div><small>${r.txt}</small></div>`).join('');
   drawPairPreview();
 }
 /* данные для общего сертификата */
@@ -783,8 +831,8 @@ function bind(){
     if (keep.length >= MIN_N) openBet(keep, ids.filter(id => ui.off.has(id)));
   });
   $('#betSearch').addEventListener('input', e => { const q = e.target.value.trim().toLowerCase(); document.querySelectorAll('#bgrid .gcard').forEach(b => b.hidden = !!q && !b.dataset.q.includes(q)); });
-  $('#bskip').addEventListener('click', () => newTournament(ui.betRoster, ui.betRemoved, null));
-  $('#bstart').addEventListener('click', () => newTournament(ui.betRoster, ui.betRemoved, ui.bet));
+  $('#bskip').addEventListener('click', () => { if (ui.betFor === 'partner'){ show('scr-room'); renderRoom(); } else newTournament(ui.betRoster, ui.betRemoved, null); });
+  $('#bstart').addEventListener('click', () => { if (ui.betFor === 'partner') savePartnerBet(ui.bet); else newTournament(ui.betRoster, ui.betRemoved, ui.bet); });
   $('#card0').addEventListener('click', () => { if (!ui.swallowClick) pick(0); });
   $('#card1').addEventListener('click', () => { if (!ui.swallowClick) pick(1); });
   $('#undoBtn').addEventListener('click', undo);

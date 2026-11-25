@@ -159,10 +159,10 @@
 <section id="scr-bet" class="screen" hidden>
   <div class="head">
     <div>
-      <p class="eyebrow">Ставка на старте</p>
-      <h2>Кто, <span class="nowrap">по-твоему,</span> победит?</h2>
+      <p class="eyebrow" id="betEyebrow">Ставка на старте</p>
+      <h2 id="betTitle">Кто, <span class="nowrap">по-твоему,</span> победит?</h2>
     </div>
-    <p class="muted">Выбери того, кого сердце называет заранее. В конце узнаешь, сработала ли интуиция.</p>
+    <p class="muted" id="betText">Выбери того, кого сердце называет заранее. В конце узнаешь, сработала ли интуиция.</p>
   </div>
   <input class="search" id="betSearch" type="search" placeholder="Поиск по имени" autocomplete="off" aria-label="Поиск по имени">
   <div class="grid" id="bgrid" style="margin-top:14px"></div>
@@ -337,6 +337,7 @@
       <div class="sec"><h2>Главные разногласия</h2><div class="list" id="cFights"></div></div>
       <div class="sec"><h2>Общий антитоп</h2><div class="list" id="cHate"></div></div>
     </div>
+    <div class="sec" id="cBetSec" hidden><h2>Ставки на партнёра</h2><div class="list" id="cBets"></div></div>
     <div class="sec" id="cGuessSec"><h2>«Угадай мой выбор»</h2><div id="cGuess"></div></div>
     <div class="res-actions"><button class="btn" type="button" id="cBack">В комнату</button></div>
   </div>

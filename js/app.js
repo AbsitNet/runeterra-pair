@@ -489,8 +489,8 @@ function renderResult(m){
   const beat = [...new Set(m.st[w.id].beat)].filter(id => id !== m.runner), lost = [...new Set(m.st[w.id].lost)], shown = beat.slice(-8);
   let path = '';
   if (shown.length) path += `По дороге к победе ${verb(w.id,'оказалась','оказался')} сильнее, чем ${listNames(shown)}${beat.length > shown.length ? ' и другие' : ''}. `;
-  if (lost.length) path += `${verb(w.id,'Уступила','Уступил')} только ${listNames(lost)}, но ${verb(w.id,'получила','получил')} второй шанс. `;
-  path += `В гранд-финале ${verb(w.id,'обошла','обошёл')} ${name(m.runner)}.`;
+  if (lost.length) path += `Сильнее ${lost.length > 1 ? 'были' : verb(lost[0],'была','был')} только ${listNames(lost)}, но второй шанс всё решил. `;
+  path += `${verb(m.runner,'Последней соперницей','Последним соперником')} в гранд-финале ${verb(m.runner,'была','был')} ${name(m.runner)}.`;
   $('#wPath').textContent = path;
   const bl = $('#betLine');
   if (S.cfg.bet && BY[S.cfg.bet]){
@@ -527,9 +527,117 @@ function renderResult(m){
   $('#selfBtn').hidden = !V; $('#shareBtn').hidden = V; $('#newBtn').hidden = V; $('#refinalBtn').hidden = V;
   $('#method').textContent = `${th ? `Мини-турнир «${th[1]}» на ${m.order.length} ${plural(m.order.length,'участника','участников','участников')}. ` : ''}Режим «${MODES[S.cfg.mode].label}», ${m.total} ${duelsWord(m.total)}: ${m.R} ${plural(m.R,'круг','круга','кругов')} отбора, битвы за место${MODES[S.cfg.mode].D ? ', спорные места' : ''} и плей-офф с двойным выбыванием на ${m.P}. Первые ${m.P} мест решены плей-офф, остальные стоят по рейтингу всех дуэлей с учётом силы соперников; если соседи по списку встречались, выше стоит победитель. ${V ? 'Результат открыт по ссылке и в этом браузере не сохраняется.' : 'Результат сохранён в этом браузере.'}`;
   drawCertPreview();
+  renderMuCta(m);
   renderHeartMap(m);
   renderGlobalStats(m);
 }
+/* ================= взаимность: победитель задаёт вопросы, а ты отвечаешь ================= */
+const MU_AX = ['brave','loyal','free','calm','fun','mind','dark','power'];
+/* чего каждый типаж ждёт от пары */
+const MU_PREF = {
+  knight:{loyal:3, brave:2, calm:1}, dark:{dark:3, brave:2, free:1, power:1}, rebel:{free:3, brave:2, fun:2},
+  sage:{calm:3, mind:2, loyal:1}, ruler:{power:3, loyal:2, mind:1}, joy:{fun:3, free:2, loyal:1},
+  tragic:{loyal:3, calm:2, dark:1}, wild:{free:3, brave:2, dark:1}, mind:{mind:3, calm:1, power:2}
+};
+const MU_Q = [
+  {q:() => 'Какое свидание тебе по душе?', o:[
+    ['Ночная вылазка туда, куда нельзя', {brave:2, dark:1, free:1}], ['Тихий вечер и разговор до утра', {calm:2, loyal:1}],
+    ['Шумный праздник и танцы до упаду', {fun:2, free:1}], ['Библиотека, музей или мастерская изобретателя', {mind:2, calm:1}]]},
+  {q:id => `Я ${verb(id,'попала','попал')} в беду. Что ты сделаешь?`, o:[
+    ['Брошусь на помощь, не раздумывая', {brave:2, loyal:1}], ['Составлю план и вытащу тебя с умом', {mind:2, power:1}],
+    ['Буду рядом, что бы ни случилось', {loyal:2, calm:1}], ['Соберу друзей — вместе прорвёмся', {fun:2, loyal:1}]]},
+  {q:() => 'Что для тебя важнее всего?', o:[
+    ['Свобода', {free:2, brave:.5}], ['Верность', {loyal:2, calm:.5}], ['Сила и влияние', {power:2, brave:.5}], ['Знание', {mind:2, calm:.5}]]},
+  {q:() => 'А если я покажу тебе свою тёмную сторону?', o:[
+    ['Скажу, что она мне нравится', {dark:2, brave:1}], ['Приму тебя целиком, со всеми шрамами', {calm:2, loyal:1}],
+    ['Помогу с ней справиться', {loyal:2, mind:1}], ['Покажу свою — у меня она не хуже', {fun:1, free:1, dark:1}]]},
+  {q:() => 'Мы поспорили. Что дальше?', o:[
+    ['Спорю до победы', {power:2, brave:1}], ['Ищу компромисс', {calm:1, loyal:1, mind:1}],
+    ['Отшучусь — и мы уже смеёмся', {fun:2}], ['Уйду проветриться и вернусь, когда остыну', {free:2, calm:1}]]},
+  {q:() => 'Где мы будем жить вместе?', o:[
+    ['В шумном городе, где всё время что-то происходит', {mind:1, fun:1, power:1}, ['pil','zau','bil']],
+    ['На краю света, только мы и дикая природа', {free:2, brave:1}, ['frl','ixt','void','sha']],
+    ['Во дворце, поближе к власти', {power:2, dark:.5}, ['nox','dem','shu']],
+    ['В тихом месте среди гор или у моря', {calm:2}, ['ion','tar']]]},
+  {q:() => 'Какой подарок ты мне сделаешь?', o:[
+    ['Оружие ручной работы', {brave:1, power:1}], ['Письмо, написанное от руки', {loyal:1, calm:1}],
+    ['Билеты в неизвестность', {free:1, fun:1}], ['Редкую книгу или чертёж', {mind:2}]]}
+];
+const muVec = o => MU_AX.map(a => o[a] || 0);
+function muCos(u, p){ let d = 0, a = 0, b = 0; for (let i = 0; i < u.length; i++){ d += u[i] * p[i]; a += u[i] * u[i]; b += p[i] * p[i]; } return a && b ? d / Math.sqrt(a * b) : 0; }
+function muScore(id, ans){
+  const pr = PROFILE[id] || [], p = muVec(MU_PREF[pr[2]] || MU_PREF.sage), u = MU_AX.map(() => 0), best = MU_AX.map(() => 0);
+  MU_Q.forEach((q, i) => {
+    muVec(q.o[ans[i]][1]).forEach((v, k) => u[k] += v);
+    const sc = q.o.map(o => muCos(muVec(o[1]), p)); muVec(q.o[sc.indexOf(Math.max(...sc))][1]).forEach((v, k) => best[k] += v);
+  });
+  const r = Math.min(1, muCos(u, p) / (muCos(best, p) || 1));
+  const home = MU_Q[5].o[ans[5]][2] || [], bonus = home.includes(pr[0]) ? 6 : 0;
+  /* какой ответ понравился больше всего и какой меньше */
+  const each = ans.map((a, i) => muCos(muVec(MU_Q[i].o[a][1]), p));
+  const hi = each.indexOf(Math.max(...each)), lo = each.indexOf(Math.min(...each));
+  return {pct:Math.min(99, Math.round(28 + 71 * Math.pow(r, 1.1)) + bonus), hi, lo, home:!!bonus};
+}
+function muVerdict(id, pct){
+  const N = name(id);
+  if (pct >= 90) return ['Взаимно!', `${N} ${verb(id,'выбрала','выбрал')} бы тебя в ответ — без единого сомнения.`];
+  if (pct >= 75) return ['Почти взаимно', `${N} явно к тебе ${verb(id,'неравнодушна','неравнодушен')}. Ещё пара свиданий — и всё сложится.`];
+  if (pct >= 55) return ['Есть искра', `${N} к тебе присматривается. Искра есть, но ${verb(id,'ей','ему')} нужно время.`];
+  return ['Пока безответно', `${N} пока не ${verb(id,'уверена','уверен')}, что вы пара. Но сердце не всегда слушает ответы на вопросы.`];
+}
+const mu = {ans:[], champ:null, back:null};
+function renderMuCta(m){
+  const box = $('#muCta');
+  if (VIEW){ box.hidden = true; return; }
+  const r = S.mutual && S.mutual.champ === m.champ ? S.mutual : null, N = esc(name(m.champ));
+  box.hidden = false;
+  box.innerHTML = r
+    ? `<p>Взаимность: <b>${r.pct}%</b> — ${esc(muVerdict(m.champ, r.pct)[0].toLowerCase())}.</p><button class="btn ghost" type="button" id="muGo">Ответить заново</button>`
+    : `<p><b>А это взаимно?</b> ${N} задаст тебе семь вопросов.</p><button class="btn" type="button" id="muGo">Узнать</button>`;
+  $('#muGo').addEventListener('click', () => startMutual(m.champ));
+}
+function startMutual(id){
+  mu.champ = id; mu.ans = [];
+  show('scr-mutual'); FX.setLevel(0);
+  const im = $('#muImg'); im.src = img(id); im.alt = name(id);
+  renderMutual();
+}
+function renderMutual(){
+  const id = mu.champ, i = mu.ans.length, body = $('#muBody');
+  if (i >= MU_Q.length) return renderMutualResult();
+  const q = MU_Q[i];
+  body.innerHTML = `<p class="eyebrow">Взаимность · вопрос ${i + 1} из ${MU_Q.length}</p>
+    <div class="bar" aria-hidden="true"><i style="width:${(100 * i / MU_Q.length).toFixed(1)}%"></i></div>
+    <p class="mu-who">${face(id)}${esc(name(id))} спрашивает</p>
+    <h2 class="mu-q">${esc(q.q(id))}</h2>
+    <div class="mu-opts">${q.o.map((o, k) => `<button class="mu-opt" type="button" data-k="${k}"><i>${k + 1}</i><span>${esc(o[0])}</span></button>`).join('')}</div>
+    <div class="res-actions"><button class="btn ghost" type="button" id="muBack">${i ? 'Назад' : 'К итогам'}</button></div>`;
+  body.querySelectorAll('.mu-opt').forEach(b => b.addEventListener('click', () => muAnswer(+b.dataset.k)));
+  $('#muBack').addEventListener('click', () => { if (mu.ans.length){ mu.ans.pop(); renderMutual(); } else go(); });
+}
+function muAnswer(k){
+  if (mu.lock) return;
+  const b = $(`#muBody .mu-opt[data-k="${k}"]`); if (!b) return;
+  mu.lock = true; b.classList.add('on'); Sound.pick(0);
+  setTimeout(() => { mu.lock = false; mu.ans.push(k); renderMutual(); }, reduced ? 60 : 260);
+}
+function renderMutualResult(){
+  const id = mu.champ, r = muScore(id, mu.ans), [title, text] = muVerdict(id, r.pct), N = name(id);
+  if (!VIEW && S.cfg){ S.mutual = {champ:id, a:mu.ans.slice(), pct:r.pct}; saveLocal(); }
+  const hi = MU_Q[r.hi].o[mu.ans[r.hi]][0], lo = MU_Q[r.lo].o[mu.ans[r.lo]][0];
+  const home = r.home ? ` А ещё ты угадываешь, где ${verb(id,'ей','ему')} хочется жить.` : '';
+  const why = r.hi === r.lo ? (home ? `<p class="muted">${home.trim()}</p>` : '') : `<p class="muted">${esc(N)} особенно ${verb(id,'оценила','оценил')} ответ «${esc(hi)}», а вот «${esc(lo)}» ${verb(id,'её','его')} не впечатлил.${home}</p>`;
+  $('#muBody').innerHTML = `<p class="eyebrow">Взаимность</p>
+    <p class="mu-who">${face(id)}${esc(N)}</p>
+    <p class="mu-pct">${r.pct}%</p>
+    <h2>${esc(title)}</h2>
+    <p>${esc(text)}</p>${why}
+    <div class="res-actions"><button class="btn primary" type="button" id="muDone">К итогам</button><button class="btn ghost" type="button" id="muAgain">Ответить заново</button></div>`;
+  if (r.pct >= 90){ Sound.fanfare(); FX.celebrate(); }
+  $('#muDone').addEventListener('click', () => go());
+  $('#muAgain').addEventListener('click', () => startMutual(id));
+}
+
 /* ================= карта сердца: откуда родом топ-20 ================= */
 const REGION_TO = {ion:'в Ионию', nox:'в Ноксус', dem:'в Демасию', frl:'во Фрельйорд', pil:'в Пилтовер', zau:'в Заун', bil:'в Билджвотер',
   shu:'в Шуриму', tar:'на Таргон', ixt:'в Иштал', sha:'на Сумрачные острова', void:'в Бездну'};
@@ -1380,6 +1488,7 @@ function bind(){
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape' && !$('#modal').hidden) return closeModal();
     if (e.altKey || e.ctrlKey || e.metaKey || !$('#modal').hidden || !$('#intro').hidden) return;
+    if (ui.screen === 'scr-mutual' && /^[1-4]$/.test(e.key)){ e.preventDefault(); muAnswer(+e.key - 1); }
     if (ui.screen === 'scr-duel'){
       if (e.key === 'ArrowLeft' || e.key === '1'){ e.preventDefault(); pick(0); }
       else if (e.key === 'ArrowRight' || e.key === '2'){ e.preventDefault(); pick(1); }

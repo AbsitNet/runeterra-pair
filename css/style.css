@@ -676,3 +676,30 @@ textarea#copyFallback{width:100%;min-height:160px;background:var(--deep);color:v
 .map-txt p{color:var(--text);max-width:34em}
 .share-grid.map-grid{grid-template-columns:minmax(0,460px) minmax(0,1fr)}
 @media (max-width:760px){.share-grid.map-grid{grid-template-columns:minmax(0,1fr)}.share-grid.map-grid canvas{max-width:100%}}
+
+/* ================= взаимность ================= */
+.mu-cta{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;margin-top:6px;padding:12px 14px;border:1px solid var(--rose);background:color-mix(in srgb,var(--rose) 7%,var(--deep))}
+.mu-cta p{flex:1 1 16em;min-width:0;color:var(--text)}
+.mu-cta b{color:var(--gold-hi)}
+.mu{display:grid;grid-template-columns:minmax(0,250px) minmax(0,1fr);gap:clamp(20px,4vw,52px);align-items:start;max-width:980px;margin:0 auto;padding-top:clamp(8px,2vw,20px)}
+.mu-face img{display:block;width:100%;aspect-ratio:308/560;object-fit:cover;border:1px solid var(--gold);box-shadow:0 0 0 6px var(--night),0 0 0 7px var(--gold-lo),0 30px 80px -30px color-mix(in srgb,var(--rose) 60%,transparent)}
+.mu-body{display:grid;gap:16px;min-width:0}
+.mu-body .bar{margin:0}
+.mu-who{display:flex;align-items:center;gap:10px;font-size:14px;color:var(--gold)}
+.mu-who img{display:none;width:40px;height:48px;object-fit:cover;object-position:50% 16%;border:1px solid var(--gold-lo)}
+.mu-q{font-size:clamp(28px,4.2vw,44px);line-height:1.1;text-wrap:balance}
+.mu-opts{display:grid;gap:10px}
+.mu-opt{display:grid;grid-template-columns:28px minmax(0,1fr);gap:12px;align-items:baseline;width:100%;padding:14px 16px;border:1px solid var(--line-hi);background:var(--deep);color:var(--text);font:inherit;text-align:left;cursor:pointer;transition:border-color .15s,background .15s,transform .15s}
+.mu-opt i{font-style:normal;font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.mu-opt span{font-family:var(--f-display);font-size:clamp(19px,2.2vw,22px);line-height:1.25;color:var(--gold-hi)}
+@media (hover:hover){.mu-opt:hover{border-color:var(--gold)}}
+.mu-opt.on{border-color:var(--rose);background:color-mix(in srgb,var(--rose) 10%,var(--deep))}
+.mu-opt:active{transform:scale(.99)}
+.mu-pct{font-family:var(--f-display);font-size:clamp(84px,14vw,150px);line-height:.9;color:var(--gold-hi);font-variant-numeric:tabular-nums}
+.mu-body h2{font-size:clamp(32px,4.6vw,48px)}
+.mu-body p{max-width:38em}
+@media (max-width:600px){
+  .mu{grid-template-columns:minmax(0,1fr)}
+  .mu-face{display:none}
+  .mu-who img{display:block}
+}

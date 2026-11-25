@@ -58,7 +58,7 @@ The tournament logic is in `js/engine.js`, the champion write-ups in `js/profile
 
 ## Feature tracker
 
-What already works and what's planned. Everything left on the plan is a big chunk of work, several evenings each.
+What already works and what's planned. Difficulty for the planned ones is a rough guess: "easy" is about an evening, "medium" is a couple of evenings, "long" is a big chunk of work of its own.
 
 ### Done
 
@@ -112,6 +112,12 @@ Everywhere:
 
 | Feature | What it is | Difficulty |
 |---|---|---|
+| Pair draft | Picks and bans, like League's champ select: taking turns against a timer, each of you bans three champions for the other, then you take turns "handing" each other one champion at a time until each has five. Then each of you plays a mini-tournament among the ones you were drafted | medium |
+| Watch together | Your partner watches your tournament live: the same cards, and your pick shows up on their screen right away. They can react and send hints, but hints don't change anything | easy |
+| Duel of the day | One pair a day, the same for every player. As a couple you see whether you matched today and build a streak, and there's a vote count across all players | easy |
+| Couple's album | The room remembers all your tournaments: how your tastes changed, who your pair was a month ago, your shared all-time top and how often you agree, month by month | medium |
+| Live bets | While your partner is in the playoffs, you bet hearts on who they'll pick in each duel. Guess right and your hearts grow; the score carries over between tournaments | easy |
+| "I know you" quiz | Questions about each other built from your results: "Who did Anya rank higher, Ahri or Lux?", "Who's in Sasha's anti-top?". You answer at the same time, with points and rounds | medium |
 | English, German and French | Translating the interface, champion write-ups and quotes | long |
 | Rooms for a group | More than two people: who matches whom and a shared anti-top | long |
 

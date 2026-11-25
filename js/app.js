@@ -538,6 +538,7 @@ function renderResult(m){
   $('#podium').innerHTML = [[1,'2-е место'],[2,'3-е место']].filter(([i]) => m.order[i]).map(([i, lab]) => `<div class="pod">${face(m.order[i])}<div><small>${lab}</small><b>${esc(name(m.order[i]))}</b></div></div>`).join('');
 
   collTournament(m);
+  dkTournament(m);
   const badges = achievements(m, S.cfg), cf = ui.collFresh && ui.collFresh.seed === S.cfg.seed ? ui.collFresh.keys : [];
   $('#badgesSec').hidden = !badges.length && V;
   $('#badges').innerHTML = badges.map(b => `<div class="badge ${cf.includes(b.k) ? 'new' : ''}"><span class="hex" aria-hidden="true">${b.icon}</span><div><b>${esc(b.t)}</b><small>${esc(b.d)}</small>${cf.includes(b.k) ? '<em class="b-new">Новый в коллекции</em>' : ''}</div></div>`).join('')
@@ -885,6 +886,7 @@ function enterRoom(fresh){
   LB = store.get(lbKey()) || {bets:[]};
   CM = store.get(chatKey()) || {list:[]};
   DR = store.get(drKey());
+  dkLoad();
   if (sub) sub.close();
   sub = Room.subscribe(sess.code, sess, () => fetchRoom(), slots => { online = new Set(slots); if (ui.screen === 'scr-room') renderRoom(); renderPartnerChip(); });
   clearInterval(pollT); pollT = setInterval(() => { if (!document.hidden) fetchRoom(); }, 20000);
@@ -892,7 +894,7 @@ function enterRoom(fresh){
 }
 function leaveRoom(){
   if (sub) sub.close(); sub = null; clearInterval(pollT);
-  sstore.del('rp-session'); sess = null; roomData = null; G = null; PB = null; BT = null; RX = null; SY = null; LB = null; CM = null; DR = null;
+  sstore.del('rp-session'); sess = null; roomData = null; G = null; PB = null; BT = null; RX = null; SY = null; LB = null; CM = null; DR = null; DK = null;
   hideLive(); live.key = ''; live.shown = null;
   setCtx('solo'); show('scr-start'); refreshStart();
 }
@@ -908,6 +910,7 @@ async function fetchRoom(){
   checkLive();
   syncOnFetch();
   draftOnFetch();
+  deckOnFetch();
   if (ui.mode === 'watch') renderWatch();
   else applyHint();
 }
@@ -925,6 +928,7 @@ function myState(){
   if (RX) st.react = RX;
   if (SY) st.sync = SY;
   if (DR) st.draft = DR;
+  if (DK && Object.keys(DK.c).length) st.deck = {c:DK.c};
   if (S.cfg && S.skins && S.skins.fav != null && st.champ === S.skins.c) st.skin = {c:S.skins.c, n:S.skins.fav, name:skName(S.skins, S.skins.fav)};
   if (WATCHING) st.watching = true;
   if (HINT) st.hint = HINT;
@@ -982,6 +986,7 @@ function renderRoom(){
   renderSyncBox();
   renderDraftBox();
   renderChat();
+  renderDeckBox();
   renderDaily($('#rDaily'), true);
   $('#rPlayers').innerHTML = players.map(card).join('') + (pp ? '' : '<div class="pcard"><div class="who"><span class="dot"></span>Ждём партнёра…</div><p class="muted">Когда партнёр войдёт по коду, он появится здесь.</p></div>');
   const mine = S.cfg ? simulate(S.cfg, S.dec) : null, their = playerState(pp);
@@ -1306,6 +1311,7 @@ async function dailyVote(side){
   Sound.pick(1);
   renderDailyAll();
   collDaily();
+  if (sess) dkDaily(day, pick);
   if (sess) pushState(true);
   if (Room.configured()){ try { await Room.daily.vote(day, voterId(), pick); } catch(e){} await dailyLoad(day); renderDailyAll(); }
 }
@@ -1753,6 +1759,7 @@ function renderSyncResult(){
   const x = syncCalc(); if (!x || x.phase !== 'done') return;
   ui.cur = null; show('scr-sync'); FX.setLevel(0);
   collEvent('sync');
+  dkSync(x);
   const it = $('#intro'); if (!it.hidden && it.onclick) it.onclick();
   const m = x.m, w = BY[m.champ], pp = x.pp, n = x.log.length;
   const agree = x.log.filter(l => l.how === 'agree').length, re = x.log.filter(l => l.how === 'revote').length, coin = n - agree - re;
@@ -1862,6 +1869,7 @@ function bind(){
   $('#bracketBtn').addEventListener('click', () => { const m = ui.cur; openModal(`<p class="eyebrow">Плей-офф</p><h2 style="font-size:32px;margin:4px 0 14px">Сетка</h2><div class="bracket-wrap">${bracketHTML(m.bracket || [], m)}</div>`); });
   $('#modalClose').addEventListener('click', closeModal);
   $('#drGo').addEventListener('click', () => draftAct(ui.drSel));
+  $('#dkBack').addEventListener('click', () => { show('scr-room'); renderRoom(); });
   $('#drBack').addEventListener('click', () => { clearInterval(ui.drTick); show('scr-room'); renderRoom(); });
   $('#drSearch').addEventListener('input', () => {
     const q = $('#drSearch').value.trim().toLowerCase().replace(/ё/g, 'е');

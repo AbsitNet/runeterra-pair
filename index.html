@@ -365,6 +365,7 @@
     <div class="room-actions" id="rActions"></div>
     <p class="err" id="rErr" role="alert"></p>
     <div class="chat" id="rChat" hidden></div>
+    <div class="deck" id="rDeck" hidden></div>
     <div class="daily" id="rDaily" aria-label="Дуэль дня" hidden></div>
     <label class="check live-opt" for="liveToggle">
       <input type="checkbox" id="liveToggle" checked>
@@ -397,6 +398,23 @@
     </div>
     <div class="dr-after" id="drAfter" hidden></div>
     <div class="res-actions"><button class="btn ghost" type="button" id="drBack">В комнату</button></div>
+  </div>
+</section>
+
+<!-- КОЛОДА ПАРЫ -->
+<section id="scr-deck" class="screen" hidden>
+  <div class="res">
+    <div class="cl-head">
+      <div>
+        <p class="eyebrow">Вдвоём</p>
+        <h1>Колода пары</h1>
+      </div>
+      <button class="btn ghost" type="button" id="dkBack">В комнату</button>
+    </div>
+    <div class="cl-sum"><p id="dkSum"></p><div class="pbar"><i id="dkBar"></i></div>
+      <p class="muted">Одна колода на двоих: карты, которые приносит каждый, складываются вместе. Цель — собрать всех.</p></div>
+    <div class="dk-filter" id="dkFilter" role="group" aria-label="Какие карты показать"></div>
+    <div class="dk-list" id="dkList"></div>
   </div>
 </section>
 
@@ -531,6 +549,7 @@
 <script src="js/collection.js"></script>
 <script src="js/draft.js"></script>
 <script src="js/skins.js"></script>
+<script src="js/deck.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>

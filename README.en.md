@@ -18,6 +18,8 @@ There's also a heart map: a stylised map of Runeterra marking where your top 20 
 
 You can also check whether it's mutual. The winner asks you seven questions (about dates, fights, their dark side and where you'd live together) and works out a mutual-feelings score based on their personality.
 
+Then you can find out which look you like best: Ahri, sure, but which Ahri? In the skin tournament your pair's skins face off in knockout duels, and your favourite shows up on the results screen. The skin list with Russian names and the art come from Data Dragon, so this part needs an internet connection.
+
 You can share your result as a link. It opens your tier list for anyone, no room needed.
 
 Achievements don't disappear with the tournament: they build up in a collection on your device. There are 18 tournament badges (the same ones as on the results screen) and 13 rare ones, for things like the same pair three tournaments in a row, every mini-tournament, the thorough mode, a shared tournament or a week of votes in the duel of the day.
@@ -39,6 +41,10 @@ Create a room, send the link, and each of you plays your own tournament on your 
 You can also watch your partner's tournament live: the same cards, and their pick shows up on your screen almost instantly. Tap a card to send a hint; it doesn't change their pick. In the playoffs you bet one to three hearts on who they'll pick in each duel: guess right and you gain hearts, guess wrong and you lose them. You start with ten, and if you lose them all, you get one free bet.
 
 You can message each other with ready-made phrases and champion stickers; there's no free text. Your partner's phrase pops up on any screen, and the button with their name above the duel opens a reply. In the duel of the day you see whether you matched today and build a streak of matches.
+
+There's a pair draft, like champ select in League. First each of you bans three champions that nobody gets. Then you take turns handing each other champions in a 1-2-2-2-2-1 order until each of you has five. You can ask to be given only men or only women. Each turn has 30 seconds; if time runs out, the pick is random. At the end each of you plays ten duels among your five and sees which gift the other liked most, and where your gifts sit in their big tournament.
+
+The couple also shares a deck of champion cards. A pack of five cards comes with every tournament you finish in the room and with every shared tournament, and one card each for the duel of the day and the draft. The cards you each bring add up, and every pack includes cards the deck doesn't have yet: the goal is to collect all 138. Golden cards drop when you match: the same vote in the duel of the day, shared favourites in your top 10, the same pair, or the pair from a shared tournament.
 
 Once you're both done you get a comparison: how close your tastes are and whose bet paid off.
 
@@ -99,6 +105,7 @@ Results:
 - [x] Heart map: where your top 20 come from, as a picture you can download
 - [x] Stats across all players: how rare your pick is and who gets picked the most
 - [x] Mutual feelings: the winner asks seven questions and works out a score
+- [x] Skin tournament: your pair's skins from Data Dragon face off, and your favourite look shows on the results screen
 
 Playing together:
 
@@ -114,6 +121,8 @@ Playing together:
 - [x] Watch together: your partner's tournament live, with reactions and hints
 - [x] Live bets: hearts on your partner's playoff picks
 - [x] Quick phrases and champion stickers
+- [x] Pair draft: alternating bans and gifts against a timer, five champions from your partner and a tournament among them
+- [x] Couple's deck: a shared card collection, packs for tournaments, golden cards for matches
 
 Everywhere:
 
@@ -125,11 +134,8 @@ Everywhere:
 
 | Feature | What it is | Difficulty |
 |---|---|---|
-| Pair draft | Picks and bans, like League's champ select: taking turns against a timer, each of you bans three champions for the other, then you take turns "handing" each other one champion at a time until each has five. Then each of you plays a mini-tournament among the ones you were drafted | medium |
 | Couple's album | The room remembers all your tournaments: how your tastes changed, who your pair was a month ago, your shared all-time top and how often you agree, month by month | medium |
 | "I know you" quiz | Questions about each other built from your results: "Who did Anya rank higher, Ahri or Lux?", "Who's in Sasha's anti-top?". You answer at the same time, with points and rounds | medium |
-| Skin tournament | Once your pair is found, their skins face off in duels to find your favourite look: Ahri, sure, but which Ahri? Skin lists and art come from Data Dragon | medium |
-| Couple's deck | Every tournament, duel of the day and shared tournament earns champion cards for a shared collection. The goal is to collect all 138 together; rare cards drop when you match | medium |
 | First date | A short interactive story with your winner: five scenes, in each you choose what to do and your pair reacts in character. The ending decides whether there'll be a second date | medium |
 | English, German and French | Translating the interface, champion write-ups and quotes | long |
 | Rooms for a group | More than two people: who matches whom and a shared anti-top | long |

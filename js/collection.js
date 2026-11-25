@@ -139,7 +139,7 @@ function collFlush(){
     el.innerHTML = `<span class="hex" aria-hidden="true">+${x.fresh}</span><span><small>Коллекция</small><b>${x.fresh === 1 ? 'Новый значок турнира' : `Новые значки турниров: ${x.fresh}`}</b></span>`;
   } else {
     const a = COLL_BY[x];
-    el.innerHTML = `<span class="hex" aria-hidden="true">${a.icon}</span><span><small>Редкий значок</small><b>${esc(a.t)}</b></span>`;
+    el.innerHTML = `<span class="hex rare" aria-hidden="true">${a.icon}</span><span><small>Редкий значок</small><b>${esc(a.t)}</b></span>`;
     Sound.fanfare && Sound.fanfare();
   }
   el.hidden = false; el.classList.remove('on'); void el.offsetWidth; el.classList.add('on');
@@ -175,7 +175,7 @@ function collRenderCta(){
   const c = collLoad(), n = collCount(c);
   const recent = COLL.filter(x => c.got[x.k]).sort((a, b) => c.got[b.k].at - c.got[a.k].at).slice(0, 6);
   $('#collHex').innerHTML = recent.length
-    ? recent.map(x => `<span class="hex" title="${esc(x.t)}">${x.icon}</span>`).join('')
+    ? recent.map(x => `<span class="hex ${x.g === 'r' ? 'rare' : ''}" title="${esc(x.t)}">${x.icon}</span>`).join('')
     : '<span class="hex off">?</span><span class="hex off">?</span><span class="hex off">?</span>';
   $('#collTxt').innerHTML = n ? `Собрано <b>${n}</b> из ${COLL.length}` : `Всего ${COLL.length} ${plural(COLL.length, 'значок', 'значка', 'значков')}: за характер топа, ставки, турниры вдвоём и редкие случаи`;
 }

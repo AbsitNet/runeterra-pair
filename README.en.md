@@ -20,6 +20,10 @@ You can also check whether it's mutual. The winner asks you seven questions (abo
 
 You can share your result as a link. It opens your tier list for anyone, no room needed.
 
+Achievements don't disappear with the tournament: they build up in a collection on your device. There are 18 tournament badges (the same ones as on the results screen) and 13 rare ones, for things like the same pair three tournaments in a row, every mini-tournament, the thorough mode, a shared tournament or a week of votes in the duel of the day.
+
+The duel of the day is one pair a day, the same for every player. You vote and see how many people picked the same. A new pair appears at midnight Moscow time.
+
 There are 138 champions in the pool, adults only: no kids, no yordles. Rhaast and Kayn count as two different people, and so do Wolf and Lamb. Monsters like Kha'Zix and Warwick can be switched off with one toggle.
 
 A full run takes 10 to 40 minutes depending on the mode. The quick one finds your pair just as reliably; only the middle and bottom of the tier list come out rougher. If you don't have that long, there are mini-tournaments of 16 that take about three minutes: Ionia, Noxus, Demacia, Piltover and Zaun, villains, mages, assassins, or only the newest champions. On a phone you can swipe instead of tapping.
@@ -31,6 +35,10 @@ You can install it on your phone like an app: "Install" in Chrome, or Share → 
 ## Playing together
 
 Create a room, send the link, and each of you plays your own tournament on your own device. You can bet on who the other person will end up with; bets close once they reach the playoffs. You can see how far the other person has got, and once they're in the playoffs you get live updates: who they're choosing between and who they picked. You can reply with a reaction. If you hate spoilers, switch it off in the room.
+
+You can also watch your partner's tournament live: the same cards, and their pick shows up on your screen almost instantly. Tap a card to send a hint; it doesn't change their pick. In the playoffs you bet one to three hearts on who they'll pick in each duel: guess right and you gain hearts, guess wrong and you lose them. You start with ten, and if you lose them all, you get one free bet.
+
+You can message each other with ready-made phrases and champion stickers; there's no free text. Your partner's phrase pops up on any screen, and the button with their name above the duel opens a reply. In the duel of the day you see whether you matched today and build a streak of matches.
 
 Once you're both done you get a comparison: how close your tastes are and whose bet paid off.
 
@@ -48,7 +56,7 @@ python3 -m http.server 8000
 
 then open http://localhost:8000.
 
-The two-player room and the anonymous stats run on Supabase. Apply the migrations from `supabase/migrations/` and put your project URL and publishable key into `js/config.js`. Keeping the publishable key in the repo is fine: the tables are locked down with RLS, and the browser only reaches the database through a few `pair_*` and `stats_*` functions. Rooms nobody has opened for 90 days are deleted automatically.
+The two-player room and the anonymous stats run on Supabase. Apply the migrations from `supabase/migrations/` and put your project URL and publishable key into `js/config.js`. Keeping the publishable key in the repo is fine: the tables are locked down with RLS, and the browser only reaches the database through a few `pair_*`, `stats_*` and `daily_*` functions. Rooms nobody has opened for 90 days are deleted automatically.
 
 No Supabase handy? Open two tabs with `?room-backend=local` and the room will work inside your browser.
 
@@ -82,6 +90,7 @@ Results:
 - [x] A tier list you can save as a picture
 - [x] Your type, favourite region and favourite class
 - [x] Joke achievements
+- [x] Achievement collection: badges add up across tournaments, plus rare ones for special occasions
 - [x] "Never ever": the bottom three and why
 - [x] The playoff bracket
 - [x] A compatibility certificate with the seal and registrar of the winner's home region
@@ -102,21 +111,20 @@ Playing together:
 - [x] A joint certificate, signed by your shared favourites as witnesses
 - [x] Live updates from your partner's playoffs with reactions, and a switch for spoiler haters
 - [x] Shared tournament: the same pair for both of you, secret picks, a re-vote and a coin toss, a shared tier list, three lengths to choose from
+- [x] Watch together: your partner's tournament live, with reactions and hints
+- [x] Live bets: hearts on your partner's playoff picks
+- [x] Quick phrases and champion stickers
 
 Everywhere:
 
 - [x] Works on phones, tablets and desktops, with a separate layout for portrait phones
 - [x] Installs like an app, solo mode works offline
+- [x] Duel of the day: one pair a day for everyone, a vote count across all players, and a streak of matches for couples
 
 ### Planned
 
 | Feature | What it is | Difficulty |
 |---|---|---|
-| Watch together | Your partner watches your tournament live: the same cards, and your pick shows up on their screen right away. They can react and send hints, but hints don't change anything | easy |
-| Duel of the day | One pair a day, the same for every player. As a couple you see whether you matched today and build a streak, and there's a vote count across all players | easy |
-| Live bets | While your partner is in the playoffs, you bet hearts on who they'll pick in each duel. Guess right and your hearts grow; the score carries over between tournaments | easy |
-| Quick phrases in the room | A tiny chat made of ready-made phrases and champion stickers: "Seriously, Teemo?!", "Called it". No free text, so no moderation needed | easy |
-| Achievement collection | Achievements add up across tournaments instead of living in just one, with rare ones like "The same pair three times in a row" or "Finished every mini-tournament" | easy |
 | Pair draft | Picks and bans, like League's champ select: taking turns against a timer, each of you bans three champions for the other, then you take turns "handing" each other one champion at a time until each has five. Then each of you plays a mini-tournament among the ones you were drafted | medium |
 | Couple's album | The room remembers all your tournaments: how your tastes changed, who your pair was a month ago, your shared all-time top and how often you agree, month by month | medium |
 | "I know you" quiz | Questions about each other built from your results: "Who did Anya rank higher, Ahri or Lux?", "Who's in Sasha's anti-top?". You answer at the same time, with points and rounds | medium |

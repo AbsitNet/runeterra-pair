@@ -991,7 +991,7 @@ b.hearts{color:var(--rose);font-weight:600}
 .cl.got .cl-meta{color:var(--muted);margin-top:4px}
 .cl:not(.got){border-style:dashed}
 .cl.rare.got{border-color:var(--gold-lo);background:radial-gradient(120% 140% at 0% 50%,color-mix(in srgb,var(--rose) 9%,transparent),transparent 60%),var(--deep)}
-.cl.rare.got .hex{background:linear-gradient(160deg,#FFE3EC,var(--rose) 50%,color-mix(in srgb,var(--rose) 55%,var(--night)))}
+.cl.rare.got .hex,.coll-hex .hex.rare,.ach .hex.rare{background:linear-gradient(160deg,#FFE3EC,var(--rose) 50%,color-mix(in srgb,var(--rose) 55%,var(--night)))}
 .cl-prog{display:block;height:3px;margin-top:8px;background:var(--line)}
 .cl-prog i{display:block;height:100%;background:var(--gold)}
 .cl-n{font-variant-numeric:tabular-nums}
@@ -1005,3 +1005,5 @@ b.hearts{color:var(--rose);font-weight:600}
   .cl-grid{grid-template-columns:minmax(0,1fr)}
 }
 @media (prefers-reduced-motion:reduce){.ach{transition:opacity .2s}}
+#rErr{color:var(--rose);font-size:13.5px}
+#rErr:empty{display:none}

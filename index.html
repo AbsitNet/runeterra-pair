@@ -21,106 +21,101 @@
 
 <!-- СТАРТ -->
 <section id="scr-start" class="screen">
-  <div class="start">
-    <div class="start-main">
-      <p class="eyebrow">League of Legends · тест на совместимость</p>
-      <h1>Пара из Рунтерры</h1>
-      <p class="lead">На экране два чемпиона. Выбирай того, с кем отношения сложились бы лучше. Одно поражение никого не выбивает: каждый снова и снова встречается с равными по силе, пока его место не станет ясным. В конце будет гранд-финал один на один и твой полный тир-лист.</p>
+  <header class="hero">
+    <figure class="hcard hc-a" id="hcA" aria-hidden="true"><div class="hc-img"><img alt=""><img alt=""></div><figcaption><b></b><small></small></figcaption></figure>
+    <div class="hero-mid">
+      <h1 class="hero-title">Пара из Рунтерры</h1>
+      <p class="hero-lead">Два чемпиона на экране — выбирай того, с кем отношения сложились бы лучше. Проигрыш никого не выбивает, а в конце будет гранд-финал один на один и твой полный тир-лист.</p>
+      <p class="hero-q" id="heroQ" aria-hidden="true"><span></span></p>
+    </div>
+    <figure class="hcard hc-b" id="hcB" aria-hidden="true"><div class="hc-img"><img alt=""><img alt=""></div><figcaption><b></b><small></small></figcaption></figure>
+  </header>
 
-      <div class="banner" id="roomBanner" hidden></div>
+  <div class="banner" id="roomBanner" hidden></div>
 
-      <div class="resume" id="resume" hidden>
-        <p class="rtext" id="resumeText"></p>
-        <button class="btn primary" id="resumeBtn" type="button">Продолжить</button>
-      </div>
+  <div class="resume" id="resume" hidden>
+    <p class="rtext" id="resumeText"></p>
+    <button class="btn primary" id="resumeBtn" type="button">Продолжить</button>
+  </div>
 
-      <form class="setup" id="setup">
-        <fieldset>
-          <legend>Кто участвует</legend>
-          <div class="seg">
-            <label><input type="radio" name="who" value="all" id="who-all" checked><span><b>Все</b><small><span id="cnt-all">138</span> чемп.</small></span></label>
-            <label><input type="radio" name="who" value="m" id="who-m"><span><b>Мужчины</b><small><span id="cnt-m">77</span> чемп.</small></span></label>
-            <label><input type="radio" name="who" value="f" id="who-f"><span><b>Женщины</b><small><span id="cnt-f">59</span> чемп.</small></span></label>
-          </div>
-        </fieldset>
+  <div class="start-panel">
+    <form class="setup" id="setup">
+      <h2>Настрой турнир</h2>
+      <fieldset>
+        <legend>Кто участвует</legend>
+        <div class="seg">
+          <label><input type="radio" name="who" value="all" id="who-all" checked><span><b>Все</b><small><span id="cnt-all">138</span> чемп.</small></span></label>
+          <label><input type="radio" name="who" value="m" id="who-m"><span><b>Мужчины</b><small><span id="cnt-m">77</span> чемп.</small></span></label>
+          <label><input type="radio" name="who" value="f" id="who-f"><span><b>Женщины</b><small><span id="cnt-f">59</span> чемп.</small></span></label>
+        </div>
+      </fieldset>
 
+      <fieldset>
+        <legend>Длина турнира</legend>
+        <div class="seg">
+          <label><input type="radio" name="mode" value="quick" id="mode-quick"><span><b>Быстро</b><small id="est-quick"></small></span></label>
+          <label><input type="radio" name="mode" value="normal" id="mode-normal" checked><span><b>Обычно</b><small id="est-normal"></small></span></label>
+          <label><input type="radio" name="mode" value="deep" id="mode-deep"><span><b>Подробно</b><small id="est-deep"></small></span></label>
+        </div>
+      </fieldset>
+
+      <div class="opts">
         <label class="check" for="extra">
           <input type="checkbox" id="extra" checked>
           <b>Нелюди и чудовища</b>
-          <small>Варвик, Треш, Ка'Зикс, Шако, Волк, Овечка и ещё 25. Выключи, если нужны только люди и человекоподобные.</small>
+          <small>Варвик, Ка'Зикс, Волк, Овечка и ещё 27. Выключи, если нужны только люди и человекоподобные.</small>
         </label>
-
-        <fieldset>
-          <legend>Длина турнира</legend>
-          <div class="seg">
-            <label><input type="radio" name="mode" value="quick" id="mode-quick"><span><b>Быстро</b><small id="est-quick"></small></span></label>
-            <label><input type="radio" name="mode" value="normal" id="mode-normal" checked><span><b>Обычно</b><small id="est-normal"></small></span></label>
-            <label><input type="radio" name="mode" value="deep" id="mode-deep"><span><b>Подробно</b><small id="est-deep"></small></span></label>
-          </div>
-        </fieldset>
-
         <label class="check" for="prefilter">
           <input type="checkbox" id="prefilter">
           <b>Сначала убрать тех, кто точно не нравится</b>
           <small>Короче турнир и точнее итог. Убранные попадут в отдельную строку тир-листа.</small>
         </label>
-
-        <div class="go">
-          <button class="btn primary" type="submit" id="startBtn">Начать турнир</button>
-          <span class="note" id="startNote"></span>
-        </div>
-
-        <details class="who">
-          <summary>Как устроен турнир</summary>
-          <p><b>1. Отбор.</b> Каждый играет каждый круг против тех, у кого похожий счёт. Проигрыш никого не выбивает.</p>
-          <p><b>2. Битвы за место.</b> Рейтинг считается по всем дуэлям с учётом силы соперников: проиграть сильному почти не стыдно. Дальше дерутся только те, чьё место ещё не ясно, причём с ближайшими по рейтингу, с кем ещё не встречались.</p>
-          <p><b>3. Спорные места.</b> В режиме «Подробно» перед плей-офф ещё 15–30 дуэлей у самых границ тиров.</p>
-          <p><b>4. Плей-офф с двойным выбыванием.</b> Проигравший уходит в сетку второго шанса и продолжает бороться. Вылетает только тот, кто проиграл дважды.</p>
-          <p><b>5. Гранд-финал.</b> Лучший из сетки победителей против лучшего из сетки второго шанса, лоб в лоб за первое место.</p>
-        </details>
-        <details class="who">
-          <summary>Кого нет в списке и почему</summary>
-          <p>В тесте только взрослые чемпионы. Отдельными участниками идут Рааст и Каин, а также Волк и Овечка из Киндред: своих карточек у них в игре нет, поэтому портреты вырезаны из официальных артов Каина и Киндред. Имена и титулы взяты из русской локализации игры, патч 16.23.</p>
-          <p><b>Дети:</b> Энни, Нуну и Виллумп, Амуму, Зои, Экко, Милио, Лиллия, Смолдер.</p>
-          <p><b>Йордлы:</b> Векс, Вейгар, Гнар, Зиггс, Кеннен, Клед, Корки, Лулу, Поппи, Рамбл, Тимо, Тристана, Физз, Хеймердингер.</p>
-          <p><b>Существа без человеческого облика:</b> Анивия, Бард, Блицкранк, Вел'Коз, Галио, Зак, Ког'Мао, Мальфит, Маокай, Наутилус, Раммус, Рек'Сай, Скарнер, Чо'Гат, Юми.</p>
-        </details>
-      </form>
-
-      <div class="roombox" id="roomBox">
-        <h2>Вдвоём, в живой комнате</h2>
-        <p class="muted" id="roomIntro">Каждый проходит свой турнир на своём телефоне, а вы видите прогресс друг друга. В конце — сравнение вкусов и игра «Угадай мой выбор».</p>
-        <div id="roomForms">
-          <div class="field" style="max-width:none">
-            <label for="roomName">Твоё имя</label>
-            <input class="input" id="roomName" maxlength="40" autocomplete="nickname" placeholder="Например, Аня">
-          </div>
-          <div class="row" style="margin-top:10px">
-            <button class="btn primary" type="button" id="roomCreate">Создать комнату</button>
-          </div>
-          <div class="row" style="margin-top:10px">
-            <input class="input" id="roomCode" maxlength="6" autocomplete="off" placeholder="Код комнаты" style="text-transform:uppercase;letter-spacing:.2em">
-            <button class="btn" type="button" id="roomJoin">Войти по коду</button>
-          </div>
-        </div>
-        <div class="row" id="roomCurrent" hidden>
-          <span id="roomCurrentText"></span>
-          <button class="btn primary" type="button" id="roomOpen">Открыть комнату</button>
-        </div>
-        <p class="err" id="roomErr" role="alert"></p>
       </div>
-    </div>
 
-    <div class="start-side" aria-hidden="true">
-      <div class="fan">
-        <div class="fc" style="--r:-16deg;--x:-64%;--y:22px;z-index:1"><img src="img/Ahri.webp" alt=""></div>
-        <div class="fc" style="--r:-8deg;--x:-33%;--y:6px;z-index:2"><img src="img/Kayn.webp" alt=""></div>
-        <div class="fc" style="--r:8deg;--x:33%;--y:6px;z-index:2"><img src="img/Rhaast.webp" alt=""></div>
-        <div class="fc" style="--r:16deg;--x:64%;--y:22px;z-index:1"><img src="img/Lux.webp" alt=""></div>
-        <div class="fc fc-q" style="--r:0deg;--y:-6px"><span>?</span></div>
-        <p class="fan-cap">Каин и Рааст — разные участники</p>
+      <div class="go">
+        <button class="btn primary" type="submit" id="startBtn">Начать турнир</button>
+        <span class="note" id="startNote"></span>
       </div>
+    </form>
+
+    <div class="roombox" id="roomBox">
+      <h2>Пройти вдвоём</h2>
+      <p class="muted" id="roomIntro">Каждый проходит свой турнир на своём телефоне, а вы видите прогресс друг друга. В конце — сравнение вкусов и игра «Угадай мой выбор».</p>
+      <div id="roomForms">
+        <div class="field">
+          <label for="roomName">Твоё имя</label>
+          <input class="input" id="roomName" maxlength="40" autocomplete="nickname" placeholder="Например, Аня">
+        </div>
+        <button class="btn" type="button" id="roomCreate">Создать комнату</button>
+        <div class="row">
+          <input class="input" id="roomCode" maxlength="6" autocomplete="off" placeholder="Код комнаты" aria-label="Код комнаты" style="text-transform:uppercase;letter-spacing:.2em">
+          <button class="btn" type="button" id="roomJoin">Войти</button>
+        </div>
+      </div>
+      <div class="row" id="roomCurrent" hidden>
+        <span id="roomCurrentText"></span>
+        <button class="btn primary" type="button" id="roomOpen">Открыть комнату</button>
+      </div>
+      <p class="err" id="roomErr" role="alert"></p>
     </div>
+  </div>
+
+  <div class="start-more">
+    <details class="who">
+      <summary>Как устроен турнир</summary>
+      <p><b>1. Отбор.</b> Каждый играет каждый круг против тех, у кого похожий счёт. Проигрыш никого не выбивает.</p>
+      <p><b>2. Битвы за место.</b> Рейтинг считается по всем дуэлям с учётом силы соперников: проиграть сильному почти не стыдно. Дальше дерутся только те, чьё место ещё не ясно, причём с ближайшими по рейтингу, с кем ещё не встречались.</p>
+      <p><b>3. Спорные места.</b> В режиме «Подробно» перед плей-офф ещё 15–30 дуэлей у самых границ тиров.</p>
+      <p><b>4. Плей-офф с двойным выбыванием.</b> Проигравший уходит в сетку второго шанса и продолжает бороться. Вылетает только тот, кто проиграл дважды.</p>
+      <p><b>5. Гранд-финал.</b> Лучший из сетки победителей против лучшего из сетки второго шанса, лоб в лоб за первое место.</p>
+    </details>
+    <details class="who">
+      <summary>Кого нет в списке и почему</summary>
+      <p>В тесте только взрослые чемпионы. Отдельными участниками идут Рааст и Каин, а также Волк и Овечка из Киндред: своих карточек у них в игре нет, поэтому портреты вырезаны из официальных артов Каина и Киндред. Имена и титулы взяты из русской локализации игры, патч 16.23.</p>
+      <p><b>Дети:</b> Энни, Нуну и Виллумп, Амуму, Зои, Экко, Милио, Лиллия, Смолдер.</p>
+      <p><b>Йордлы:</b> Векс, Вейгар, Гнар, Зиггс, Кеннен, Клед, Корки, Лулу, Поппи, Рамбл, Тимо, Тристана, Физз, Хеймердингер.</p>
+      <p><b>Существа без человеческого облика:</b> Анивия, Бард, Блицкранк, Вел'Коз, Галио, Зак, Ког'Мао, Мальфит, Маокай, Наутилус, Раммус, Рек'Сай, Скарнер, Чо'Гат, Юми.</p>
+    </details>
   </div>
 </section>
 

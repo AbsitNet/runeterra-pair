@@ -68,6 +68,45 @@ const minutes = n => Math.max(1, Math.round(n * 2.5 / 60));
 function listNames(ids){ const a = ids.map(name); return a.length > 1 ? a.slice(0, -1).join(', ') + ' и ' + a[a.length - 1] : a.join(''); }
 const face = (id, cls = '') => `<img class="${cls}" loading="lazy" alt="" src="${img(id)}">`;
 
+/* ================= главный экран: живое превью дуэли ================= */
+/* лорные пары с их вопросами из EASTER; первыми всегда Каин и Рааст */
+const HERO = [['Kayn','Rhaast'],['Xayah','Rakan'],['Leona','Diana'],['Caitlyn','Jinx'],['Garen','Katarina'],['Lucian','Senna'],
+  ['Sylas','Lux'],['Jayce','Viktor'],['KindredWolf','KindredLamb'],['Sett','Yasuo'],['Leblanc','Swain'],['Kayle','Morgana'],
+  ['Aatrox','Rhaast'],['Ashe','Tryndamere'],['Graves','TwistedFate']];
+const hero = {pairs:[], k:0, t:0, busy:false};
+const heroStill = () => window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+function heroInit(){
+  const q = (a, b) => (EASTER.find(e => e[0] === a && e[1] === b) || [])[2];
+  const list = HERO.filter(([a, b]) => BY[a] && BY[b] && q(a, b)).map(([a, b]) => [a, b, q(a, b)]);
+  const rest = list.slice(1);
+  for (let i = rest.length - 1; i > 0; i--){ const j = Math.floor(Math.random() * (i + 1)); [rest[i], rest[j]] = [rest[j], rest[i]]; }
+  hero.pairs = [list[0], ...rest];
+  heroPut(0);
+  if (!heroStill()) heroLoop();
+}
+function heroPut(k){
+  const [a, b, q] = hero.pairs[k];
+  [[$('#hcA'), a], [$('#hcB'), b]].forEach(([card, id]) => {
+    const imgs = card.querySelectorAll('img'), on = card.querySelector('img.on'), next = on === imgs[0] ? imgs[1] : imgs[0];
+    next.src = img(id); next.classList.add('on'); if (on) on.classList.remove('on');
+    card.querySelector('b').textContent = BY[id].name;
+    card.querySelector('small').textContent = BY[id].title;
+  });
+  $('#heroQ span').textContent = q;
+  hero.k = k;
+}
+function heroLoop(){
+  clearTimeout(hero.t);
+  hero.t = setTimeout(async () => {
+    if (document.hidden || ui.screen !== 'scr-start'){ heroLoop(); return; }
+    const k = (hero.k + 1) % hero.pairs.length, [a, b] = hero.pairs[k];
+    /* сначала догружаем оба портрета, чтобы смена была без пустых кадров */
+    await Promise.all([a, b].map(id => new Promise(res => { const im = new Image(); im.onload = im.onerror = res; im.src = img(id); })));
+    const h = $('.hero'); h.classList.add('swap');
+    setTimeout(() => { heroPut(k); h.classList.remove('swap'); heroLoop(); }, 360);
+  }, 4600);
+}
+
 /* ================= старт ================= */
 function settings(){
   return {
@@ -660,6 +699,7 @@ function bind(){
 function start(){
   document.body.dataset.screen = ui.screen;
   bind();
+  heroInit();
   const qs = new URLSearchParams(location.search), inv = (qs.get('room') || '').toUpperCase();
   if (inv) $('#roomCode').value = inv;
   if (sess && (!inv || inv === sess.code) && Room.configured()){ setCtx('room'); refreshStart(); enterRoom(false); return; }

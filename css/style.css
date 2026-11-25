@@ -45,19 +45,70 @@ button{font:inherit;color:inherit}
 .btn svg{width:16px;height:16px;flex:none}
 
 /* ---------- start ---------- */
-.start{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr);gap:clamp(24px,5vw,64px);align-items:start;padding-top:clamp(8px,3vw,32px)}
-.start-main{display:grid;gap:22px;min-width:0}
-.start h1{font-size:clamp(44px,7.4vw,84px);line-height:.95;letter-spacing:.01em}
-.lead{font-size:16.5px;max-width:34em;color:var(--text)}
-.fan{position:relative;height:calc(clamp(104px,15vw,158px)*2.05);margin-top:8px}
-.fc{position:absolute;left:50%;bottom:0;width:clamp(104px,15vw,158px);aspect-ratio:308/560;border:1px solid var(--gold-lo);background:var(--deep);overflow:hidden;transform-origin:50% 115%;transform:translateX(calc(-50% + var(--x,0%))) rotate(var(--r)) translateY(var(--y));transition:transform .5s cubic-bezier(.2,.8,.2,1)}
-.fc img{width:100%;height:100%;object-fit:cover;display:block}
-@media (hover:hover){.fan:hover .fc{transform:translateX(calc(-50% + var(--x,0%) * 1.15)) rotate(calc(var(--r) * 1.2)) translateY(var(--y))}}
-.fc-q{z-index:3;display:grid;place-items:center;background:radial-gradient(circle at 50% 40%,color-mix(in srgb,var(--rose) 28%,var(--deep)),var(--night) 75%);border-color:var(--gold)}
-.fc-q span{font-family:var(--f-display);font-size:clamp(64px,9vw,104px);color:var(--gold-hi);line-height:1}
-.fc-q::after{content:"";position:absolute;inset:6px;border:1px solid color-mix(in srgb,var(--gold) 45%,transparent)}
-.start-side{padding-bottom:64px}
-.fan-cap{position:absolute;left:0;right:0;bottom:-58px;text-align:center;font-size:12px;color:var(--muted)}
+/* ---------- start: живое превью дуэли — два портрета, между ними название; имена и вопрос пары стоят в одной строке ---------- */
+.hero{--hc:clamp(140px,min(16vw,27vh),196px);--hg:clamp(24px,4vw,56px);display:grid;grid-template-columns:var(--hc) minmax(0,1fr) var(--hc);grid-template-rows:auto auto auto;column-gap:var(--hg);row-gap:14px;padding-block:clamp(8px,2vw,22px) clamp(24px,3vw,36px)}
+.hcard,.hero-mid{display:contents}
+.hc-img{align-self:center;position:relative;aspect-ratio:308/560;border:1px solid var(--gold-lo);background:var(--deep);overflow:hidden;box-shadow:0 24px 60px -30px #000}
+.hc-a .hc-img{grid-column:1;grid-row:1/3}.hc-b .hc-img{grid-column:3;grid-row:1/3}
+.hc-a figcaption{grid-column:1;grid-row:3}.hc-b figcaption{grid-column:3;grid-row:3}
+.hero-title{grid-column:2;grid-row:1;align-self:end;text-align:center;font-size:clamp(54px,8vw,108px);line-height:.9;letter-spacing:-.005em}
+.hero-lead{grid-column:2;grid-row:2;align-self:start;justify-self:center;max-width:31em;margin-top:6px;text-align:center;font-size:16px;line-height:1.6;color:var(--text);text-wrap:pretty}
+/* вопрос пары: тонкие линии от первой строки вопроса к именам по краям */
+.hero-q{grid-column:2;grid-row:3;align-self:start;display:flex;align-items:flex-start;gap:16px;text-align:center;font-family:var(--f-display);font-size:clamp(19px,1.8vw,23px);line-height:1.15;color:var(--gold-hi)}
+.hero-q span{flex:0 1 auto;max-width:22em;text-wrap:balance;transition:opacity .35s ease}
+.hero-q::before,.hero-q::after{content:"";flex:1 1 24px;min-width:24px;height:1px;margin-top:.6em}
+.hero-q::before{margin-left:calc(-1 * var(--hg) + 10px);background:linear-gradient(90deg,var(--gold-lo),color-mix(in srgb,var(--rose) 70%,transparent))}
+.hero-q::after{margin-right:calc(-1 * var(--hg) + 10px);background:linear-gradient(270deg,var(--gold-lo),color-mix(in srgb,var(--rose) 70%,transparent))}
+.hc-img::after{content:"";position:absolute;inset:6px;border:1px solid color-mix(in srgb,var(--gold) 32%,transparent);pointer-events:none}
+.hc-img img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .9s ease}
+.hc-img img.on{opacity:1}
+.hcard figcaption{align-self:start;display:grid;gap:3px;text-align:center;transition:opacity .35s ease}
+.hcard figcaption b{font:400 22px/1.1 var(--f-display);color:var(--gold-hi)}
+.hcard figcaption small{font-size:12.5px;line-height:1.35;color:var(--muted)}
+.hero.swap .hero-q span,.hero.swap figcaption{opacity:0}
+
+/* панель: слева настройки турнира, справа комната на двоих */
+.start-panel{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);border:1px solid var(--line);background:color-mix(in srgb,var(--deep) 90%,transparent);margin-top:14px}
+.start-panel>.setup,.start-panel>.roombox{padding:clamp(18px,2.6vw,30px);border:0;background:none}
+.start-panel>.roombox{border-left:1px solid var(--line);background:linear-gradient(170deg,color-mix(in srgb,var(--rose) 7%,transparent),transparent 55%);align-content:start}
+.start-panel h2{font-size:26px}
+.setup legend,.start-panel .field label{font:600 13.5px/1.3 var(--f-ui);letter-spacing:0;text-transform:none;color:var(--gold-hi)}
+.setup .opts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px 20px}
+.setup .go{display:grid;gap:8px;justify-items:stretch}
+.setup .go .note:empty{display:none}
+.start-panel .field{max-width:none}
+.start-panel>.roombox,.roombox #roomForms{grid-template-columns:minmax(0,1fr)}
+.roombox #roomForms{display:grid;gap:10px}
+.roombox #roomForms .row{flex-wrap:nowrap}
+.roombox #roomForms .row .input{flex:1 1 auto;width:auto;min-width:0}
+.roombox #roomForms .row .btn{flex:none}
+.roombox .err:empty{display:none}
+.start-more{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 28px;margin-top:8px}
+.start-more details.who{border-top:0;padding-top:16px}
+#scr-start .resume,#scr-start .banner{margin-top:4px}
+
+@media (max-width:900px){
+  .start-panel{grid-template-columns:minmax(0,1fr)}
+  .start-panel>.roombox{border-left:0;border-top:1px solid var(--line)}
+  .start-more{grid-template-columns:minmax(0,1fr)}
+}
+@media (max-width:600px){
+  /* телефон: название сверху, под ним пара портретов с именами, вопрос и пояснение */
+  .hero{--hc:min(36vw,150px);--hg:14px;grid-template-columns:1fr 1fr;row-gap:12px;padding-block:6px 22px}
+  .hero-title{grid-column:1/-1;grid-row:1;align-self:auto;font-size:clamp(44px,13vw,60px);margin-bottom:6px}
+  .hc-a .hc-img,.hc-a figcaption{grid-column:1;justify-self:end;width:var(--hc)}
+  .hc-b .hc-img,.hc-b figcaption{grid-column:2;justify-self:start;width:var(--hc)}
+  .hc-a .hc-img,.hc-b .hc-img{grid-row:2}
+  .hc-a figcaption,.hc-b figcaption{grid-row:3}
+  .hero-q{grid-column:1/-1;grid-row:4;justify-content:center;margin-top:6px;font-size:19px}
+  .hero-q::before,.hero-q::after{display:none}
+  .hero-lead{grid-column:1/-1;grid-row:5;margin-top:0;font-size:15px}
+  .hcard figcaption b{font-size:19px}
+  .hcard figcaption small{font-size:11.5px}
+  .setup .opts{grid-template-columns:minmax(0,1fr)}
+  .roombox #roomForms .row .input{flex:1 1 auto}
+  .roombox #roomForms .row .btn{flex:none}
+}
 
 .resume{display:flex;flex-wrap:wrap;align-items:center;gap:12px 16px;padding:14px 16px;border:1px solid var(--gold-lo);background:color-mix(in srgb,var(--gold) 6%,var(--deep))}
 .resume .rtext{flex:1 1 220px;min-width:0}
@@ -185,11 +236,6 @@ textarea#copyFallback{width:100%;min-height:160px;background:var(--deep);color:v
 .toast.on{opacity:1;transform:translate(-50%,0)}
 
 @media (max-width:760px){
-  .start{grid-template-columns:1fr}
-  .start-side{order:-1}
-  .fan{height:calc(clamp(96px,26vw,140px)*2.05)}
-  .fc{width:clamp(96px,26vw,140px)}
-  .fan-cap{display:none}
   .winner{grid-template-columns:minmax(0,150px) minmax(0,1fr);align-items:end}
   .tier{grid-template-columns:88px minmax(0,1fr)}
   .tlab{padding:8px 6px}
@@ -270,7 +316,13 @@ textarea#copyFallback{width:100%;min-height:160px;background:var(--deep);color:v
 .intro.lv2 .intro-sub::before{animation:sweep 1.4s ease .05s both}
 .intro.lv3{background:radial-gradient(circle at 50% 45%,color-mix(in srgb,var(--rose) 24%,var(--night)),var(--night) 70%)}
 .intro.lv3 .intro-sub::before{animation:sweep 1.8s ease .2s both;height:3px}
-.intro.lv3::after{content:"";position:absolute;inset:0;background:repeating-conic-gradient(from 0deg at 50% 45%,color-mix(in srgb,var(--gold) 6%,transparent) 0 6deg,transparent 6deg 18deg);animation:rays 8s linear infinite,fadein 1.2s ease both;pointer-events:none}
+/* лучи: огромный круг с центром ровно под заголовком, края растворяются задолго до границ круга — вращение без видимых краёв */
+.intro.lv3::after{content:"";position:absolute;left:50%;top:45%;width:220vmax;height:220vmax;margin:-110vmax 0 0 -110vmax;border-radius:50%;pointer-events:none;will-change:transform;
+  background:repeating-conic-gradient(from 0deg,transparent 0deg,color-mix(in srgb,var(--gold) 9%,transparent) 4deg,transparent 8deg,transparent 15deg);
+  -webkit-mask:radial-gradient(circle closest-side,#000 0,rgba(0,0,0,.85) 12%,rgba(0,0,0,.35) 32%,transparent 52%);
+  mask:radial-gradient(circle closest-side,#000 0,rgba(0,0,0,.85) 12%,rgba(0,0,0,.35) 32%,transparent 52%);
+  animation:rays 40s linear infinite,fadein 1.2s ease both}
+.intro.lv3 .intro-in{position:relative;z-index:1}
 .intro.lv3 .intro-title{font-size:clamp(46px,11vw,120px);animation:zoomin 1.1s cubic-bezier(.2,.8,.2,1) .35s both;text-shadow:0 0 60px color-mix(in srgb,var(--rose) 70%,transparent)}
 .intro.lv3 .intro-in{animation:beatbox 1.24s ease-in-out .2s 2}
 @keyframes fadein{from{opacity:0}to{opacity:1}}
@@ -405,8 +457,6 @@ textarea#copyFallback{width:100%;min-height:160px;background:var(--deep);color:v
 .pick .tt{font-size:clamp(10.5px,6.4cqi,13.5px)}
 .pick .ds{font-size:clamp(10.5px,6.6cqi,12.5px)}
 /* веер на старте не должен давать горизонтальную прокрутку */
-.start-side{overflow-x:clip}
-@supports not (overflow-x:clip){.start-side{overflow:hidden}}
 /* телефон, повёрнутый горизонтально: всё компактнее, чтобы дуэль помещалась на экран */
 @media (orientation:landscape) and (max-height:520px){
   body{padding-block:8px 24px}
@@ -467,13 +517,6 @@ textarea#copyFallback{width:100%;min-height:160px;background:var(--deep);color:v
 /* ================= телефон вертикально ================= */
 @media (max-width:600px) and (orientation:portrait){
   /* старт: веер поменьше, чтобы настройки были ближе */
-  .start{gap:14px;padding-top:0}
-  .start-side{padding-bottom:34px}
-  .fan{height:calc(clamp(76px,22vw,100px)*2.1)}
-  .fc{width:clamp(76px,22vw,100px)}
-  .fc-q span{font-size:52px}
-  .start-main{gap:18px}
-  .start .eyebrow{font-size:10.5px;letter-spacing:.1em}
 
   /* дуэль: экран ровно по высоте, карточки занимают всё свободное место */
   body[data-screen="scr-duel"]{padding-block:10px 12px;padding-left:max(12px,env(safe-area-inset-left,0px));padding-right:max(12px,env(safe-area-inset-right,0px));min-height:0}

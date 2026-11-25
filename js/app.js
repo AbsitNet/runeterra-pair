@@ -82,7 +82,9 @@ function setCtx(c){ ctx = c; sstore.set('rp-ctx', c); loadFor(c); }
 
 /* ---------- мелочи ---------- */
 function show(id){
+  const changed = ui.screen !== id;
   document.querySelectorAll('.screen').forEach(s => s.hidden = s.id !== id);
+  if (changed && !reduced){ const el = document.getElementById(id); if (el){ el.classList.remove('enter'); void el.offsetWidth; el.classList.add('enter'); } }
   ui.screen = id; document.body.dataset.screen = id; window.scrollTo(0, 0);
   if (id !== 'scr-duel') hideSwipeHint();
   if (id !== 'scr-duel') FX.setLevel(0);
@@ -416,6 +418,21 @@ function hideSwipeHint(){
   const h = $('#swipeHint'); if (h.hidden) return;
   clearTimeout(hintT); h.classList.add('out'); hintT = setTimeout(() => { h.hidden = true; h.classList.remove('out'); }, 300);
 }
+/* карта дуэли чуть наклоняется за курсором мыши, по ней бежит блик */
+function bindTilt(){
+  if (reduced || !(window.matchMedia && matchMedia('(hover: hover)').matches)) return;
+  [0, 1].forEach(i => {
+    const c = $('#card' + i);
+    c.addEventListener('pointermove', e => {
+      if (e.pointerType !== 'mouse' || c.classList.contains('chosen') || c.classList.contains('lost')) return;
+      const r = c.getBoundingClientRect(), x = (e.clientX - r.left) / r.width, y = (e.clientY - r.top) / r.height;
+      c.classList.add('tilting');
+      c.style.setProperty('--ry', ((x - .5) * 7).toFixed(2) + 'deg'); c.style.setProperty('--rx', ((.5 - y) * 5).toFixed(2) + 'deg');
+      c.style.setProperty('--mx', (x * 100).toFixed(1) + '%'); c.style.setProperty('--my', (y * 100).toFixed(1) + '%');
+    });
+    c.addEventListener('pointerleave', () => { c.classList.remove('tilting'); c.style.setProperty('--rx', '0deg'); c.style.setProperty('--ry', '0deg'); });
+  });
+}
 function bindSwipe(){
   const ar = $('#arena'); let x0 = null, y0 = 0, dx = 0, moved = false;
   ar.addEventListener('pointerdown', e => { if (e.pointerType === 'mouse') return; x0 = e.clientX; y0 = e.clientY; dx = 0; moved = false; hideSwipeHint(); });
@@ -473,6 +490,8 @@ function openProfile(id){
 /* ================= итоги ================= */
 function renderResult(m){
   show('scr-result'); FX.setLevel(0);
+  const rk = S.cfg ? S.cfg.seed + ':' + m.champ : '';
+  if (rk !== ui.revealKey && !reduced){ ui.revealKey = rk; const wn = $('#scr-result .winner'); wn.classList.remove('unveil'); void wn.offsetWidth; wn.classList.add('unveil'); }
   const w = BY[m.champ], pr = PROFILE[m.champ], V = !!VIEW;
   const th = S.cfg.theme && themeOf(S.cfg.theme);
   $('#wEyebrow').textContent = (V ? (VIEW.name ? `Выбор ${VIEW.name}` : 'Результат по ссылке') : th ? 'Твоя пара' : 'Твоя пара в Рунтерре') + (th ? ` · мини-турнир «${th[1]}»` : '');
@@ -1501,6 +1520,7 @@ function bind(){
   document.addEventListener('visibilitychange', () => { if (document.hidden && saveT) pushState(true); else if (!document.hidden && sess) fetchRoom(); });
   document.querySelectorAll('.pick img').forEach(im => im.addEventListener('error', () => im.classList.add('broken')));
   bindSwipe();
+  bindTilt();
 }
 
 function start(){

@@ -5,7 +5,10 @@ img{max-width:100%}
 
 /* Layout: one-column app in four screens (start, cast cleanup, duel arena, results) on a Hextech night ground; gold frames carry the League look, rose is reserved for the heart of a choice. */
 :root{
-  --night:#090E15; --deep:#0E1621; --panel:#131D2A; --line:#263445; --line-hi:#3A4C60;
+  --night:#090E15; --deep:#0E1621; --panel:#131D2A; --line:#202D3C; --line-hi:#34465B;
+  --hair:color-mix(in srgb,var(--gold) 18%,transparent);
+  --ease:cubic-bezier(.22,.8,.24,1); --spring:cubic-bezier(.2,1.45,.35,1);
+  --lift:0 1px 0 rgba(255,255,255,.035) inset,0 28px 60px -40px #000;
   --gold:#C8AA6E; --gold-hi:#F0E6D2; --gold-lo:#6E5530;
   --text:#E7E0D0; --muted:#8C9AA9;
   --rose:#E8668A;
@@ -745,4 +748,119 @@ textarea#copyFallback{width:100%;min-height:160px;background:var(--deep);color:v
   .sv .sv-sky{width:120px;margin:0 auto -6px}
   .sv-cta{grid-template-columns:minmax(0,1fr)}
   .sv-cta .sv-sky{width:110px}
+}
+
+/* ================= обновление интерфейса: мягче поверхности, плавнее движение ================= */
+/* лёгкое зерно поверх всего — фон перестаёт быть «плоским» */
+body::after{content:"";position:fixed;inset:0;z-index:2;pointer-events:none;opacity:.05;mix-blend-mode:soft-light;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+
+/* смена экрана: короткое проявление снизу */
+.screen.enter{animation:screenIn .42s var(--ease) both}
+@keyframes screenIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+/* кнопки: срезанные углы у главной, блик при наведении, отклик на нажатие */
+.btn{position:relative;overflow:hidden;transition:border-color .2s,background .25s,color .2s,transform .18s var(--ease),box-shadow .25s}
+.btn::after{content:"";position:absolute;inset:0;background:linear-gradient(105deg,transparent 35%,rgba(255,255,255,.16) 50%,transparent 65%);transform:translateX(-120%);pointer-events:none}
+@media (hover:hover){.btn:not(:disabled):hover::after{transform:translateX(120%);transition:transform .7s var(--ease)}}
+.btn:not(:disabled):active{transform:scale(.975)}
+.btn.primary{--cut:10px;border:0;clip-path:polygon(var(--cut) 0,100% 0,100% calc(100% - var(--cut)),calc(100% - var(--cut)) 100%,0 100%,0 var(--cut));
+  background:linear-gradient(180deg,#F6EDDB,var(--gold) 120%);box-shadow:inset 0 -2px 0 color-mix(in srgb,var(--gold-lo) 60%,transparent)}
+.btn.primary:hover{background:linear-gradient(180deg,#FFF7E8,#D9BE86 120%)}
+.btn.ghost{border-color:var(--line)}
+
+/* поверхности: тоньше рамки, мягкая глубина */
+.start-panel,.typaj,.sv-cta,.sy-box,.resume,.install,.cmp-pct,.modal-box{box-shadow:var(--lift)}
+.start-panel{border-color:var(--hair);background:linear-gradient(180deg,color-mix(in srgb,var(--panel) 70%,transparent),color-mix(in srgb,var(--deep) 85%,transparent))}
+.start-panel>.roombox{border-left-color:var(--line)}
+.mini,.gcard,.badge,.pcard,.pod,.sv-card,.g-row,.tier,.lrow{transition:border-color .25s,background .25s,transform .3s var(--ease),box-shadow .3s}
+@media (hover:hover){
+  .mini:hover:not(:disabled),.sv-card:hover,.gcard:hover{transform:translateY(-3px);box-shadow:0 18px 40px -24px #000}
+}
+.sec>h2::after,.tiers>h2::after{content:"";display:block;width:56px;height:1px;margin-top:14px;background:linear-gradient(90deg,var(--gold),transparent)}
+
+/* переключатели длины и состава: подсветка выбранного варианта переезжает плавно */
+@supports selector(:has(*)){
+  .seg{position:relative;isolation:isolate}
+  .seg::before{content:"";position:absolute;z-index:-1;top:0;bottom:0;left:0;width:calc(100% / 3);background:color-mix(in srgb,var(--gold) 14%,var(--panel));box-shadow:inset 0 -2px 0 var(--gold);transition:transform .38s var(--spring)}
+  .seg:has(label:nth-child(2) input:checked)::before{transform:translateX(100%)}
+  .seg:has(label:nth-child(3) input:checked)::before{transform:translateX(200%)}
+  .seg input:checked+span{background:transparent;box-shadow:none}
+}
+
+/* прогресс: тоньше, с огоньком на конце */
+.bar{height:2px;background:color-mix(in srgb,var(--line-hi) 60%,transparent)}
+.bar i{transition:width .5s var(--ease)}
+.bar i::after{content:"";position:absolute;right:-3px;top:50%;width:6px;height:6px;border-radius:50%;background:var(--gold-hi);transform:translateY(-50%);box-shadow:0 0 10px 2px color-mix(in srgb,var(--gold) 70%,transparent)}
+
+/* дуэль: карты чуть крупнее, наклон за курсором, блик, упругий выбор */
+.arena{max-width:max(300px,min(860px,calc((100vh - 260px) * 1.1 + 56px)));max-width:max(300px,min(860px,calc((100svh - 260px) * 1.1 + 56px)))}
+.pick{--rx:0deg;--ry:0deg;--mx:50%;--my:30%;transform-style:preserve-3d;transition:transform .45s var(--ease),border-color .3s,box-shadow .4s,opacity .35s,filter .35s}
+.pick::after{content:"";position:absolute;inset:0;z-index:2;pointer-events:none;opacity:0;transition:opacity .35s;background:radial-gradient(420px circle at var(--mx) var(--my),rgba(255,240,215,.16),transparent 45%)}
+@media (hover:hover){
+  .pick:hover{transform:perspective(1000px) rotateX(var(--rx)) rotateY(var(--ry)) translateY(-6px);box-shadow:0 26px 60px -22px color-mix(in srgb,var(--gold) 45%,transparent)}
+  .pick:hover::after{opacity:1}
+  .pick.tilting{transition:transform .12s linear,border-color .3s,box-shadow .4s,opacity .35s,filter .35s}
+}
+.pick.chosen{transform:translateY(-8px) scale(1.025);transition:transform .5s var(--spring),box-shadow .4s,border-color .2s}
+.pick.lost{opacity:.22;filter:grayscale(.9) blur(1.5px);transform:scale(.955)}
+.arena.enter .pick{animation:riseIn .55s var(--ease) both}
+.arena.enter .pick:last-of-type{animation-delay:.07s}
+.arena.enter .vs{animation:vsIn .5s var(--spring) .18s both}
+@keyframes riseIn{from{opacity:0;transform:translateY(18px) scale(.985);filter:blur(6px)}to{opacity:1;transform:none;filter:none}}
+@keyframes vsIn{from{opacity:0;transform:translate(-50%,-50%) rotate(45deg) scale(.4)}to{opacity:1;transform:translate(-50%,-50%) rotate(45deg) scale(1)}}
+.pick .heart{transition:opacity .25s,transform .55s var(--spring)}
+.prompt{transition:opacity .25s}
+
+/* итоги: портрет и текст проявляются один раз, по очереди */
+.winner.unveil .wimg{animation:wimgIn .9s var(--ease) both}
+.winner.unveil .wtext>*{animation:screenIn .6s var(--ease) both}
+.winner.unveil .wtext>*:nth-child(2){animation-delay:.08s}
+.winner.unveil .wtext>*:nth-child(3){animation-delay:.14s}
+.winner.unveil .wtext>*:nth-child(4){animation-delay:.2s}
+.winner.unveil .wtext>*:nth-child(5){animation-delay:.26s}
+.winner.unveil .wtext>*:nth-child(n+6){animation-delay:.32s}
+@keyframes wimgIn{from{opacity:0;transform:scale(1.04);filter:brightness(1.6) blur(4px)}to{opacity:1;transform:none;filter:none}}
+
+/* всплывающие подсказки и окна — полупрозрачное стекло */
+.toast{border-color:var(--hair);background:color-mix(in srgb,var(--panel) 78%,transparent);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);box-shadow:0 20px 50px -24px #000}
+.modal{backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.modal-box{border-color:var(--hair);background:linear-gradient(180deg,color-mix(in srgb,var(--panel) 92%,transparent),var(--deep))}
+.live,.rx{backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+
+/* медленное сияние за всем интерфейсом: два размытых пятна света едва заметно дрейфуют */
+body::before{content:"";position:fixed;inset:-20vmax;z-index:0;pointer-events:none;
+  background:radial-gradient(38vmax 30vmax at 30% 35%,color-mix(in srgb,var(--gold) 9%,transparent),transparent 70%),
+             radial-gradient(34vmax 28vmax at 72% 68%,color-mix(in srgb,var(--rose) 7%,transparent),transparent 70%);
+  animation:aurora 48s ease-in-out infinite alternate}
+@keyframes aurora{0%{transform:translate3d(-3%,-2%,0) rotate(0deg)}100%{transform:translate3d(4%,3%,0) rotate(8deg)}}
+
+/* рамки карт: вместо второй сплошной рамки — четыре уголка, как у гексового стекла */
+.pick::before,.hc-img::after{border:0;inset:7px;
+  background:
+    linear-gradient(var(--gold),var(--gold)) top left/18px 1px no-repeat, linear-gradient(var(--gold),var(--gold)) top left/1px 18px no-repeat,
+    linear-gradient(var(--gold),var(--gold)) top right/18px 1px no-repeat, linear-gradient(var(--gold),var(--gold)) top right/1px 18px no-repeat,
+    linear-gradient(var(--gold),var(--gold)) bottom left/18px 1px no-repeat, linear-gradient(var(--gold),var(--gold)) bottom left/1px 18px no-repeat,
+    linear-gradient(var(--gold),var(--gold)) bottom right/18px 1px no-repeat, linear-gradient(var(--gold),var(--gold)) bottom right/1px 18px no-repeat;
+  opacity:.75;transition:opacity .3s,inset .35s var(--ease)}
+@media (hover:hover){.pick:hover::before{inset:10px;opacity:1}}
+.pick{border-color:color-mix(in srgb,var(--gold) 45%,transparent)}
+
+/* переключатели: без перегородок, лёгкая подложка, выбранное подсвечено целиком */
+.seg{border-color:var(--hair);background:color-mix(in srgb,var(--night) 45%,transparent)}
+.seg label+label{border-left:0}
+.seg label>span{min-height:56px}
+@supports selector(:has(*)){
+  .seg::before{inset:3px auto 3px 3px;width:calc((100% - 6px) / 3);background:linear-gradient(180deg,color-mix(in srgb,var(--gold) 16%,transparent),color-mix(in srgb,var(--gold) 6%,transparent));box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--gold) 45%,transparent),0 6px 18px -10px color-mix(in srgb,var(--gold) 50%,transparent)}
+}
+.input{transition:border-color .2s,box-shadow .25s}
+.input:focus{box-shadow:0 0 0 3px color-mix(in srgb,var(--gold) 18%,transparent)}
+
+/* второстепенные рамки — светлее и тише */
+.sv-cta,.typaj,.resume{border-color:var(--hair)}
+.mini,.badge,.pcard,.pod,.tier,.sv-card,.g-row,.lrow{border-color:var(--line);background:linear-gradient(180deg,color-mix(in srgb,var(--panel) 55%,transparent),color-mix(in srgb,var(--deep) 80%,transparent))}
+
+@media (prefers-reduced-motion:reduce){
+  body::after{display:none}
+  body::before{animation:none}
 }

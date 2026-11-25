@@ -46,18 +46,64 @@ For GitHub Pages: Settings → Pages → Deploy from a branch → `main`, `/ (ro
 
 The tournament logic is in `js/engine.js`, the champion write-ups in `js/profiles.js`, and the interface in `js/app.js`.
 
-## What's next
+## Feature tracker
 
-Ideas for future updates:
+What already works and what's planned. Difficulty for the planned ones is a rough guess: "medium" is a couple of evenings, "long" is a big chunk of work of its own.
 
-- English, German and French versions of the interface
-- Live reactions: when your partner reaches the playoffs, you see who they're choosing between and can send a reaction back (can be turned off if you hate spoilers)
-- Synchronous duels: you both get the same pair at the same time, pick in secret, and the answers are revealed together, ending with a shared tier list for the couple
-- Rooms for a whole group of friends: who matches whom and a shared anti-top
-- The Star Matchmaker: a separate mode where you don't pick champions at all. You answer about 30 questions about yourself (temperament, what you value, your ideal evening, how you behave in a fight), and the matchmaker finds your ideal partner and explains why
-- Mutual feelings: a reverse test, "would your pair actually like you back?", with a few questions from the winner's point of view and a mutual-feelings score at the end
-- Stats across all players: anonymously, who gets picked the most and how rare your choice is
-- Heart map: a map of Runeterra marking where your top 20 come from, which you can save as a picture
+### Done
+
+Tournament:
+
+- [x] One-of-two duels, with no "can't decide" button
+- [x] Swiss rounds, placement battles and a double-elimination playoff
+- [x] Three tournament lengths: quick, normal, thorough
+- [x] Who's in: everyone, only men or only women, with or without monsters
+- [x] Remove anyone you definitely don't like before you start
+- [x] A bet before you start: who do you think will win
+- [x] Lore pairs with special questions: Kayn and Rhaast, Vi and Jinx, Leona and Diana and more
+- [x] Undo the last pick and replay the final
+- [x] Progress is saved in the browser, so you can come back and continue
+- [x] Swipes on a phone
+- [x] Mini-tournaments of 16: Ionia, Noxus, Demacia, Piltover and Zaun, villains, mages, assassins, newest champions
+
+Results:
+
+- [x] A tier list you can save as a picture
+- [x] Your type, favourite region and favourite class
+- [x] Joke achievements
+- [x] "Never ever": the bottom three and why
+- [x] The playoff bracket
+- [x] A compatibility certificate with the seal and registrar of the winner's home region
+- [x] The winner's quote on the results screen and the certificate
+- [x] A link to your result: the tier list opens for anyone, no room needed
+
+Playing together:
+
+- [x] A room you join by link, each of you plays your own tournament on your own device
+- [x] You can see how far your partner has got
+- [x] A comparison: shared favourites, biggest disagreements, shared anti-top
+- [x] The "Guess my pick" mini-game
+- [x] Betting on your partner's pair
+- [x] Battle of tastes: your winners meet in one last duel and you both vote
+- [x] A joint certificate, signed by your shared favourites as witnesses
+
+Everywhere:
+
+- [x] Works on phones, tablets and desktops, with a separate layout for portrait phones
+- [x] Installs like an app, solo mode works offline
+
+### Planned
+
+| Feature | What it is | Difficulty |
+|---|---|---|
+| Live reactions | When your partner reaches the playoffs, you see who they're choosing between and can send a reaction back. Can be turned off if you hate spoilers | medium |
+| Synchronous duels | You both get the same pair at the same time, pick in secret, and the answers are revealed together. Ends with a shared tier list for the couple | medium |
+| Stats across all players | Anonymously: who gets picked the most and how rare your choice is | medium |
+| Heart map | A map of Runeterra marking where your top 20 come from, saved as a picture | medium |
+| Mutual feelings | A reverse test, "would your pair actually like you back?": a few questions from the winner's point of view and a mutual-feelings score at the end | medium |
+| English, German and French | Translating the interface, champion write-ups and quotes | long |
+| Rooms for a group | More than two people: who matches whom and a shared anti-top | long |
+| The Star Matchmaker | A separate mode with no duels: about 30 questions about yourself (temperament, what you value, your ideal evening, how you behave in a fight), and the matchmaker finds your ideal partner and explains why | long |
 
 ## Legal
 

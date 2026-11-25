@@ -1241,7 +1241,7 @@ function syncSetup(){
   const all = CH.map(c => c[0]);
   openModal(`<p class="eyebrow">Вдвоём</p><h2>Общий турнир</h2>
     <p style="margin-top:12px">Одна и та же пара у вас обоих одновременно. Каждый выбирает втайне, ответы открываются разом. Если разошлись, можно один раз переголосовать, а дальше решает жребий. В конце — общий тир-лист пары и процент согласия.</p>
-    <p class="muted" style="margin-top:8px">16 участников, около ${estimate(SYNC_N, 'fast')} ${duelsWord(estimate(SYNC_N, 'fast'))}, минуты на три. Играйте, когда оба в сети.</p>
+    <p class="muted" style="margin-top:8px">16 участников, примерно ${estimate(SYNC_N, 'fast')} ${duelsWord(estimate(SYNC_N, 'fast'))}, минуты на три. Играйте, когда оба в сети.</p>
     <div class="sy-pick">
       <button type="button" class="mini" data-k=""><span class="mini-faces" aria-hidden="true">${['Ahri','Garen','Jinx'].map(id => face(id)).join('')}</span><b>Случайные</b><small>16 чемпионов наугад</small></button>
       ${THEMES.map(([k, t, d, f, pics]) => `<button type="button" class="mini" data-k="${k}"><span class="mini-faces" aria-hidden="true">${pics.map(id => face(id)).join('')}</span><b>${esc(t)}</b><small>${esc(d)}</small></button>`).join('')}
@@ -1366,7 +1366,7 @@ function syncReveal(x){
 function renderSyncBox(){
   const box = $('#rSync'), st = syncStatus(); let h = '';
   if (st.state === 'invited') h = `<h3>${esc(st.pp.name)} зовёт в общий турнир ${esc(syncTitle(st.th.cfg))}</h3>
-      <p>Одна и та же пара у обоих, выбор втайне, ответы открываются разом. Около ${estimate(st.th.cfg.roster.length, st.th.cfg.mode)} ${duelsWord(estimate(st.th.cfg.roster.length, st.th.cfg.mode))}.</p>
+      <p>Одна и та же пара у обоих, выбор втайне, ответы открываются разом. Примерно ${estimate(st.th.cfg.roster.length, st.th.cfg.mode)} ${duelsWord(estimate(st.th.cfg.roster.length, st.th.cfg.mode))}.</p>
       <div class="res-actions"><button class="btn primary" type="button" data-act="sync-join">Присоединиться</button></div>`;
   if (st.state === 'waiting') h = `<h3>Общий турнир ${esc(syncTitle(SY.cfg))}</h3>
       <p>Приглашение отправлено. Турнир начнётся, когда ${esc(st.pp.name)} присоединится.</p>

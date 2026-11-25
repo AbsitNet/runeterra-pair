@@ -42,8 +42,15 @@ The tournament logic is in `js/engine.js`, the champion write-ups in `js/profile
 
 ## What's next
 
+Ideas for future updates:
+
 - English, German and French versions of the interface
-- More things to do together in the two-player room
+- A joint certificate: one picture for the two of you with both winners, how close your tastes are, and your shared favourites as witnesses
+- Betting on your partner: before you start, each of you guesses who the other one will end up with, and at the end you see who knows whom better
+- Battle of tastes: once you're both done, your two winners meet in one last duel and you both vote
+- Live reactions: when your partner reaches the playoffs, you see who they're choosing between and can send a reaction back (can be turned off if you hate spoilers)
+- Synchronous duels: you both get the same pair at the same time, pick in secret, and the answers are revealed together, ending with a shared tier list for the couple
+- Rooms for a whole group of friends: who matches whom and a shared anti-top
 
 ## Legal
 

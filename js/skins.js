@@ -77,7 +77,7 @@ function renderSkCta(m){
   }
   if (sk && sk.d.length){
     box.hidden = false;
-    box.innerHTML = `<p><b>Турнир образов</b> не закончен: позади ${sk.d.length} из ${sk.list.length - 1} ${duelsWord(sk.list.length - 1)}.</p><button class="btn" type="button" id="skGo">Продолжить</button>`;
+    box.innerHTML = `<p><b>Турнир образов</b> не закончен: позади ${sk.d.length} из ${sk.list.length - 1} ${duelsOf(sk.list.length - 1)}.</p><button class="btn" type="button" id="skGo">Продолжить</button>`;
     $('#skGo').addEventListener('click', () => startSkins(m.champ));
     return;
   }

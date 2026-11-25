@@ -45,9 +45,9 @@ let PB = null;                        // ставка на партнёра: {id
 let BT = null;                        // голос в битве вкусов: {key: «пара1|пара2», pick}
 let RX = null;                        // последняя отправленная реакция: {to:{seed, idx}, e, at}
 let WATCHING = false;                 // смотрю ли сейчас турнир партнёра
-let HINT = null;
+let HINT = null;                      // подсказка партнёру из просмотра: {to:{seed, idx}, side, at}
 let CM = null;                        // быстрые фразы: мои последние сообщения {list:[{at, k:'p'|'s', v}]}
-let LB = null;                        // ставки в прямом эфире: {bets:[{s:seed, i:дуэль, p:сторона, k:ставка, free, r:итог, w:угадано}]}                      // подсказка партнёру из просмотра: {to:{seed, idx}, side, at}
+let LB = null;                        // ставки в прямом эфире: {bets:[{s:seed, i:дуэль, p:сторона, k:ставка, free, r:итог, w:угадано}]}
 let SY = null;                        // общий турнир: {id, host, cfg, v:[[первый голос, переголосовка], …]}
 const ui = {screen:'scr-start', cur:null, lock:false, ack:false, toastKey:'', introKey:'', off:new Set(), bet:null, betRoster:null, betRemoved:null, mode:'play', swipeHinted:false};
 
@@ -101,6 +101,8 @@ function plural(n, one, few, many){ const a = n % 10, b = n % 100; return (a ===
 const duelsWord = n => plural(n, 'дуэль', 'дуэли', 'дуэлей');
 const minutes = n => Math.max(1, Math.round(n * 2.5 / 60));
 function listNames(ids){ const a = ids.map(name); return a.length > 1 ? a.slice(0, -1).join(', ') + ' и ' + a[a.length - 1] : a.join(''); }
+const num = v => Number.isFinite(+v) ? Math.round(+v) : 0;   // числа из чужого состояния — только как числа
+const duelsOf = n => n % 10 === 1 && n % 100 !== 11 ? 'дуэли' : 'дуэлей';   // «из 21 дуэли», «из 674 дуэлей»
 const face = (id, cls = '') => `<img class="${cls}" loading="lazy" alt="" src="${img(id)}">`;
 
 /* ================= главный экран: живое превью дуэли ================= */
@@ -227,7 +229,7 @@ function refreshStart(){
     const m = simulate(S.cfg, S.dec);
     r.hidden = false;
     if (m.kind === 'done'){ $('#resumeText').innerHTML = `Прошлый турнир завершён. Твоя пара: <b>${esc(name(m.champ))}</b>.`; $('#resumeBtn').textContent = 'Открыть результат'; }
-    else { $('#resumeText').innerHTML = `Есть незаконченный турнир: позади <b>${m.played}</b> из примерно ${m.est} ${duelsWord(m.est)}.`; $('#resumeBtn').textContent = 'Продолжить'; }
+    else { $('#resumeText').innerHTML = `Есть незаконченный турнир: позади <b>${m.played}</b> из примерно ${m.est} ${duelsOf(m.est)}.`; $('#resumeBtn').textContent = 'Продолжить'; }
   } else r.hidden = true;
   refreshRoomBox();
   refreshInstall();
@@ -863,22 +865,32 @@ function refreshRoomBox(){
     return;
   }
   $('#roomIntro').textContent = 'Каждый проходит свой турнир на своём телефоне, а вы видите прогресс друг друга. В конце — сравнение вкусов и игра «Угадай мой выбор». А можно сыграть общий турнир: одна и та же пара у обоих одновременно.';
-  const inRoom = !!sess;
-  $('#roomForms').hidden = inRoom; $('#roomCurrent').hidden = !inRoom;
-  if (inRoom) $('#roomCurrentText').innerHTML = `Ты в комнате <b>${esc(sess.code)}</b> как ${esc(sess.name)}.`;
+  const inRoom = !!sess, other = inRoom && ui.otherInvite && ui.otherInvite !== sess.code ? ui.otherInvite : null;
+  $('#roomForms').hidden = inRoom && !other; $('#roomCurrent').hidden = !inRoom;
+  if (inRoom) $('#roomCurrentText').innerHTML = other
+    ? `Ссылка зовёт в комнату <b>${esc(other)}</b>, а ты сейчас в комнате <b>${esc(sess.code)}</b>. Если войдёшь в новую, вернуться в ${esc(sess.code)} с этого устройства будет нельзя.`
+    : `Ты в комнате <b>${esc(sess.code)}</b> как ${esc(sess.name)}.`;
 }
 async function roomCreate(){
   const nm = $('#roomName').value.trim(); $('#roomErr').textContent = '';
   if (!nm) return $('#roomErr').textContent = 'Напиши своё имя — его увидит партнёр.';
-  try { const r = await Room.create(nm); sess = {code:r.code, slot:r.slot, token:r.token, name:nm}; sstore.set('rp-session', sess); enterRoom(true); }
+  try { const r = await Room.create(nm); switchRoom({code:r.code, slot:r.slot, token:r.token, name:nm}); }
   catch(e){ $('#roomErr').textContent = e.message; }
 }
 async function roomJoin(){
   const nm = $('#roomName').value.trim(), code = $('#roomCode').value.trim().toUpperCase(); $('#roomErr').textContent = '';
   if (!nm) return $('#roomErr').textContent = 'Напиши своё имя — его увидит партнёр.';
   if (!/^[A-Z2-9]{6}$/.test(code)) return $('#roomErr').textContent = 'Код комнаты — 6 букв и цифр, например K7MPQ2.';
-  try { const r = await Room.join(code, nm); sess = {code:r.code, slot:r.slot, token:r.token, name:nm}; sstore.set('rp-session', sess); enterRoom(true); }
+  try { const r = await Room.join(code, nm); switchRoom({code:r.code, slot:r.slot, token:r.token, name:nm}); }
   catch(e){ $('#roomErr').textContent = e.message; }
+}
+/* новая комната: всё, что осталось от прежней, сбрасываем */
+function switchRoom(next){
+  if (sub) sub.close(); sub = null;
+  sess = next; sstore.set('rp-session', sess);
+  roomData = null; online = new Set(); ui.otherInvite = null; WATCHING = false; HINT = null; RX = null;
+  live.key = ''; live.shown = null;
+  enterRoom(true);
 }
 function enterRoom(fresh){
   setCtx('room');
@@ -891,6 +903,16 @@ function enterRoom(fresh){
   sub = Room.subscribe(sess.code, sess, () => fetchRoom(), slots => { online = new Set(slots); if (ui.screen === 'scr-room') renderRoom(); renderPartnerChip(); });
   clearInterval(pollT); pollT = setInterval(() => { if (!document.hidden) fetchRoom(); }, 20000);
   show('scr-room'); renderRoom(); fetchRoom().then(() => { if (fresh) pushState(true); });
+}
+/* выйти из комнаты насовсем: место в ней остаётся занятым, вернуться с этого устройства нельзя */
+function confirmLeave(){
+  if (!sess) return;
+  openModal(`<p class="eyebrow">Комната ${esc(sess.code)}</p><h2>Выйти из комнаты?</h2>
+    <p style="margin-top:12px">Вернуться в неё будет нельзя: твоё место останется занятым, и войти заново по коду не получится. Турнир комнаты, колода, драфт и переписка пропадут для тебя.</p>
+    <p class="muted" style="margin-top:8px">Чтобы просто сыграть одному, выходить не нужно: на главном экране есть кнопка «Играть без комнаты».</p>
+    <div class="res-actions" style="margin-top:16px"><button class="btn primary" type="button" id="leaveNo">Остаться</button><button class="btn ghost" type="button" id="leaveYes">Выйти насовсем</button></div>`);
+  $('#leaveNo').addEventListener('click', closeModal);
+  $('#leaveYes').addEventListener('click', () => { closeModal(); leaveRoom(); });
 }
 function leaveRoom(){
   if (sub) sub.close(); sub = null; clearInterval(pollT);
@@ -915,25 +937,30 @@ async function fetchRoom(){
   else applyHint();
 }
 const partner = () => roomData && sess && roomData.players.find(p => p.slot !== sess.slot);
-const meRemote = () => roomData && sess && roomData.players.find(p => p.slot === sess.slot);
+/* турнир комнаты: если сейчас открыт одиночный («Играть без комнаты»), берём сохранённый турнир комнаты */
+function roomTour(){
+  if (ctx === 'room') return S;
+  const v = sess && store.get(roomKey(sess.code));
+  return validTournament(v) ? v : {cfg:null, dec:[]};
+}
 function myState(){
-  const st = {v:ENGINE_VERSION, at:Date.now()};
-  if (S.cfg){
-    const m = simulate(S.cfg, S.dec);
-    Object.assign(st, {cfg:S.cfg, dec:S.dec, played:m.played != null ? m.played : m.total, est:m.est || m.total, done:m.kind === 'done', champ:m.kind === 'done' ? m.champ : null});
+  const st = {v:ENGINE_VERSION, at:Date.now()}, T = roomTour();
+  if (T.cfg){
+    const m = simulate(T.cfg, T.dec);
+    Object.assign(st, {cfg:T.cfg, dec:T.dec, played:m.played != null ? m.played : m.total, est:m.est || m.total, done:m.kind === 'done', champ:m.kind === 'done' ? m.champ : null});
   }
-  if (G) st.guess = {target:G.target, total:G.list.length, correct:G.picks.filter(p => p.ok).length, answered:G.picks.length, done:!!G.done};
+  if (G) st.guess = {target:G.target, seed:G.seed, total:G.list.length, correct:G.picks.filter(p => p.ok).length, answered:G.picks.length, done:!!G.done};
   if (PB) st.pbet = PB.id;
   if (BT) st.battle = BT;
   if (RX) st.react = RX;
   if (SY) st.sync = SY;
   if (DR) st.draft = DR;
   if (DK && Object.keys(DK.c).length) st.deck = {c:DK.c};
-  if (S.cfg && S.skins && S.skins.fav != null && st.champ === S.skins.c) st.skin = {c:S.skins.c, n:S.skins.fav, name:skName(S.skins, S.skins.fav)};
+  if (T.cfg && T.skins && T.skins.fav != null && st.champ === T.skins.c) st.skin = {c:T.skins.c, n:T.skins.fav, name:skName(T.skins, T.skins.fav)};
   if (WATCHING) st.watching = true;
   if (HINT) st.hint = HINT;
   if (CM && CM.list.length) st.chat = CM.list.slice(-CHAT_KEEP);
-  if (LB && LB.bets.length) st.hearts = {bal:lbBalance(), won:LB.bets.filter(b => b.w).length, n:LB.bets.filter(b => b.r != null && !b.v).length};
+  if (LB && LB.bets.length) st.hearts = lbSummary();
   const dm = dailyMine(), dk = Object.keys(dm).sort().slice(-60);
   if (dk.length){ st.daily = {}; dk.forEach(k => st.daily[k] = dm[k]); }
   return st;
@@ -944,7 +971,7 @@ function queueSync(){ if (!sess) return; clearTimeout(saveT); saveT = setTimeout
 async function pushState(quiet){
   if (!sess) return; clearTimeout(saveT);
   try { await Room.save(sess.code, sess.token, myState()); if (sub) sub.ping(); if (!quiet) fetchRoom(); }
-  catch(e){ if (/bad_token|другом устройстве/.test(e.message)) toast(e.message, 5000); }
+  catch(e){ if (/не принимает изменения/.test(e.message) && !ui.badToken){ ui.badToken = true; toast(e.message, 6000); } }
 }
 function playerState(p){
   const s = p && p.state || {};
@@ -963,16 +990,18 @@ function renderRoom(){
     const on = me || online.has(p.slot);
     let body = '';
     if (ps.status === 'idle') body = '<p class="muted">Ещё не начал(а) турнир.</p>';
-    if (ps.status === 'play') body = `<p>Позади ${ps.m.played} из ≈${ps.m.est} ${duelsWord(ps.m.est)}</p><div class="pbar"><i style="width:${Math.min(100, 100 * ps.m.played / ps.m.est).toFixed(1)}%"></i></div>`;
+    if (ps.status === 'play') body = `<p>Позади ${ps.m.played} из ≈${ps.m.est} ${duelsOf(ps.m.est)}</p><div class="pbar"><i style="width:${Math.min(100, 100 * ps.m.played / ps.m.est).toFixed(1)}%"></i></div>`;
     if (ps.status === 'done'){
       const sv = me ? (S.skins && S.skins.c === ps.m.champ && S.skins.fav != null ? {n:S.skins.fav, name:skName(S.skins, S.skins.fav)} : null)
         : (p.state && p.state.skin && p.state.skin.c === ps.m.champ && Number.isInteger(p.state.skin.n) && typeof p.state.skin.name === 'string' ? p.state.skin : null);
       body = `<div class="champ">${sv && sv.n ? `<img src="${skinArt(ps.m.champ, sv.n)}" alt="" loading="lazy" onerror="this.onerror=null;this.src='${img(ps.m.champ)}'">` : face(ps.m.champ)}<div><small class="muted">Пара в Рунтерре</small><br><b>${esc(name(ps.m.champ))}</b>${sv ? `<br><small class="muted">Любимый образ: ${esc(sv.name.slice(0, 80))}</small>` : ''}</div></div>`;
     }
-    const gs = (me ? (G && {correct:G.picks.filter(x => x.ok).length, total:G.list.length, done:G.done}) : (p.state && p.state.guess));
-    if (gs && gs.done) body += `<p class="muted">Угадал(а) выборы партнёра: ${gs.correct} из ${gs.total}</p>`;
-    const hs = me ? (LB && LB.bets.length ? {bal:lbBalance(), won:LB.bets.filter(b => b.w).length, n:LB.bets.filter(b => b.r != null && !b.v).length} : null) : (p.state && p.state.hearts);
-    if (hs && hs.bal != null) body += `<p class="muted">Ставки в плей-офф: <b class="hearts">${hs.bal} ❤</b>${hs.n ? ` · угадано ${hs.won} из ${hs.n}` : ''}</p>`;
+    /* «Угадай мой выбор» считается только по текущему турниру того, чьи выборы угадывали */
+    const gs = me ? (guessFresh() && {correct:G.picks.filter(x => x.ok).length, total:G.list.length, done:G.done})
+      : (p.state && p.state.guess && (p.state.guess.seed == null || (roomTour().cfg && p.state.guess.seed === roomTour().cfg.seed)) ? p.state.guess : null);
+    if (gs && gs.done) body += `<p class="muted">Угадал(а) выборы партнёра: ${num(gs.correct)} из ${num(gs.total)}</p>`;
+    const hs = me ? (LB && LB.bets.length ? lbSummary() : null) : (p.state && p.state.hearts);
+    if (hs && hs.bal != null) body += `<p class="muted">Ставки в плей-офф: <b class="hearts">${num(hs.bal)} ❤</b>${num(hs.n) ? ` · угадано ${num(hs.won)} из ${num(hs.n)}` : ''}</p>`;
     if (me && PB && BY[PB.id]){
       const pst = playerState(partner());
       body += `<p class="muted">Ставка на пару партнёра: <b>${esc(name(PB.id))}</b>${pst.status === 'done' ? ' — ' + (PB.id === pst.m.champ ? 'угадано!' : (pst.m.order.indexOf(PB.id) + 1 ? `${pst.m.order.indexOf(PB.id) + 1}-е место` : 'не участвовал(а)')) : ''}</p>`;
@@ -995,7 +1024,7 @@ function renderRoom(){
   else if (mine.kind === 'duel') acts.push(`<button class="btn primary" type="button" data-act="resume">Продолжить (${mine.played} из ≈${mine.est})</button>`);
   else acts.push(`<button class="btn primary" type="button" data-act="result">Мой результат</button>`);
   if (pp && their.status === 'done'){
-    if (!G || !G.done) acts.push(`<button class="btn" type="button" data-act="guess">${G && G.picks.length ? 'Продолжить угадывать' : 'Угадать выборы: ' + esc(pp.name)}</button>`);
+    if (!guessFresh() || !G.done) acts.push(`<button class="btn" type="button" data-act="guess">${guessFresh() && G.picks.length ? 'Продолжить угадывать' : 'Угадать выборы: ' + esc(pp.name)}</button>`);
   }
   const bx = battleInfo();
   if (bx && !bx.same && !bx.my) acts.push(`<button class="btn" type="button" data-act="battle">Битва вкусов</button>`);
@@ -1076,8 +1105,8 @@ function renderCompare(){
   $('#cBoth').innerHTML = c.both.slice(0, 8).map(id => row(id, `#${pos(mine.order,id)} и #${pos(their.m.order,id)}`)).join('') || '<p class="muted">Общих любимцев в верхней пятой части нет.</p>';
   $('#cFights').innerHTML = c.fights.map(f => row(f.id, `${esc(sess.name)}: #${pos(mine.order,f.id)} · ${esc(pp.name)}: #${pos(their.m.order,f.id)}`)).join('');
   $('#cHate').innerHTML = c.hate.slice(0, 6).map(id => row(id, `#${pos(mine.order,id)} и #${pos(their.m.order,id)}`)).join('') || '<p class="muted">Общих аутсайдеров нет.</p>';
-  const myG = G && G.done ? `<p>${esc(sess.name)} угадывает выборы партнёра: <b>${G.picks.filter(x => x.ok).length} из ${G.list.length}</b>.</p>` : '';
-  const thG = pp.state && pp.state.guess && pp.state.guess.done ? `<p>${esc(pp.name)} угадывает выборы партнёра: <b>${+pp.state.guess.correct || 0} из ${+pp.state.guess.total || 0}</b>.</p>` : '';
+  const myG = guessFresh() && G.done ? `<p>${esc(sess.name)} угадывает выборы партнёра: <b>${G.picks.filter(x => x.ok).length} из ${G.list.length}</b>.</p>` : '';
+  const thG = pp.state && pp.state.guess && pp.state.guess.done && (pp.state.guess.seed == null || pp.state.guess.seed === S.cfg.seed) ? `<p>${esc(pp.name)} угадывает выборы партнёра: <b>${+pp.state.guess.correct || 0} из ${+pp.state.guess.total || 0}</b>.</p>` : '';
   $('#cGuess').innerHTML = (myG + thG) || '<p class="muted">Пока никто не сыграл. Кнопка «Угадать выборы» — в комнате.</p>';
   const bh = battleHTML();
   $('#cBattleSec').hidden = !bh; $('#cBattle').innerHTML = bh;
@@ -1286,7 +1315,11 @@ function voterId(){
   return v;
 }
 /* выбор партнёра по дням: только из комнаты */
-const dailyTheirs = () => { const pp = partner(); return (pp && pp.state && pp.state.daily) || {}; };
+const dailyTheirs = () => {
+  const pp = partner(), d = pp && pp.state && pp.state.daily, out = {};
+  if (d && typeof d === 'object') Object.keys(d).forEach(k => { if (/^\d{4}-\d{2}-\d{2}$/.test(k) && BY[d[k]]) out[k] = d[k]; });
+  return out;
+};
 function dailyStreak(mine, theirs){
   const key = d => d.toISOString().slice(0, 10), d = new Date(dailyDay() + 'T00:00:00Z');
   if (!(mine[key(d)] && theirs[key(d)])) d.setUTCDate(d.getUTCDate() - 1);
@@ -1440,6 +1473,9 @@ function checkChat(){
 const LB_START = 10;
 const lbKey = () => 'rp-lbets-' + (sess ? sess.code + '-' + sess.slot : '');
 const lbBalance = () => LB_START + (LB ? LB.bets.reduce((t, b) => t + (b.r || 0), 0) : 0);
+/* сколько можно поставить прямо сейчас: ставки, которые ещё ждут выбора партнёра, уже на кону */
+const lbAvail = () => lbBalance() - (LB ? LB.bets.filter(b => b.r == null && !b.free).reduce((t, b) => t + b.k, 0) : 0);
+const lbSummary = () => ({bal:lbBalance(), won:LB.bets.filter(b => b.w).length, n:LB.bets.filter(b => b.r != null && !b.v).length});
 const lbFind = (seed, idx) => LB && LB.bets.find(b => b.s === seed && b.i === idx);
 /* разбираем ставки, по которым партнёр уже сделал выбор; если он начал турнир заново, ставка возвращается */
 function lbResolve(){
@@ -1463,8 +1499,8 @@ function lbText(){
 const lbLine = () => lbText() ? ' · ' + lbText().toLowerCase() : '';
 function lbRender(box, seed, idx, a, bId){
   if (!box || !LB) return;
-  const bet = lbFind(seed, idx), bal = lbBalance();
-  if (bet){ box.innerHTML = `<span class="lb-h">Ставка: ${bet.k} ❤ — ${esc(name(bet.p ? bId : a))}${bet.free ? ' (бесплатная)' : ''} · у тебя ${bal} ❤</span>`; return; }
+  const bet = lbFind(seed, idx), bal = lbAvail();
+  if (bet){ box.innerHTML = `<span class="lb-h">Ставка: ${bet.k} ❤ — ${esc(name(bet.p ? bId : a))}${bet.free ? ' (бесплатная)' : ''} · свободно ${Math.max(0, bal)} ❤</span>`; return; }
   const k = Math.max(1, Math.min(ui.lbK || 1, bal || 1));
   box.innerHTML = `<span class="lb-h">${bal > 0 ? `Поставь сердечки на выбор · у тебя ${bal} ❤` : 'Сердечки кончились, но одна ставка — бесплатно'}</span>
     <span class="lb-k" role="group" aria-label="Сколько сердечек" ${bal > 0 ? '' : 'hidden'}>${[1, 2, 3].map(n => `<button type="button" data-k="${n}" class="${n === k ? 'on' : ''}" ${n > Math.max(1, bal) ? 'disabled' : ''}>${n}</button>`).join('')}</span>
@@ -1472,7 +1508,7 @@ function lbRender(box, seed, idx, a, bId){
   box.querySelectorAll('[data-k]').forEach(btn => btn.addEventListener('click', () => { ui.lbK = +btn.dataset.k; lbRender(box, seed, idx, a, bId); }));
   box.querySelectorAll('[data-p]').forEach(btn => btn.addEventListener('click', () => {
     if (lbFind(seed, idx)) return;
-    const cur = lbBalance(), free = cur <= 0;
+    const cur = lbAvail(), free = cur <= 0;
     LB.bets.push({s:seed, i:idx, p:+btn.dataset.p, k:free ? 1 : Math.min(k, cur), free});
     store.set(lbKey(), LB); Sound.pick(0); pushState(true);
     lbRender(box, seed, idx, a, bId);
@@ -1566,7 +1602,6 @@ function applyHint(){
 }
 
 /* ================= общий турнир: одна и та же пара у обоих, выбор втайне, ответы открываются разом ================= */
-const SYNC_N = 16;
 /* длина общего турнира: сколько участников и в каком режиме движка */
 const SYNC_LEN = {fast:{n:16, mode:'fast', label:'Быстро'}, normal:{n:16, mode:'normal', label:'Обычно'}, deep:{n:32, mode:'normal', label:'Подробно'}};
 const syncMin = d => Math.max(1, Math.round(d * 5 / 60));   // вдвоём дуэль идёт дольше: ждёте друг друга и смотрите на раскрытие
@@ -1602,7 +1637,6 @@ function syncCalc(){
 }
 function syncSetup(){
   const pp = partner(); if (!pp) return toast('Сначала дождись партнёра в комнате');
-  const all = CH.map(c => c[0]);
   openModal(`<p class="eyebrow">Вдвоём</p><h2>Общий турнир</h2>
     <p style="margin-top:12px">Одна и та же пара у вас обоих одновременно. Каждый выбирает втайне, ответы открываются разом. Если разошлись, можно один раз переголосовать, а дальше решает жребий. В конце — общий тир-лист пары и процент согласия.</p>
     <fieldset class="sy-len"><legend>Длина</legend><div class="seg">
@@ -1747,9 +1781,9 @@ function renderSyncBox(){
   if (st.state === 'on'){
     const x = syncCalc();
     h = x.phase === 'done'
-      ? `<h3>Общий турнир: ваша пара — ${esc(name(x.m.champ))}</h3><p>Совпали с первого раза в ${x.log.filter(l => l.how === 'agree').length} из ${x.log.length} дуэлей.</p>
+      ? `<h3>Общий турнир: ваша пара — ${esc(name(x.m.champ))}</h3><p>Совпали с первого раза в ${x.log.filter(l => l.how === 'agree').length} из ${x.log.length} ${duelsOf(x.log.length)}.</p>
          <div class="res-actions"><button class="btn primary" type="button" data-act="sync-res">Итог общего турнира</button><button class="btn" type="button" data-act="sync-new">Ещё один</button></div>`
-      : `<h3>Общий турнир ${esc(syncTitle(SY.cfg))}</h3><p>Позади ${x.i} из ≈${x.m.est} дуэлей.</p>
+      : `<h3>Общий турнир ${esc(syncTitle(SY.cfg))}</h3><p>Позади ${x.i} из ≈${x.m.est} ${duelsOf(x.m.est)}.</p>
          <div class="res-actions"><button class="btn primary" type="button" data-act="sync-go">${x.i ? 'Продолжить' : 'Начать'}</button></div>`;
   }
   box.hidden = !h; box.innerHTML = h;
@@ -1766,7 +1800,7 @@ function renderSyncResult(){
   $('#syHead').innerHTML = `<div class="wimg"><img src="${img(w.id)}" alt="${esc(w.name)}"></div>
     <div class="wtext"><p class="eyebrow">Общий турнир ${esc(syncTitle(SY.cfg))}</p><h1>${esc(w.name)}</h1><p class="ttl">${esc(w.title)}</p>
       <p class="path">Общая пара: ${esc(sess.name)} и ${esc(pp.name)}. ${PROFILE[m.champ] ? esc(PROFILE[m.champ][3]) : ''}</p></div>`;
-  $('#syStats').innerHTML = [[Math.round(100 * agree / Math.max(1, n)) + '%', `согласие: совпали с первого раза в ${agree} из ${n} дуэлей`], [re, `${plural(re,'раз','раза','раз')} договорились после переголосовки`], [coin, `${plural(coin,'раз','раза','раз')} решал жребий`]]
+  $('#syStats').innerHTML = [[Math.round(100 * agree / Math.max(1, n)) + '%', `согласие: совпали с первого раза в ${agree} из ${n} ${duelsOf(n)}`], [re, `${plural(re,'раз','раза','раз')} договорились после переголосовки`], [coin, `${plural(coin,'раз','раза','раз')} решал жребий`]]
     .map(([b, t]) => `<div class="sy-stat"><b>${b}</b><small>${t}</small></div>`).join('');
   const t = $('#syTiers'); t.innerHTML = '<h2>Общий тир-лист</h2>';
   const sizes = tierSizesOf(m); let pos = 0;
@@ -1782,6 +1816,11 @@ function renderSyncResult(){
 }
 
 /* «Угадай мой выбор» */
+/* игра «Угадай мой выбор» относится к текущему турниру партнёра; после его нового турнира начинается заново */
+function guessFresh(){
+  const ps = playerState(partner());
+  return !!(G && ps.status !== 'idle' && G.target === partner().slot && G.seed === ps.s.cfg.seed);
+}
 function startGuess(){
   const pp = partner(), ps = playerState(pp);
   if (ps.status !== 'done') return toast('Партнёр ещё не закончил турнир');
@@ -1886,7 +1925,7 @@ function bind(){
   $('#roomCreate').addEventListener('click', roomCreate);
   $('#roomJoin').addEventListener('click', roomJoin);
   $('#roomOpen').addEventListener('click', () => enterRoom(false));
-  $('#rLeave').addEventListener('click', leaveRoom);
+  $('#rLeave').addEventListener('click', confirmLeave);
   $('#liveToggle').checked = liveOn();
   $('#syImg').addEventListener('click', async () => { const x = syncCalc(); if (x && x.phase === 'done') saveImage(await Share.tierList(x.m, [], `${sess.name} и ${x.pp.name}`), 'para-iz-runterry-obshchiy-tir-list.png', 'Общий тир-лист сохранён'); });
   $('#syAgain').addEventListener('click', syncSetup);
@@ -1937,7 +1976,7 @@ function startNormal(){
   const qs = new URLSearchParams(location.search), inv = (qs.get('room') || '').toUpperCase();
   if (inv) $('#roomCode').value = inv;
   if (sess && (!inv || inv === sess.code) && Room.configured()){ setCtx('room'); refreshStart(); enterRoom(false); return; }
-  if (inv && sess && inv !== sess.code){ sstore.del('rp-session'); sess = null; }
+  if (inv && sess && inv !== sess.code){ ui.otherInvite = inv; $('#roomName').value = sess.name; }   // текущую комнату не бросаем, пока игрок сам не войдёт в новую
   setCtx(sstore.get('rp-ctx') === 'room' && sess ? 'room' : 'solo');
   refreshStart(); show('scr-start');
   if (inv){ $('#roomBox').scrollIntoView({block:'center'}); $('#roomName').focus(); }

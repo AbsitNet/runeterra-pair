@@ -110,7 +110,9 @@ function renderDeckBox(pulse){
   const box = $('#rDeck'); if (!box) return;
   if (!DK || !partner()){ box.hidden = true; return; }
   const u = dkUnion(), st = dkStats(u), n = DK.p.length;
-  const recent = Object.keys(DK.c).length ? (DK.p.length ? DK.p[DK.p.length - 1].cards.map(x => x.id) : []) : [];
+  /* веер — из уже открытых карт: неоткрытый пакет не подсматриваем */
+  const hidden = new Set(DK.p.flatMap(p => p.cards.map(c => c.id)));
+  const recent = (Array.isArray(DK.seen) && DK.seen.length ? DK.seen : Object.keys(u).filter(id => !hidden.has(id) || u[id].th).sort((a, b) => (u[b].g - u[a].g) || a.localeCompare(b))).filter(id => BY[id]);
   box.hidden = false;
   box.innerHTML = `<div class="dk-top">
       <div><h2>Колода пары</h2><p class="muted">Собрано <b>${st.have}</b> из ${st.all}${st.gold ? ` · золотых: ${st.gold}` : ''}</p></div>
@@ -135,7 +137,7 @@ function openPack(){
     <div class="res-actions" style="margin-top:14px"><button class="btn primary" type="button" id="pkOk">${more ? `Дальше · ещё ${more}` : 'Забрать'}</button></div>`);
   Sound.pick(1); if (pk.cards.some(c => c.g)) setTimeout(() => Sound.fanfare(), 500);
   $('#pkOk').addEventListener('click', () => {
-    DK.p.shift(); store.set(dkKey(), DK);
+    DK.seen = pk.cards.map(c => c.id).slice(0, 5); DK.p.shift(); store.set(dkKey(), DK);
     if (DK.p.length) openPack(); else { closeModal(); if (ui.screen === 'scr-room') renderDeckBox(); }
   });
 }

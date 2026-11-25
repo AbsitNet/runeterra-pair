@@ -13,8 +13,9 @@ const Room = (() => {
     const msg = (e && (e.message || e.details || e.hint)) || String(e);
     if (/room_full/.test(msg)) return 'В комнате уже двое.';
     if (/room_not_found/.test(msg)) return 'Комната с таким кодом не найдена. Проверь код.';
-    if (/bad_token/.test(msg)) return 'Эта комната открыта на другом устройстве под тем же именем. Войди в неё заново.';
-    if (/name/.test(msg)) return 'Нужно имя от 1 до 40 символов.';
+    if (/bad_token/.test(msg)) return 'Комната не принимает изменения с этого устройства: возможно, её удалили, потому что в неё долго никто не заходил.';
+    if (/name_invalid/.test(msg)) return 'Нужно имя от 1 до 40 символов.';
+    if (/state_too_large/.test(msg)) return 'Слишком много данных для комнаты. Начни новый турнир.';
     if (/Failed to fetch|NetworkError|network/i.test(msg)) return 'Нет связи с сервером. Проверь интернет и попробуй ещё раз.';
     return 'Сервер ответил ошибкой: ' + msg;
   };

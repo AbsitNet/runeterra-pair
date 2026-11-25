@@ -77,6 +77,8 @@ function draftDecline(){
   store.set('rp-draft-no', st.th.id); renderRoom();
 }
 function draftCancel(){
+  /* второй игрок бросил драфт — приглашение на этот же драфт больше не показываем */
+  if (DR && DR.host !== sess.slot) store.set('rp-draft-no', DR.id);
   DR = null; store.del(drKey()); pushState(true);
   if (ui.screen === 'scr-draft') show('scr-room');
   renderRoom();
@@ -84,9 +86,11 @@ function draftCancel(){
 
 /* ---------- экран драфта ---------- */
 function openDraft(){
-  if (draftStatus().state !== 'on') return renderRoom();
+  if (draftStatus().state !== 'on'){ show('scr-room'); return renderRoom(); }
   ui.drSel = null; ui.drTurnKey = ''; $('#drSearch').value = '';
-  show('scr-draft'); drBuildGrid(); renderDraft();
+  show('scr-draft'); drBuildGrid();
+  $('#drGrid').querySelectorAll('.dr-c').forEach(b => { b.hidden = false; });   // поиск из прошлого раза не должен прятать чемпионов
+  renderDraft();
 }
 function drBuildGrid(){
   const g = $('#drGrid'); if (g.childElementCount) return;
@@ -266,6 +270,7 @@ function renderDraftAfter(x){
 function renderDraftBox(){
   const box = $('#rDraft'); if (!box) return;
   const st = draftStatus(); let h = '';
+  const keepWho = $('#rDraft input[name=drWhoJoin]:checked');   // комната перерисовывается при каждом ходе партнёра — выбор не сбрасываем
   if (st.state === 'invited') h = `<h3>${esc(st.pp.name)} зовёт на драфт пары</h3>
       <p>Баны и подарки по очереди, как выбор чемпионов в LoL. В конце у каждого пятёрка от партнёра и короткий турнир среди неё.</p>
       ${drWhoSeg('drWhoJoin')}
@@ -283,6 +288,7 @@ function renderDraftBox(){
     }
   }
   box.hidden = !h; box.innerHTML = h;
+  if (keepWho){ const r = box.querySelector(`input[name=drWhoJoin][value="${keepWho.value}"]`); if (r) r.checked = true; }
   box.querySelectorAll('[data-act]').forEach(b => b.addEventListener('click', () => roomAction(b.dataset.act)));
 }
 function draftOnFetch(){

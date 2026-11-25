@@ -54,6 +54,11 @@ Ideas for future updates:
 - Themed mini-tournaments of 16 that take about ten minutes: Ionia only, villains only, mages only, newest champions only
 - A link to your result: the tier list opens from a link with no room needed, so you can just send it to friends
 - Install it like an app: an icon on your phone's home screen, full-screen launch, and solo mode that works offline
+- The Star Matchmaker: a separate mode where you don't pick champions at all. You answer about 30 questions about yourself (temperament, what you value, your ideal evening, how you behave in a fight), and the matchmaker finds your ideal partner and explains why
+- Mutual feelings: a reverse test, "would your pair actually like you back?", with a few questions from the winner's point of view and a mutual-feelings score at the end
+- Stats across all players: anonymously, who gets picked the most and how rare your choice is
+- Heart map: a map of Runeterra marking where your top 20 come from, which you can save as a picture
+- Winner's quote: your pair's signature line on the results screen and on the certificate
 
 ## Legal
 

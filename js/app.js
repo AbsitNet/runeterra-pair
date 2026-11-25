@@ -44,7 +44,28 @@ function validTournament(v){
   return !!(v && v.cfg && v.cfg.v === ENGINE_VERSION && Array.isArray(v.cfg.roster) && v.cfg.roster.length >= MIN_N &&
     v.cfg.roster.every(id => BY[id]) && Array.isArray(v.dec) && v.dec.every(d => d === 0 || d === 1) && MODES[v.cfg.mode]);
 }
-function saveLocal(){ store.set(ctx === 'room' && sess ? roomKey(sess.code) : SOLO_KEY, S); if (ctx === 'room') queueSync(); }
+/* служебный режим проверки, только для разработчика: открывается секретной ссылкой #dev=<ключ>.
+   В коде лежит лишь SHA-256 ключа; устройство, где ключ однажды подошёл, запоминается — дальше хватает ?tools */
+const DEV_HASH = '855de0401810a660ec22632e2ddd646216b9cab5d7ac543f7873588e09117341';
+let TOOLS = false;   // в режиме проверки ничего не сохраняем
+async function sha256hex(t){
+  const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t));
+  return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join('');
+}
+async function devAccess(){
+  const qs = new URLSearchParams(location.search), m = location.hash.match(/^#dev=([a-z0-9]{8,64})$/);
+  /* убираем следы из адреса в любом случае */
+  if (m || qs.has('tools')){ qs.delete('tools'); history.replaceState(null, '', location.pathname + (qs.toString() ? '?' + qs : '')); }
+  try {
+    if (m){
+      const ok = await sha256hex(m[1]) === DEV_HASH;
+      if (ok) store.set('rp-dev', DEV_HASH);
+      return ok;
+    }
+    return store.get('rp-dev') === DEV_HASH;
+  } catch(e){ return false; }
+}
+function saveLocal(){ if (TOOLS) return; store.set(ctx === 'room' && sess ? roomKey(sess.code) : SOLO_KEY, S); if (ctx === 'room') queueSync(); }
 function loadFor(c){
   const v = store.get(c === 'room' && sess ? roomKey(sess.code) : SOLO_KEY);
   S = validTournament(v) ? v : {cfg:null, dec:[]};
@@ -208,7 +229,7 @@ function go(){
   if (m.level && m.k === 0 && ui.introKey !== key){
     ui.introKey = key;
     const title = m.stage === 'final' ? 'Гранд-финал' : m.stage === 'lb' ? 'Финал сетки второго шанса' : m.label.includes('Финал') ? 'Финал сетки победителей' : m.label.includes('четвертьфинал') ? 'Четвертьфинал' : 'Полуфинал';
-    const sub = m.stage === 'final' ? `${name(m.a)} против ${name(m.b)}` : m.of > 1 ? `${m.of} ${duelsWord(m.of)} · ${m.stage === 'ub' ? 'сетка победителей' : 'сетка второго шанса'}` : 'Одна дуэль решит, кто пройдёт дальше';
+    const sub = m.stage === 'final' ? `${name(m.a)} или ${name(m.b)}` : m.of > 1 ? `${m.of} ${duelsWord(m.of)} · ${m.stage === 'ub' ? 'сетка победителей' : 'сетка второго шанса'}` : 'Одна дуэль решит, кто пройдёт дальше';
     show('scr-duel'); renderDuel(m, true);
     FX.setLevel(m.level);
     FX.intro(m.level, title, sub).then(() => {});
@@ -700,6 +721,16 @@ function start(){
   document.body.dataset.screen = ui.screen;
   bind();
   heroInit();
+  const askDev = /^#dev=/.test(location.hash) || new URLSearchParams(location.search).has('tools');
+  if (askDev && window.crypto && crypto.subtle){ devAccess().then(ok => ok ? startTools() : startNormal()); return; }
+  startNormal();
+}
+function startTools(){
+  TOOLS = true; ctx = 'solo'; S = {cfg:null, dec:[]};
+  refreshStart(); show('scr-start');
+  const s = document.createElement('script'); s.src = 'js/tools.js'; document.body.appendChild(s);
+}
+function startNormal(){
   const qs = new URLSearchParams(location.search), inv = (qs.get('room') || '').toUpperCase();
   if (inv) $('#roomCode').value = inv;
   if (sess && (!inv || inv === sess.code) && Room.configured()){ setCtx('room'); refreshStart(); enterRoom(false); return; }

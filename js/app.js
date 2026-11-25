@@ -1,0 +1,651 @@
+/* ================= Пара из Рунтерры: интерфейс ================= */
+const BY = {};
+CH.forEach(c => BY[c[0]] = {id:c[0], name:c[1], title:c[2], g:c[3], grp:c[4]});
+const img = id => `img/${id}.webp`;
+const MIN_N = 8;
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+const reduced = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
+const touch = !!(window.matchMedia && matchMedia('(hover: none)').matches);
+
+const PROMPTS = [
+  'С кем — на свидание?', 'С кем провести вечер вдвоём?', 'Кому доверишь своё сердце?', 'С кем — в долгое путешествие?',
+  'С кем встречать рассветы?', 'Кто ближе тебе как партнёр?', 'С кем жить под одной крышей?', 'Чьё признание ты ждёшь?'
+];
+const TIERS = [['S','Судьба','--tS'], ['A','Влюб­лён­ность','--tA'], ['B','Симпатия','--tB'], ['C','Дружба','--tC'], ['D','Не мой тип','--tD']];
+const EGG = {};
+EASTER.forEach(([a,b,t]) => { EGG[a + '|' + b] = t; EGG[b + '|' + a] = t; });
+
+/* ---------- хранилище ---------- */
+const store = {
+  get(k){ try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch(e){ return null; } },
+  set(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch(e){} },
+  del(k){ try { localStorage.removeItem(k); } catch(e){} }
+};
+const SOLO_KEY = 'rp-solo-v3';
+const roomKey = code => 'rp-room-' + code + '-' + (sess ? sess.slot : 0);
+const guessKey = code => 'rp-guess-' + code + '-' + (sess ? sess.slot : 0);
+/* сессия комнаты: в локальном режиме проверки — своя у каждой вкладки */
+const sstore = Room.localMode ? {
+  get(k){ try { return JSON.parse(sessionStorage.getItem(k) || 'null'); } catch(e){ return null; } },
+  set(k, v){ try { sessionStorage.setItem(k, JSON.stringify(v)); } catch(e){} },
+  del(k){ try { sessionStorage.removeItem(k); } catch(e){} }
+} : store;
+
+/* ---------- состояние ---------- */
+let S = {cfg:null, dec:[]};          // текущий турнир (свой или для комнаты)
+let ctx = 'solo';                     // 'solo' | 'room'
+let sess = sstore.get('rp-session');   // {code, slot, token, name}
+let roomData = null, online = new Set(), sub = null, pollT = 0, saveT = 0;
+let G = null;                         // «Угадай мой выбор»: {target, list, picks:[], done}
+const ui = {screen:'scr-start', cur:null, lock:false, ack:false, toastKey:'', introKey:'', off:new Set(), bet:null, betRoster:null, betRemoved:null, mode:'play', swipeHinted:false};
+
+function validTournament(v){
+  return !!(v && v.cfg && v.cfg.v === ENGINE_VERSION && Array.isArray(v.cfg.roster) && v.cfg.roster.length >= MIN_N &&
+    v.cfg.roster.every(id => BY[id]) && Array.isArray(v.dec) && v.dec.every(d => d === 0 || d === 1) && MODES[v.cfg.mode]);
+}
+function saveLocal(){ store.set(ctx === 'room' && sess ? roomKey(sess.code) : SOLO_KEY, S); if (ctx === 'room') queueSync(); }
+function loadFor(c){
+  const v = store.get(c === 'room' && sess ? roomKey(sess.code) : SOLO_KEY);
+  S = validTournament(v) ? v : {cfg:null, dec:[]};
+}
+function setCtx(c){ ctx = c; sstore.set('rp-ctx', c); loadFor(c); }
+
+/* ---------- мелочи ---------- */
+function show(id){
+  document.querySelectorAll('.screen').forEach(s => s.hidden = s.id !== id);
+  ui.screen = id; window.scrollTo(0, 0);
+  if (id !== 'scr-duel') FX.setLevel(0);
+}
+let toastT = 0;
+function toast(msg, ms = 3200){ const t = $('#toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('on'), ms); }
+const name = id => BY[id].name;
+const verb = (id, f, m) => BY[id].g === 'f' ? f : m;
+function plural(n, one, few, many){ const a = n % 10, b = n % 100; return (a === 1 && b !== 11) ? one : (a >= 2 && a <= 4 && (b < 12 || b > 14)) ? few : many; }
+const duelsWord = n => plural(n, 'дуэль', 'дуэли', 'дуэлей');
+const minutes = n => Math.max(1, Math.round(n * 2.5 / 60));
+function listNames(ids){ const a = ids.map(name); return a.length > 1 ? a.slice(0, -1).join(', ') + ' и ' + a[a.length - 1] : a.join(''); }
+const face = (id, cls = '') => `<img class="${cls}" loading="lazy" alt="" src="${img(id)}">`;
+
+/* ================= старт ================= */
+function settings(){
+  return {
+    who: document.querySelector('input[name=who]:checked').value,
+    extra: $('#extra').checked,
+    mode: document.querySelector('input[name=mode]:checked').value,
+    pre: $('#prefilter').checked
+  };
+}
+function pool(s){ return CH.filter(c => (s.extra || c[4] === 'core') && (s.who === 'all' || c[3] === s.who)).map(c => c[0]); }
+function refreshStart(){
+  const s = settings();
+  ['all','m','f'].forEach(w => $('#cnt-' + w).textContent = pool({...s, who:w}).length);
+  const n = pool(s).length;
+  ['quick','normal','deep'].forEach(m => { const t = estimate(n, m); $('#est-' + m).innerHTML = `≈ ${t} ${duelsWord(t)}<br>~${minutes(t)} мин`; });
+  $('#startNote').textContent = s.pre ? 'После чистки дуэлей станет меньше.' : (S.cfg ? 'Новый турнир заменит сохранённый.' : '');
+  const banner = $('#roomBanner');
+  if (ctx === 'room' && sess){
+    banner.hidden = false;
+    banner.innerHTML = `Турнир пойдёт в зачёт комнаты <b>${esc(sess.code)}</b>. <button class="btn ghost" type="button" id="soloBtn" style="margin-left:8px">Играть без комнаты</button>`;
+    $('#soloBtn').onclick = () => { setCtx('solo'); refreshStart(); };
+  } else banner.hidden = true;
+  const r = $('#resume');
+  if (S.cfg){
+    const m = simulate(S.cfg, S.dec);
+    r.hidden = false;
+    if (m.kind === 'done'){ $('#resumeText').innerHTML = `Прошлый турнир завершён. Твоя пара: <b>${esc(name(m.champ))}</b>.`; $('#resumeBtn').textContent = 'Открыть результат'; }
+    else { $('#resumeText').innerHTML = `Есть незаконченный турнир: позади <b>${m.played}</b> из примерно ${m.est} ${duelsWord(m.est)}.`; $('#resumeBtn').textContent = 'Продолжить'; }
+  } else r.hidden = true;
+  refreshRoomBox();
+}
+function startFlow(){
+  const s = settings();
+  if (s.pre) return openFilter();
+  openBet(pool(s), []);
+}
+
+/* ================= чистка состава ================= */
+function openFilter(){
+  const ids = pool(settings());
+  ui.off = new Set();
+  const g = $('#fgrid'); g.innerHTML = '';
+  ids.forEach(id => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'gcard'; b.setAttribute('aria-pressed', 'false');
+    b.innerHTML = `${face(id)}<span>${esc(BY[id].name)}</span>`;
+    b.title = `${BY[id].name} — ${BY[id].title}`;
+    b.addEventListener('click', () => {
+      ui.off.has(id) ? ui.off.delete(id) : ui.off.add(id);
+      b.classList.toggle('off', ui.off.has(id)); b.setAttribute('aria-pressed', String(ui.off.has(id)));
+      refreshFilter();
+    });
+    g.appendChild(b);
+  });
+  show('scr-filter'); refreshFilter();
+}
+function refreshFilter(){
+  const ids = pool(settings()), left = ids.length - ui.off.size, t = estimate(Math.max(left, MIN_N), settings().mode);
+  $('#fcnt').innerHTML = `В турнире: <b>${left}</b> · убрано: ${ui.off.size} · ≈ ${t} ${duelsWord(t)}`;
+  $('#fstart').disabled = left < MIN_N;
+  $('#fstart').textContent = left >= MIN_N ? `Дальше (${left})` : `Нужно минимум ${MIN_N}`;
+}
+
+/* ================= ставка ================= */
+function openBet(roster, removed){
+  ui.betRoster = roster; ui.betRemoved = removed; ui.bet = null;
+  const g = $('#bgrid'); g.innerHTML = '';
+  roster.forEach(id => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'gcard'; b.dataset.id = id; b.dataset.q = BY[id].name.toLowerCase();
+    b.innerHTML = `${face(id)}<span>${esc(BY[id].name)}</span>`;
+    b.title = `${BY[id].name} — ${BY[id].title}`;
+    b.addEventListener('click', () => {
+      ui.bet = ui.bet === id ? null : id;
+      g.querySelectorAll('.gcard').forEach(x => x.classList.toggle('sel', x.dataset.id === ui.bet));
+      $('#bcnt').innerHTML = ui.bet ? `Ставка: <b>${esc(name(ui.bet))}</b>` : 'Ставка не выбрана';
+      $('#bstart').disabled = !ui.bet;
+    });
+    g.appendChild(b);
+  });
+  $('#betSearch').value = ''; $('#bcnt').textContent = 'Ставка не выбрана'; $('#bstart').disabled = true;
+  show('scr-bet');
+}
+function newTournament(roster, removed, bet){
+  const s = settings();
+  S = {cfg:{v:ENGINE_VERSION, who:s.who, extra:s.extra, mode:s.mode, seed:(Math.random() * 4294967296) >>> 0, roster, removed, bet:bet || null}, dec:[]};
+  ui.ack = false; ui.toastKey = ''; ui.introKey = ''; ui.mode = 'play';
+  saveLocal(); preloadAll(roster); go();
+}
+
+/* ================= ход турнира ================= */
+function go(){
+  ui.mode = 'play';
+  const m = simulate(S.cfg, S.dec);
+  ui.cur = m;
+  if (m.kind === 'done') return renderResult(m);
+  if (m.stage === 'ub' && m.first && !ui.ack) return renderInter(m);
+  const key = m.label + ':' + m.k;
+  if (m.level && m.k === 0 && ui.introKey !== key){
+    ui.introKey = key;
+    const title = m.stage === 'final' ? 'Гранд-финал' : m.stage === 'lb' ? 'Финал сетки второго шанса' : m.label.includes('Финал') ? 'Финал сетки победителей' : m.label.includes('четвертьфинал') ? 'Четвертьфинал' : 'Полуфинал';
+    const sub = m.stage === 'final' ? `${name(m.a)} против ${name(m.b)}` : m.of > 1 ? `${m.of} ${duelsWord(m.of)} · ${m.stage === 'ub' ? 'сетка победителей' : 'сетка второго шанса'}` : 'Одна дуэль решит, кто пройдёт дальше';
+    show('scr-duel'); renderDuel(m, true);
+    FX.setLevel(m.level);
+    FX.intro(m.level, title, sub).then(() => {});
+    return;
+  }
+  renderDuel(m);
+}
+function stageLabel(m){
+  if (m.stage === 'swiss') return `Отбор · круг ${m.round} из ${m.R}`;
+  if (m.stage === 'battle') return `Битвы за место · раунд ${m.round}`;
+  if (m.stage === 'dispute') return `Спорные места · ${m.line}`;
+  return m.label;
+}
+function setCard(i, id){
+  const c = BY[id], p = PROFILE[id], im = $('#img' + i);
+  im.classList.remove('broken'); im.src = img(id); im.alt = c.name;
+  $('#nm' + i).textContent = c.name;
+  $('#tt' + i).textContent = c.title;
+  $('#ds' + i).textContent = p[3];
+  const card = $('#card' + i); card.className = 'pick'; card.style.transform = '';
+  card.setAttribute('aria-label', `Выбрать: ${c.name}, ${c.title}. ${p[3]}`);
+}
+function renderDuel(m, silent){
+  if (ui.screen !== 'scr-duel') show('scr-duel');
+  $('#stage').textContent = stageLabel(m);
+  $('#counter').textContent = (m.of > 1 ? `Дуэль ${m.k + 1} из ${m.of}` : 'Решающая дуэль') + ` · всего ${m.played} из ≈${m.est}`;
+  $('#barFill').style.width = Math.min(99.5, 100 * m.played / m.est).toFixed(2) + '%';
+  const egg = EGG[m.a + '|' + m.b], p = $('#prompt'), sp = $('#subprompt');
+  p.classList.toggle('final', m.stage === 'final');
+  p.classList.toggle('egg', !!egg && m.stage !== 'final');
+  if (m.stage === 'final'){ p.textContent = 'Гранд-финал. Кто твоя пара?'; sp.hidden = !egg; sp.textContent = egg || ''; }
+  else { p.textContent = egg || ((m.stage === 'lb' && m.last) ? 'Кто выйдет в гранд-финал?' : PROMPTS[m.played % PROMPTS.length]); sp.hidden = true; }
+  setCard(0, m.a); setCard(1, m.b);
+  const ar = $('#arena');
+  ar.className = 'arena' + (m.level ? ' lv' + m.level : '');
+  void ar.offsetWidth; ar.classList.add('enter');
+  FX.setLevel(m.level || 0);
+  $('#undoBtn').hidden = false; $('#undoBtn').disabled = S.dec.length === 0;
+  $('#bracketBtn').hidden = !['ub','lb','final'].includes(m.stage);
+  $('#reveal').textContent = ''; $('#reveal').className = 'reveal';
+  renderPartnerChip();
+  if (!silent){
+    const tk = m.stage + ':' + (m.round || m.label);
+    if (m.k === 0 && ui.toastKey !== tk){
+      ui.toastKey = tk;
+      if (m.stage === 'swiss' && m.round > 1) toast(`Круг ${m.round}: теперь встречаются чемпионы с похожим счётом`);
+      else if (m.stage === 'battle' && m.round === 1) toast('Битвы за место: дальше дерутся только те, чьё место ещё не ясно');
+      else if (m.stage === 'dispute' && m.round === 1) toast('Спорные места: решаем, кто окажется выше границы тира');
+      else if (m.stage === 'lb' && /раунд 1$/.test(m.label)) toast('Сетка второго шанса: проигравшие продолжают борьбу');
+    }
+    if (touch && !ui.swipeHinted && m.played === 0){ ui.swipeHinted = true; toast('Можно свайпать: вправо — правый, влево — левый'); }
+  }
+  preloadNext();
+}
+function preloadNext(){
+  [0,1].forEach(d => { const n = simulate(S.cfg, S.dec.concat(d)); if (n.kind === 'duel'){ new Image().src = img(n.a); new Image().src = img(n.b); } });
+}
+function preloadAll(ids){ ids.forEach((id, i) => setTimeout(() => { new Image().src = img(id); }, 300 + i * 30)); }
+
+function cardCenter(i){ const r = $('#card' + i).getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height * .42]; }
+function pick(side){
+  if (ui.lock || ui.screen !== 'scr-duel' || !ui.cur || ui.cur.kind !== 'duel') return;
+  if (ui.mode === 'guess') return guessPick(side);
+  ui.lock = true;
+  const m = ui.cur, cards = [$('#card0'), $('#card1')];
+  cards.forEach(c => c.style.transform = '');
+  cards[side].classList.add('chosen'); cards[1 - side].classList.add('lost');
+  Sound.pick(m.level);
+  if (m.level) FX.burst(...cardCenter(side), m.level);
+  const final = m.stage === 'final';
+  if (final){ Sound.fanfare(); FX.celebrate(); }
+  setTimeout(() => { S.dec.push(side); saveLocal(); ui.lock = false; go(); }, reduced ? 80 : final ? 1100 : m.level ? 520 : 340);
+}
+function undo(){
+  if (ui.lock || ui.mode === 'guess' || !S.dec.length) return;
+  S.dec.pop(); saveLocal();
+  const m = simulate(S.cfg, S.dec);
+  if (m.kind === 'duel' && ['swiss','battle','dispute'].includes(m.stage)) ui.ack = false;
+  ui.introKey = '';
+  go();
+}
+
+/* свайпы на телефоне */
+function bindSwipe(){
+  const ar = $('#arena'); let x0 = null, y0 = 0, dx = 0, moved = false;
+  ar.addEventListener('pointerdown', e => { if (e.pointerType === 'mouse') return; x0 = e.clientX; y0 = e.clientY; dx = 0; moved = false; });
+  ar.addEventListener('pointermove', e => {
+    if (x0 === null) return;
+    dx = e.clientX - x0; const dy = e.clientY - y0;
+    if (!moved && Math.abs(dx) > 12 && Math.abs(dx) > Math.abs(dy)) { moved = true; ar.classList.add('swiping'); }
+    if (!moved) return;
+    const side = dx > 0 ? 1 : 0, k = Math.min(1, Math.abs(dx) / 90);
+    [0,1].forEach(i => { const c = $('#card' + i); c.style.transform = i === side ? `translateY(${-6 * k}px) scale(${1 + .03 * k})` : `scale(${1 - .03 * k})`; c.classList.toggle('lean', i === side && k >= 1); });
+  });
+  const end = () => {
+    if (x0 === null) return;
+    const was = moved; x0 = null; ar.classList.remove('swiping');
+    [0,1].forEach(i => { const c = $('#card' + i); c.classList.remove('lean'); });
+    if (was && Math.abs(dx) >= 90){ ui.swallowClick = true; pick(dx > 0 ? 1 : 0); setTimeout(() => ui.swallowClick = false, 400); }
+    else { [0,1].forEach(i => $('#card' + i).style.transform = ''); if (was){ ui.swallowClick = true; setTimeout(() => ui.swallowClick = false, 400); } }
+  };
+  ar.addEventListener('pointerup', end); ar.addEventListener('pointercancel', end);
+}
+
+/* ================= перед плей-офф ================= */
+function renderInter(m){
+  show('scr-inter');
+  $('#interTitle').textContent = `В плей-офф выходят ${m.P}`;
+  $('#interText').textContent = `Лучшие по рейтингу всех дуэлей. Плей-офф с двойным выбыванием: после первого поражения чемпион уходит в сетку второго шанса и продолжает бороться, вылетает только после второго. Впереди ${2 * m.P - 1} ${duelsWord(2 * m.P - 1)} вместе с гранд-финалом. Четвертьфинал, полуфинал и гранд-финал — с эффектами и звуком.`;
+  $('#seedgrid').innerHTML = m.seeds.map((id, i) => `<div class="seed">${face(id)}<i>${i + 1}</i><span>${esc(BY[id].name)}</span></div>`).join('');
+}
+
+/* ================= сетка плей-офф ================= */
+function bracketHTML(list, current){
+  const by = side => { const r = {}; list.filter(x => x.side === side).forEach(x => (r[x.round] = r[x.round] || []).push(x)); return r; };
+  const box = (x, extra = '') => `<div class="bm ${extra}">` + [x.a, x.b].map(id => `<div class="${x.w === id ? 'w' : ''}">${face(id)}<span>${esc(name(id))}</span></div>`).join('') + '</div>';
+  const now = current && ['ub','lb','final'].includes(current.stage) ? `<div class="bm now">${[current.a, current.b].map(id => `<div>${face(id)}<span>${esc(name(id))}</span></div>`).join('')}</div>` : '';
+  const side = (key, title) => {
+    const rounds = by(key), keys = Object.keys(rounds).map(Number).sort((a,b) => a - b);
+    const curHere = current && ((key === 'ub' && current.stage === 'ub') || (key === 'lb' && current.stage === 'lb') || (key === 'gf' && current.stage === 'final'));
+    if (!keys.length && !curHere) return '';
+    const cols = keys.map(k => `<div class="br-col"><small>${esc(rounds[k][0].name)}</small>${rounds[k].map(x => box(x, key === 'gf' ? 'gf' : '')).join('')}</div>`);
+    if (curHere) cols.push(`<div class="br-col"><small>Сейчас</small>${now}</div>`);
+    return `<div class="br-side"><h4>${title}</h4><div class="br-cols">${cols.join('')}</div></div>`;
+  };
+  const html = side('ub', 'Сетка победителей') + side('lb', 'Сетка второго шанса') + side('gf', 'Гранд-финал');
+  return html ? `<div class="bracket">${html}</div>` : '<p class="muted">Плей-офф ещё не начался.</p>';
+}
+function openModal(html){ $('#modalBody').innerHTML = html; $('#modal').hidden = false; $('#modalClose').focus(); }
+function closeModal(){ $('#modal').hidden = true; }
+function openProfile(id){
+  const c = BY[id], p = PROFILE[id], place = ui.cur && ui.cur.order ? ui.cur.order.indexOf(id) + 1 : 0;
+  openModal(`<div class="prof">${face(id)}<div><p class="eyebrow">${place ? place + '-е место' : ''}</p><h3>${esc(c.name)}</h3><p class="muted">${esc(c.title)}</p>
+    <div class="tags"><span>${esc(REGIONS[p[0]][0])}</span><span>${esc(CLASSES[p[1]][0])}</span><span>${esc(ARCH[p[2]][0])}</span></div>
+    <p>${esc(p[4])}</p><p class="no">Почему может не сложиться: ${esc(p[5])}</p></div></div>`);
+}
+
+/* ================= итоги ================= */
+function renderResult(m){
+  show('scr-result'); FX.setLevel(0);
+  const w = BY[m.champ], pr = PROFILE[m.champ];
+  $('#wImg').src = img(w.id); $('#wImg').alt = w.name;
+  $('#wName').textContent = w.name; $('#wTitle').textContent = w.title;
+  $('#wLong').textContent = pr[4];
+  const beat = [...new Set(m.st[w.id].beat)].filter(id => id !== m.runner), lost = [...new Set(m.st[w.id].lost)], shown = beat.slice(-8);
+  let path = '';
+  if (shown.length) path += `По дороге к победе ${verb(w.id,'оказалась','оказался')} сильнее, чем ${listNames(shown)}${beat.length > shown.length ? ' и другие' : ''}. `;
+  if (lost.length) path += `${verb(w.id,'Уступила','Уступил')} только ${listNames(lost)}, но ${verb(w.id,'получила','получил')} второй шанс. `;
+  path += `В гранд-финале ${verb(w.id,'обошла','обошёл')} ${name(m.runner)}.`;
+  $('#wPath').textContent = path;
+  const bl = $('#betLine');
+  if (S.cfg.bet && BY[S.cfg.bet]){
+    const place = m.order.indexOf(S.cfg.bet) + 1;
+    bl.hidden = false;
+    bl.innerHTML = `${face(S.cfg.bet)}<span>Ставка: <b>${esc(name(S.cfg.bet))}</b> — ${S.cfg.bet === m.champ ? 'интуиция сработала!' : place ? `${place}-е место` : 'убран(а) до турнира'}</span>`;
+  } else bl.hidden = true;
+  $('#podium').innerHTML = [[1,'2-е место'],[2,'3-е место']].filter(([i]) => m.order[i]).map(([i, lab]) => `<div class="pod">${face(m.order[i])}<div><small>${lab}</small><b>${esc(name(m.order[i]))}</b></div></div>`).join('');
+
+  const badges = achievements(m, S.cfg);
+  $('#badgesSec').hidden = !badges.length;
+  $('#badges').innerHTML = badges.map(b => `<div class="badge"><span class="hex" aria-hidden="true">${b.icon}</span><div><b>${esc(b.t)}</b><small>${esc(b.d)}</small></div></div>`).join('');
+
+  const pf = profileOf(m.order), A = ARCH[pf.arch];
+  $('#typaj').innerHTML = `<div><p class="eyebrow">Твой типаж</p><h3>${esc(A[0])}</h3><p style="margin-top:12px">${esc(A[1])}</p>
+      ${pf.archSecond ? `<p class="muted" style="margin-top:10px">Ещё тебе близко: ${esc(ARCH[pf.archSecond][0].toLowerCase())}.</p>` : ''}
+      ${pf.archWorst ? `<p class="muted">Совсем не твоё: ${esc(ARCH[pf.archWorst][0].toLowerCase())}.</p>` : ''}</div>
+    <div class="facts">
+      <div class="fact"><small>Самые яркие примеры в твоём топе</small><b>${pf.archTop.length ? esc(listNames(pf.archTop)) : '—'}</b>${pf.archTop.length ? `<div class="faces">${pf.archTop.map(id => face(id)).join('')}</div>` : ''}</div>
+      <div class="fact"><small>Любимый край</small><b>${esc(REGIONS[pf.region][0])}: ${pf.regionTop.length} в топ-15</b><div class="faces">${pf.regionTop.map(id => face(id)).join('')}</div></div>
+      <div class="fact"><small>Любимый класс</small><b>Ты выбираешь ${esc(CLASSES[pf.cls][1])}</b><div class="faces">${pf.clsTop.map(id => face(id)).join('')}</div></div>
+    </div>`;
+
+  const t = $('#tiers'); t.innerHTML = '<h2>Твой тир-лист</h2>';
+  const sizes = tierSizesOf(m); let pos = 0;
+  TIERS.forEach(([L, label, tok], ti) => { t.appendChild(tierRow(L, label, tok, m.order.slice(pos, pos + sizes[ti]), pos)); pos += sizes[ti]; });
+  const removed = (S.cfg.removed || []).filter(id => BY[id]);
+  if (removed.length) t.appendChild(tierRow('—', 'Сразу мимо', '--tX', removed, -1, true));
+
+  $('#anti').innerHTML = antiTop(m.order).map(id => `<div class="card">${face(id)}<span class="stamp">НИ ЗА ЧТО</span><div class="txt"><b>${esc(name(id))}</b><p>${esc(PROFILE[id][5])}</p></div></div>`).join('');
+  $('#bracketRes').innerHTML = bracketHTML(m.bracket);
+  $('#copyFallback').hidden = true;
+  $('#toRoomBtn').hidden = !(ctx === 'room' && sess);
+  $('#method').textContent = `Режим «${MODES[S.cfg.mode].label}», ${m.total} ${duelsWord(m.total)}: ${m.R} ${plural(m.R,'круг','круга','кругов')} отбора, битвы за место${MODES[S.cfg.mode].D ? ', спорные места' : ''} и плей-офф с двойным выбыванием на ${m.P}. Первые ${m.P} мест решены плей-офф, остальные стоят по рейтингу всех дуэлей с учётом силы соперников; если соседи по списку встречались, выше стоит победитель. Результат сохранён в этом браузере.`;
+  drawCertPreview();
+}
+let certT = 0;
+function drawCertPreview(){
+  clearTimeout(certT);
+  certT = setTimeout(async () => {
+    const m = ui.cur; if (!m || m.kind !== 'done') return;
+    const cv = await Share.certificate(m, $('#certName').value);
+    const pv = $('#certPreview'), cx = pv.getContext('2d');
+    cx.clearRect(0, 0, pv.width, pv.height); cx.drawImage(cv, 0, 0);
+  }, 200);
+}
+function tierRow(L, label, tok, ids, start, x){
+  const row = document.createElement('div');
+  row.className = 'tier' + (x ? ' x' : '');
+  row.style.setProperty('--tc', `var(${tok})`);
+  row.innerHTML = `<div class="tlab"><b>${L}</b><span>${label}</span></div><div class="tlist"></div>`;
+  const list = row.querySelector('.tlist');
+  ids.forEach((id, i) => {
+    const d = document.createElement('button'); d.type = 'button'; d.className = 'th'; d.title = `${BY[id].name} — ${BY[id].title}`;
+    d.style.cssText = 'padding:0;border:0;background:none;text-align:left;color:inherit;font:inherit';
+    d.innerHTML = `${face(id)}${start >= 0 ? `<i>${start + i + 1}</i>` : ''}<span>${esc(BY[id].name)}</span>`;
+    d.addEventListener('click', () => openProfile(id));
+    list.appendChild(d);
+  });
+  return row;
+}
+function resultText(){
+  const m = ui.cur; if (!m || m.kind !== 'done') return '';
+  const sizes = tierSizesOf(m); let pos = 0;
+  const lines = [`Пара из Рунтерры: ${name(m.champ)}`, `Типаж: ${ARCH[profileOf(m.order).arch][0]}`, ''];
+  TIERS.forEach(([L, label], ti) => { const ids = m.order.slice(pos, pos + sizes[ti]); lines.push(`${L} · ${label.replace(/­/g,'')}: ${ids.map((id, i) => `${pos + i + 1}. ${name(id)}`).join(', ')}`); pos += sizes[ti]; });
+  const removed = (S.cfg.removed || []).filter(id => BY[id]);
+  if (removed.length) lines.push(`Сразу мимо: ${removed.map(name).join(', ')}`);
+  return lines.join('\n');
+}
+function copyResult(){
+  const text = resultText();
+  const fallback = () => { const ta = $('#copyFallback'); ta.hidden = false; ta.value = text; ta.focus(); ta.select(); toast('Текст выделен, скопируй его вручную'); };
+  try { navigator.clipboard.writeText(text).then(() => toast('Тир-лист скопирован'), fallback); } catch(e){ fallback(); }
+}
+
+/* ================= комната ================= */
+function refreshRoomBox(){
+  const box = $('#roomBox');
+  if (!Room.configured()){
+    box.hidden = false;
+    $('#roomForms').hidden = true; $('#roomCurrent').hidden = true;
+    $('#roomIntro').textContent = (window.RP_CONFIG && RP_CONFIG.roomNote) || 'Совместный режим ещё не подключён: в файле js/config.js нужно указать адрес и ключ Supabase.';
+    return;
+  }
+  $('#roomIntro').textContent = 'Каждый проходит свой турнир на своём телефоне, а вы видите прогресс друг друга. В конце — сравнение вкусов и игра «Угадай мой выбор».';
+  const inRoom = !!sess;
+  $('#roomForms').hidden = inRoom; $('#roomCurrent').hidden = !inRoom;
+  if (inRoom) $('#roomCurrentText').innerHTML = `Ты в комнате <b>${esc(sess.code)}</b> как ${esc(sess.name)}.`;
+}
+async function roomCreate(){
+  const nm = $('#roomName').value.trim(); $('#roomErr').textContent = '';
+  if (!nm) return $('#roomErr').textContent = 'Напиши своё имя — его увидит партнёр.';
+  try { const r = await Room.create(nm); sess = {code:r.code, slot:r.slot, token:r.token, name:nm}; sstore.set('rp-session', sess); enterRoom(true); }
+  catch(e){ $('#roomErr').textContent = e.message; }
+}
+async function roomJoin(){
+  const nm = $('#roomName').value.trim(), code = $('#roomCode').value.trim().toUpperCase(); $('#roomErr').textContent = '';
+  if (!nm) return $('#roomErr').textContent = 'Напиши своё имя — его увидит партнёр.';
+  if (!/^[A-Z2-9]{6}$/.test(code)) return $('#roomErr').textContent = 'Код комнаты — 6 букв и цифр, например K7MPQ2.';
+  try { const r = await Room.join(code, nm); sess = {code:r.code, slot:r.slot, token:r.token, name:nm}; sstore.set('rp-session', sess); enterRoom(true); }
+  catch(e){ $('#roomErr').textContent = e.message; }
+}
+function enterRoom(fresh){
+  setCtx('room');
+  G = store.get(guessKey(sess.code));
+  if (sub) sub.close();
+  sub = Room.subscribe(sess.code, sess, () => fetchRoom(), slots => { online = new Set(slots); if (ui.screen === 'scr-room') renderRoom(); renderPartnerChip(); });
+  clearInterval(pollT); pollT = setInterval(() => { if (!document.hidden) fetchRoom(); }, 20000);
+  show('scr-room'); renderRoom(); fetchRoom().then(() => { if (fresh) pushState(true); });
+}
+function leaveRoom(){
+  if (sub) sub.close(); sub = null; clearInterval(pollT);
+  sstore.del('rp-session'); sess = null; roomData = null; G = null;
+  setCtx('solo'); show('scr-start'); refreshStart();
+}
+async function fetchRoom(){
+  if (!sess) return;
+  try { roomData = await Room.get(sess.code); $('#rErr').textContent = ''; }
+  catch(e){ $('#rErr').textContent = e.message; return; }
+  if (ui.screen === 'scr-room') renderRoom();
+  if (ui.screen === 'scr-compare') renderCompare();
+  renderPartnerChip();
+}
+const partner = () => roomData && sess && roomData.players.find(p => p.slot !== sess.slot);
+const meRemote = () => roomData && sess && roomData.players.find(p => p.slot === sess.slot);
+function myState(){
+  const st = {v:ENGINE_VERSION, at:Date.now()};
+  if (S.cfg){
+    const m = simulate(S.cfg, S.dec);
+    Object.assign(st, {cfg:S.cfg, dec:S.dec, played:m.played != null ? m.played : m.total, est:m.est || m.total, done:m.kind === 'done', champ:m.kind === 'done' ? m.champ : null});
+  }
+  if (G) st.guess = {target:G.target, total:G.list.length, correct:G.picks.filter(p => p.ok).length, answered:G.picks.length, done:!!G.done};
+  return st;
+}
+function queueSync(){ if (!sess) return; clearTimeout(saveT); saveT = setTimeout(() => pushState(), 1200); }
+async function pushState(quiet){
+  if (!sess) return; clearTimeout(saveT);
+  try { await Room.save(sess.code, sess.token, myState()); if (sub) sub.ping(); if (!quiet) fetchRoom(); }
+  catch(e){ if (/bad_token|другом устройстве/.test(e.message)) toast(e.message, 5000); }
+}
+function playerState(p){
+  const s = p && p.state || {};
+  if (!s.cfg || s.v !== ENGINE_VERSION || !validTournament({cfg:s.cfg, dec:s.dec || []})) return {status:'idle'};
+  const m = simulate(s.cfg, s.dec || []);
+  return m.kind === 'done' ? {status:'done', m, s} : {status:'play', m, s};
+}
+function renderRoom(){
+  if (!sess) return;
+  $('#rCode').textContent = sess.code;
+  const players = roomData ? roomData.players : [{slot:sess.slot, name:sess.name, state:{}}];
+  const pp = partner();
+  $('#rHint').textContent = pp ? 'Вы оба в комнате. Каждый проходит свой турнир; прогресс обновляется сам.' : `Отправь партнёру приглашение со ссылкой или кодом ${sess.code}. Пока можно начинать свой турнир.`;
+  const card = p => {
+    const me = p.slot === sess.slot, ps = me ? (S.cfg ? {status: simulate(S.cfg, S.dec).kind === 'done' ? 'done' : 'play', m: simulate(S.cfg, S.dec)} : {status:'idle'}) : playerState(p);
+    const on = me || online.has(p.slot);
+    let body = '';
+    if (ps.status === 'idle') body = '<p class="muted">Ещё не начал(а) турнир.</p>';
+    if (ps.status === 'play') body = `<p>Позади ${ps.m.played} из ≈${ps.m.est} ${duelsWord(ps.m.est)}</p><div class="pbar"><i style="width:${Math.min(100, 100 * ps.m.played / ps.m.est).toFixed(1)}%"></i></div>`;
+    if (ps.status === 'done') body = `<div class="champ">${face(ps.m.champ)}<div><small class="muted">Пара в Рунтерре</small><br><b>${esc(name(ps.m.champ))}</b></div></div>`;
+    const gs = (me ? (G && {correct:G.picks.filter(x => x.ok).length, total:G.list.length, done:G.done}) : (p.state && p.state.guess));
+    if (gs && gs.done) body += `<p class="muted">Угадал(а) выборы партнёра: ${gs.correct} из ${gs.total}</p>`;
+    return `<div class="pcard ${me ? 'me' : ''}"><div class="who"><span class="dot ${on ? 'on' : ''}"></span>${esc(p.name)} ${me ? '<small>это ты</small>' : on ? '<small>в сети</small>' : ''}</div>${body}</div>`;
+  };
+  $('#rPlayers').innerHTML = players.map(card).join('') + (pp ? '' : '<div class="pcard"><div class="who"><span class="dot"></span>Ждём партнёра…</div><p class="muted">Когда партнёр войдёт по коду, он появится здесь.</p></div>');
+  const mine = S.cfg ? simulate(S.cfg, S.dec) : null, their = playerState(pp);
+  const acts = [];
+  if (!mine) acts.push(`<button class="btn primary" type="button" data-act="start">Начать свой турнир</button>`);
+  else if (mine.kind === 'duel') acts.push(`<button class="btn primary" type="button" data-act="resume">Продолжить (${mine.played} из ≈${mine.est})</button>`);
+  else acts.push(`<button class="btn primary" type="button" data-act="result">Мой результат</button>`);
+  if (pp && their.status === 'done'){
+    if (!G || !G.done) acts.push(`<button class="btn" type="button" data-act="guess">${G && G.picks.length ? 'Продолжить угадывать' : 'Угадать выборы: ' + esc(pp.name)}</button>`);
+  }
+  if (mine && mine.kind === 'done' && their.status === 'done') acts.push(`<button class="btn" type="button" data-act="compare">Сравнить результаты</button>`);
+  else if (pp) acts.push(`<button class="btn ghost" type="button" disabled>Сравнение откроется, когда оба закончат</button>`);
+  $('#rActions').innerHTML = acts.join('');
+  $('#rActions').querySelectorAll('[data-act]').forEach(b => b.addEventListener('click', () => roomAction(b.dataset.act)));
+}
+function roomAction(a){
+  if (a === 'start'){ setCtx('room'); show('scr-start'); refreshStart(); }
+  if (a === 'resume' || a === 'result'){ setCtx('room'); preloadAll(S.cfg.roster); go(); }
+  if (a === 'guess') startGuess();
+  if (a === 'compare'){ show('scr-compare'); renderCompare(); }
+}
+function renderPartnerChip(){
+  const chip = $('#partnerChip');
+  if (!(ctx === 'room' && sess && ui.screen === 'scr-duel')){ chip.hidden = true; return; }
+  const pp = partner();
+  if (!pp){ chip.hidden = false; chip.innerHTML = '<span class="dot"></span>Ждём партнёра'; return; }
+  const ps = playerState(pp), on = online.has(pp.slot);
+  chip.hidden = false;
+  chip.innerHTML = `<span class="dot ${on ? 'on' : ''}"></span><b>${esc(pp.name)}</b> ` + (ps.status === 'done' ? '· уже нашёл(ла) пару' : ps.status === 'play' ? `· ${ps.m.played}/≈${ps.m.est}` : '· ещё не начал(а)');
+}
+
+/* сравнение */
+function renderCompare(){
+  const pp = partner(), mine = S.cfg ? simulate(S.cfg, S.dec) : null, their = playerState(pp);
+  if (!pp || !mine || mine.kind !== 'done' || their.status !== 'done'){ $('#cTitle').textContent = 'Сравнение пока недоступно'; return; }
+  const c = compareOrders(mine.order, their.m.order);
+  $('#cTitle').textContent = `${sess.name} и ${pp.name}`;
+  $('#cHead').innerHTML = `<div class="cmp-p">${face(mine.champ)}<small>${esc(sess.name)} · пара в Рунтерре</small><b>${esc(name(mine.champ))}</b></div>
+    <div class="cmp-pct">${c.percent}%<small>совпадение вкусов</small></div>
+    <div class="cmp-p">${face(their.m.champ)}<small>${esc(pp.name)} · пара в Рунтерре</small><b>${esc(name(their.m.champ))}</b></div>`;
+  $('#cNote').textContent = mine.champ === their.m.champ ? 'Невероятно: у вас одна и та же пара! Придётся делиться.' : `Сравнение по ${c.n} персонажам, которые были у обоих. 50% — вкусы никак не связаны, 100% — полностью одинаковые.`;
+  const row = (id, txt) => `<div class="lrow">${face(id)}<b>${esc(name(id))}</b><small>${txt}</small></div>`;
+  const pos = (o, id) => o.indexOf(id) + 1;
+  $('#cBoth').innerHTML = c.both.slice(0, 8).map(id => row(id, `#${pos(mine.order,id)} и #${pos(their.m.order,id)}`)).join('') || '<p class="muted">Общих любимцев в верхней пятой части нет.</p>';
+  $('#cFights').innerHTML = c.fights.map(f => row(f.id, `${esc(sess.name)}: #${pos(mine.order,f.id)} · ${esc(pp.name)}: #${pos(their.m.order,f.id)}`)).join('');
+  $('#cHate').innerHTML = c.hate.slice(0, 6).map(id => row(id, `#${pos(mine.order,id)} и #${pos(their.m.order,id)}`)).join('') || '<p class="muted">Общих аутсайдеров нет.</p>';
+  const myG = G && G.done ? `<p>${esc(sess.name)} угадывает выборы партнёра: <b>${G.picks.filter(x => x.ok).length} из ${G.list.length}</b>.</p>` : '';
+  const thG = pp.state && pp.state.guess && pp.state.guess.done ? `<p>${esc(pp.name)} угадывает выборы партнёра: <b>${+pp.state.guess.correct || 0} из ${+pp.state.guess.total || 0}</b>.</p>` : '';
+  $('#cGuess').innerHTML = (myG + thG) || '<p class="muted">Пока никто не сыграл. Кнопка «Угадать выборы» — в комнате.</p>';
+}
+
+/* «Угадай мой выбор» */
+function startGuess(){
+  const pp = partner(), ps = playerState(pp);
+  if (ps.status !== 'done') return toast('Партнёр ещё не закончил турнир');
+  if (!G || G.target !== pp.slot || G.seed !== ps.s.cfg.seed){
+    G = {target:pp.slot, seed:ps.s.cfg.seed, list:guessSet(ps.s.cfg, ps.s.dec), picks:[], done:false};
+    store.set(guessKey(sess.code), G);
+  }
+  ui.mode = 'guess'; show('scr-duel'); renderGuess();
+}
+function renderGuess(){
+  const pp = partner(), i = G.picks.length;
+  if (i >= G.list.length){
+    G.done = true; store.set(guessKey(sess.code), G); pushState(true);
+    const ok = G.picks.filter(p => p.ok).length;
+    ui.mode = 'play'; show('scr-room'); renderRoom();
+    toast(`Угадано ${ok} из ${G.list.length}. ${ok >= G.list.length * .8 ? 'Вы прекрасно друг друга знаете!' : ok >= G.list.length * .6 ? 'Неплохо!' : 'Есть куда расти — и о чём поговорить.'}`, 6000);
+    return;
+  }
+  const x = G.list[i];
+  ui.cur = {kind:'duel', a:x.a, b:x.b, level:x.level, stage:'guess'};
+  $('#stage').textContent = `Угадай мой выбор · ${x.stage === 'final' ? 'гранд-финал' : x.label || 'дуэль турнира'}`;
+  $('#counter').textContent = `Вопрос ${i + 1} из ${G.list.length} · угадано ${G.picks.filter(p => p.ok).length}`;
+  $('#barFill').style.width = (100 * i / G.list.length).toFixed(1) + '%';
+  $('#prompt').textContent = `Кого выберет ${pp ? pp.name : 'партнёр'}?`; $('#prompt').className = 'prompt';
+  $('#subprompt').hidden = true;
+  setCard(0, x.a); setCard(1, x.b);
+  const ar = $('#arena'); ar.className = 'arena' + (x.level ? ' lv' + Math.min(2, x.level) : ''); void ar.offsetWidth; ar.classList.add('enter');
+  FX.setLevel(0);
+  $('#undoBtn').hidden = true; $('#bracketBtn').hidden = true; $('#partnerChip').hidden = true;
+  $('#reveal').textContent = ''; $('#reveal').className = 'reveal';
+}
+function guessPick(side){
+  ui.lock = true;
+  const x = G.list[G.picks.length], ok = side === x.d, cards = [$('#card0'), $('#card1')];
+  cards[side].classList.add(ok ? 'right' : 'lost'); if (!ok) cards[x.d].classList.add('chosen');
+  const r = $('#reveal'); r.className = 'reveal ' + (ok ? 'ok' : 'no');
+  r.textContent = ok ? 'Угадано!' : `Мимо! Правильный ответ: ${name(x.d === 0 ? x.a : x.b)}`;
+  Sound.pick(ok ? 2 : 0); if (ok) FX.burst(...cardCenter(side), 1);
+  G.picks.push({i:x.i, pick:side, ok}); store.set(guessKey(sess.code), G); queueSync();
+  setTimeout(() => { ui.lock = false; renderGuess(); }, ok ? 900 : 1700);
+}
+
+/* ================= связывание ================= */
+function bind(){
+  $('#setup').addEventListener('change', refreshStart);
+  $('#setup').addEventListener('submit', e => { e.preventDefault(); startFlow(); });
+  $('#resumeBtn').addEventListener('click', () => { if (S.cfg){ preloadAll(S.cfg.roster); go(); } });
+  $('#fback').addEventListener('click', () => { show('scr-start'); refreshStart(); });
+  $('#freset').addEventListener('click', () => { ui.off.clear(); document.querySelectorAll('#fgrid .gcard').forEach(b => { b.classList.remove('off'); b.setAttribute('aria-pressed','false'); }); refreshFilter(); });
+  $('#fstart').addEventListener('click', () => {
+    const ids = pool(settings()), keep = ids.filter(id => !ui.off.has(id));
+    if (keep.length >= MIN_N) openBet(keep, ids.filter(id => ui.off.has(id)));
+  });
+  $('#betSearch').addEventListener('input', e => { const q = e.target.value.trim().toLowerCase(); document.querySelectorAll('#bgrid .gcard').forEach(b => b.hidden = !!q && !b.dataset.q.includes(q)); });
+  $('#bskip').addEventListener('click', () => newTournament(ui.betRoster, ui.betRemoved, null));
+  $('#bstart').addEventListener('click', () => newTournament(ui.betRoster, ui.betRemoved, ui.bet));
+  $('#card0').addEventListener('click', () => { if (!ui.swallowClick) pick(0); });
+  $('#card1').addEventListener('click', () => { if (!ui.swallowClick) pick(1); });
+  $('#undoBtn').addEventListener('click', undo);
+  $('#menuBtn').addEventListener('click', () => { if (ui.mode === 'guess'){ ui.mode = 'play'; show('scr-room'); renderRoom(); return; } if (ctx === 'room' && sess){ show('scr-room'); renderRoom(); } else { show('scr-start'); refreshStart(); } });
+  $('#interGo').addEventListener('click', () => { ui.ack = true; go(); });
+  $('#interBack').addEventListener('click', undo);
+  $('#copyBtn').addEventListener('click', copyResult);
+  $('#newBtn').addEventListener('click', () => { show('scr-start'); refreshStart(); });
+  $('#toRoomBtn').addEventListener('click', () => { show('scr-room'); renderRoom(); fetchRoom(); });
+  $('#refinalBtn').addEventListener('click', undo);
+  $('#certName').addEventListener('input', drawCertPreview);
+  const saveImage = async (cv, file, done) => {
+    if (window.RP_CONFIG && RP_CONFIG.inlineSave){
+      openModal(`<p class="eyebrow">Картинка готова</p><p class="muted" style="margin:6px 0 12px">Нажми и удерживай картинку (на компьютере — правая кнопка мыши), чтобы сохранить её.</p><img alt="Готовая картинка" src="${cv.toDataURL('image/png')}" style="width:100%;height:auto;border:1px solid var(--gold-lo)">`);
+      return;
+    }
+    const r = await Share.save(cv, file); if (r === 'saved') toast(done);
+  };
+  $('#certBtn').addEventListener('click', async () => { const m = ui.cur; if (m && m.kind === 'done') saveImage(await Share.certificate(m, $('#certName').value), 'para-iz-runterry-sertifikat.png', 'Сертификат сохранён'); });
+  $('#tierImgBtn').addEventListener('click', async () => { const m = ui.cur; if (m && m.kind === 'done') saveImage(await Share.tierList(m, (S.cfg.removed || []).filter(id => BY[id]), $('#certName').value.trim()), 'para-iz-runterry-tir-list.png', 'Тир-лист сохранён'); });
+  $('#soundBtn').addEventListener('click', () => { const on = Sound.toggle(); $('#soundBtn').setAttribute('aria-pressed', String(on)); $('#soundWaves').style.display = on ? '' : 'none'; });
+  $('#soundBtn').setAttribute('aria-pressed', String(Sound.on)); $('#soundWaves').style.display = Sound.on ? '' : 'none';
+  $('#bracketBtn').addEventListener('click', () => { const m = ui.cur; openModal(`<p class="eyebrow">Плей-офф</p><h2 style="font-size:32px;margin:4px 0 14px">Сетка</h2><div class="bracket-wrap">${bracketHTML(m.bracket || [], m)}</div>`); });
+  $('#modalClose').addEventListener('click', closeModal);
+  $('#modal').addEventListener('click', e => { if (e.target.id === 'modal') closeModal(); });
+  $('#roomCreate').addEventListener('click', roomCreate);
+  $('#roomJoin').addEventListener('click', roomJoin);
+  $('#roomOpen').addEventListener('click', () => enterRoom(false));
+  $('#rLeave').addEventListener('click', leaveRoom);
+  $('#rCopy').addEventListener('click', () => {
+    const link = location.origin + location.pathname + '?room=' + sess.code;
+    const text = `Заходи в нашу комнату «Пара из Рунтерры»: ${link} (код ${sess.code})`;
+    try { navigator.clipboard.writeText(text).then(() => toast('Приглашение скопировано'), () => toast(text, 8000)); } catch(e){ toast(text, 8000); }
+  });
+  $('#cBack').addEventListener('click', () => { show('scr-room'); renderRoom(); });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && !$('#modal').hidden) return closeModal();
+    if (e.altKey || e.ctrlKey || e.metaKey || !$('#modal').hidden || !$('#intro').hidden) return;
+    if (ui.screen === 'scr-duel'){
+      if (e.key === 'ArrowLeft' || e.key === '1'){ e.preventDefault(); pick(0); }
+      else if (e.key === 'ArrowRight' || e.key === '2'){ e.preventDefault(); pick(1); }
+      else if (e.key === 'Backspace'){ e.preventDefault(); undo(); }
+    }
+  });
+  document.addEventListener('visibilitychange', () => { if (document.hidden && saveT) pushState(true); else if (!document.hidden && sess) fetchRoom(); });
+  document.querySelectorAll('.pick img').forEach(im => im.addEventListener('error', () => im.classList.add('broken')));
+  bindSwipe();
+}
+
+function start(){
+  bind();
+  const qs = new URLSearchParams(location.search), inv = (qs.get('room') || '').toUpperCase();
+  if (inv) $('#roomCode').value = inv;
+  if (sess && (!inv || inv === sess.code) && Room.configured()){ setCtx('room'); refreshStart(); enterRoom(false); return; }
+  if (inv && sess && inv !== sess.code){ sstore.del('rp-session'); sess = null; }
+  setCtx(sstore.get('rp-ctx') === 'room' && sess ? 'room' : 'solo');
+  refreshStart(); show('scr-start');
+  if (inv){ $('#roomBox').scrollIntoView({block:'center'}); $('#roomName').focus(); }
+}
+start();

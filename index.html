@@ -1,0 +1,355 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Пара из Рунтерры</title>
+<meta name="description" content="Тест-турнир по чемпионам League of Legends: выбирай из двух, пока не найдёшь свою идеальную пару. Можно вдвоём в живой комнате.">
+<meta name="theme-color" content="#090E15">
+<meta property="og:title" content="Пара из Рунтерры">
+<meta property="og:description" content="Кто из чемпионов League of Legends — твоя идеальная пара? Турнир из дуэлей, тир-лист и сертификат.">
+<meta property="og:image" content="img/Ahri.webp">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 22'%3E%3Cpath fill='%23E8668A' d='M12 21.4 10.6 20C5.4 15.4 2 12.3 2 8.5 2 5.4 4.4 3 7.5 3c1.7 0 3.4.8 4.5 2.1C13.1 3.8 14.8 3 16.5 3 19.6 3 22 5.4 22 8.5c0 3.8-3.4 6.9-8.6 11.5L12 21.4Z'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Forum&family=Golos+Text:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<canvas id="fx" aria-hidden="true"></canvas>
+<div class="app">
+
+<!-- СТАРТ -->
+<section id="scr-start" class="screen">
+  <div class="start">
+    <div class="start-main">
+      <p class="eyebrow">League of Legends · тест на совместимость</p>
+      <h1>Пара из Рунтерры</h1>
+      <p class="lead">На экране два чемпиона. Выбирай того, с кем отношения сложились бы лучше. Одно поражение никого не выбивает: каждый снова и снова встречается с равными по силе, пока его место не станет ясным. В конце будет гранд-финал один на один и твой полный тир-лист.</p>
+
+      <div class="banner" id="roomBanner" hidden></div>
+
+      <div class="resume" id="resume" hidden>
+        <p class="rtext" id="resumeText"></p>
+        <button class="btn primary" id="resumeBtn" type="button">Продолжить</button>
+      </div>
+
+      <form class="setup" id="setup">
+        <fieldset>
+          <legend>Кто участвует</legend>
+          <div class="seg">
+            <label><input type="radio" name="who" value="all" id="who-all" checked><span><b>Все</b><small><span id="cnt-all">138</span> чемп.</small></span></label>
+            <label><input type="radio" name="who" value="m" id="who-m"><span><b>Мужчины</b><small><span id="cnt-m">77</span> чемп.</small></span></label>
+            <label><input type="radio" name="who" value="f" id="who-f"><span><b>Женщины</b><small><span id="cnt-f">59</span> чемп.</small></span></label>
+          </div>
+        </fieldset>
+
+        <label class="check" for="extra">
+          <input type="checkbox" id="extra" checked>
+          <b>Нелюди и чудовища</b>
+          <small>Варвик, Треш, Ка'Зикс, Шако, Волк, Овечка и ещё 25. Выключи, если нужны только люди и человекоподобные.</small>
+        </label>
+
+        <fieldset>
+          <legend>Длина турнира</legend>
+          <div class="seg">
+            <label><input type="radio" name="mode" value="quick" id="mode-quick"><span><b>Быстро</b><small id="est-quick"></small></span></label>
+            <label><input type="radio" name="mode" value="normal" id="mode-normal" checked><span><b>Обычно</b><small id="est-normal"></small></span></label>
+            <label><input type="radio" name="mode" value="deep" id="mode-deep"><span><b>Подробно</b><small id="est-deep"></small></span></label>
+          </div>
+        </fieldset>
+
+        <label class="check" for="prefilter">
+          <input type="checkbox" id="prefilter">
+          <b>Сначала убрать тех, кто точно не нравится</b>
+          <small>Короче турнир и точнее итог. Убранные попадут в отдельную строку тир-листа.</small>
+        </label>
+
+        <div class="go">
+          <button class="btn primary" type="submit" id="startBtn">Начать турнир</button>
+          <span class="note" id="startNote"></span>
+        </div>
+
+        <details class="who">
+          <summary>Как устроен турнир</summary>
+          <p><b>1. Отбор.</b> Каждый играет каждый круг против тех, у кого похожий счёт. Проигрыш никого не выбивает.</p>
+          <p><b>2. Битвы за место.</b> Рейтинг считается по всем дуэлям с учётом силы соперников: проиграть сильному почти не стыдно. Дальше дерутся только те, чьё место ещё не ясно, причём с ближайшими по рейтингу, с кем ещё не встречались.</p>
+          <p><b>3. Спорные места.</b> В режиме «Подробно» перед плей-офф ещё 15–30 дуэлей у самых границ тиров.</p>
+          <p><b>4. Плей-офф с двойным выбыванием.</b> Проигравший уходит в сетку второго шанса и продолжает бороться. Вылетает только тот, кто проиграл дважды.</p>
+          <p><b>5. Гранд-финал.</b> Лучший из сетки победителей против лучшего из сетки второго шанса, лоб в лоб за первое место.</p>
+        </details>
+        <details class="who">
+          <summary>Кого нет в списке и почему</summary>
+          <p>В тесте только взрослые чемпионы. Отдельными участниками идут Рааст и Каин, а также Волк и Овечка из Киндред: своих карточек у них в игре нет, поэтому портреты вырезаны из официальных артов Каина и Киндред. Имена и титулы взяты из русской локализации игры, патч 16.23.</p>
+          <p><b>Дети:</b> Энни, Нуну и Виллумп, Амуму, Зои, Экко, Милио, Лиллия, Смолдер.</p>
+          <p><b>Йордлы:</b> Векс, Вейгар, Гнар, Зиггс, Кеннен, Клед, Корки, Лулу, Поппи, Рамбл, Тимо, Тристана, Физз, Хеймердингер.</p>
+          <p><b>Существа без человеческого облика:</b> Анивия, Бард, Блицкранк, Вел'Коз, Галио, Зак, Ког'Мао, Мальфит, Маокай, Наутилус, Раммус, Рек'Сай, Скарнер, Чо'Гат, Юми.</p>
+        </details>
+      </form>
+
+      <div class="roombox" id="roomBox">
+        <h2>Вдвоём, в живой комнате</h2>
+        <p class="muted" id="roomIntro">Каждый проходит свой турнир на своём телефоне, а вы видите прогресс друг друга. В конце — сравнение вкусов и игра «Угадай мой выбор».</p>
+        <div id="roomForms">
+          <div class="field" style="max-width:none">
+            <label for="roomName">Твоё имя</label>
+            <input class="input" id="roomName" maxlength="40" autocomplete="nickname" placeholder="Например, Аня">
+          </div>
+          <div class="row" style="margin-top:10px">
+            <button class="btn primary" type="button" id="roomCreate">Создать комнату</button>
+          </div>
+          <div class="row" style="margin-top:10px">
+            <input class="input" id="roomCode" maxlength="6" autocomplete="off" placeholder="Код комнаты" style="text-transform:uppercase;letter-spacing:.2em">
+            <button class="btn" type="button" id="roomJoin">Войти по коду</button>
+          </div>
+        </div>
+        <div class="row" id="roomCurrent" hidden>
+          <span id="roomCurrentText"></span>
+          <button class="btn primary" type="button" id="roomOpen">Открыть комнату</button>
+        </div>
+        <p class="err" id="roomErr" role="alert"></p>
+      </div>
+    </div>
+
+    <div class="start-side" aria-hidden="true">
+      <div class="fan">
+        <div class="fc" style="--r:-16deg;--x:-64%;--y:22px;z-index:1"><img src="img/Ahri.webp" alt=""></div>
+        <div class="fc" style="--r:-8deg;--x:-33%;--y:6px;z-index:2"><img src="img/Kayn.webp" alt=""></div>
+        <div class="fc" style="--r:8deg;--x:33%;--y:6px;z-index:2"><img src="img/Rhaast.webp" alt=""></div>
+        <div class="fc" style="--r:16deg;--x:64%;--y:22px;z-index:1"><img src="img/Lux.webp" alt=""></div>
+        <div class="fc fc-q" style="--r:0deg;--y:-6px"><span>?</span></div>
+        <p class="fan-cap">Каин и Рааст — разные участники</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ЧИСТКА СОСТАВА -->
+<section id="scr-filter" class="screen" hidden>
+  <div class="head">
+    <div>
+      <p class="eyebrow">Перед турниром</p>
+      <h2>Убери лишних</h2>
+    </div>
+    <p class="muted">Нажми на портрет, чтобы убрать чемпиона из турнира. Нажми ещё раз, чтобы вернуть.</p>
+  </div>
+  <div class="grid" id="fgrid"></div>
+  <div class="sticky-go">
+    <span class="cnt" id="fcnt"></span>
+    <div class="go">
+      <button class="btn ghost" type="button" id="fback">Назад</button>
+      <button class="btn ghost" type="button" id="freset">Вернуть всех</button>
+      <button class="btn primary" type="button" id="fstart">Дальше</button>
+    </div>
+  </div>
+</section>
+
+<!-- СТАВКА -->
+<section id="scr-bet" class="screen" hidden>
+  <div class="head">
+    <div>
+      <p class="eyebrow">Ставка на старте</p>
+      <h2>Кто, по-твоему, победит?</h2>
+    </div>
+    <p class="muted">Выбери того, кого сердце называет заранее. В конце узнаешь, сработала ли интуиция.</p>
+  </div>
+  <input class="search" id="betSearch" type="search" placeholder="Поиск по имени" autocomplete="off" aria-label="Поиск по имени">
+  <div class="grid" id="bgrid" style="margin-top:14px"></div>
+  <div class="sticky-go">
+    <span class="cnt" id="bcnt">Ставка не выбрана</span>
+    <div class="go">
+      <button class="btn ghost" type="button" id="bskip">Без ставки</button>
+      <button class="btn primary" type="button" id="bstart" disabled>Начать турнир</button>
+    </div>
+  </div>
+</section>
+
+<!-- ДУЭЛЬ -->
+<section id="scr-duel" class="screen" hidden>
+  <div class="duel-top">
+    <p class="eyebrow" id="stage"></p>
+    <div class="duel-tools">
+      <span class="chip" id="partnerChip" hidden></span>
+      <p class="cnt" id="counter"></p>
+      <button class="icon-btn" type="button" id="bracketBtn" hidden aria-label="Сетка плей-офф" title="Сетка плей-офф"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 5h5v4H3zM3 15h5v4H3zM8 7h4v10H8M12 12h4M16 10h5v4h-5z"/></svg></button>
+      <button class="icon-btn" type="button" id="soundBtn" aria-label="Звук" title="Звук"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 9h4l5-4v14l-5-4H4z"/><path id="soundWaves" d="M16 9a4 4 0 0 1 0 6M18.5 6.5a7.5 7.5 0 0 1 0 11"/></svg></button>
+    </div>
+  </div>
+  <div class="bar" aria-hidden="true"><i id="barFill" style="width:0%"></i></div>
+  <h2 class="prompt" id="prompt"></h2>
+  <p class="subprompt" id="subprompt" hidden></p>
+  <div class="arena" id="arena">
+    <button class="pick" id="card0" type="button"><img alt="" id="img0"><span class="cap"><span class="nm" id="nm0"></span><span class="tt" id="tt0"></span><span class="ds" id="ds0"></span></span><svg class="heart" viewBox="0 0 24 22" aria-hidden="true"><path fill="currentColor" d="M12 21.4 10.6 20C5.4 15.4 2 12.3 2 8.5 2 5.4 4.4 3 7.5 3c1.7 0 3.4.8 4.5 2.1C13.1 3.8 14.8 3 16.5 3 19.6 3 22 5.4 22 8.5c0 3.8-3.4 6.9-8.6 11.5L12 21.4Z"/></svg></button>
+    <button class="pick" id="card1" type="button"><img alt="" id="img1"><span class="cap"><span class="nm" id="nm1"></span><span class="tt" id="tt1"></span><span class="ds" id="ds1"></span></span><svg class="heart" viewBox="0 0 24 22" aria-hidden="true"><path fill="currentColor" d="M12 21.4 10.6 20C5.4 15.4 2 12.3 2 8.5 2 5.4 4.4 3 7.5 3c1.7 0 3.4.8 4.5 2.1C13.1 3.8 14.8 3 16.5 3 19.6 3 22 5.4 22 8.5c0 3.8-3.4 6.9-8.6 11.5L12 21.4Z"/></svg></button>
+    <div class="vs" aria-hidden="true"><span>или</span></div>
+  </div>
+  <p class="reveal" id="reveal" aria-live="polite"></p>
+  <div class="ctrl">
+    <button class="btn ghost" type="button" id="undoBtn"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3 2 7l4 4M2.5 7H10a4 4 0 0 1 0 8H8" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>Назад</button>
+    <button class="btn ghost" type="button" id="menuBtn">В меню</button>
+  </div>
+  <p class="keys">Клавиши: <kbd>←</kbd> <kbd>→</kbd> выбрать, <kbd>Backspace</kbd> отменить. На телефоне можно свайпать.</p>
+</section>
+
+<!-- ПЕРЕД ПЛЕЙ-ОФФ -->
+<section id="scr-inter" class="screen" hidden>
+  <div class="inter">
+    <div class="head">
+      <div>
+        <p class="eyebrow">Отбор и битвы за место завершены</p>
+        <h2 id="interTitle"></h2>
+      </div>
+      <p class="muted" id="interText"></p>
+    </div>
+    <div class="seedgrid" id="seedgrid"></div>
+    <div class="go">
+      <button class="btn ghost" type="button" id="interBack">Назад</button>
+      <button class="btn primary" type="button" id="interGo">К плей-офф</button>
+    </div>
+  </div>
+</section>
+
+<!-- ИТОГИ -->
+<section id="scr-result" class="screen" hidden>
+  <div class="res">
+    <div class="winner">
+      <div class="wimg"><img id="wImg" alt=""></div>
+      <div class="wtext">
+        <p class="eyebrow" id="wEyebrow">Твоя пара в Рунтерре</p>
+        <h1 id="wName"></h1>
+        <p class="ttl" id="wTitle"></p>
+        <p class="path" id="wLong"></p>
+        <p class="path muted" id="wPath"></p>
+        <div class="bet-line" id="betLine" hidden></div>
+        <div class="podium" id="podium"></div>
+      </div>
+    </div>
+
+    <div class="sec" id="badgesSec">
+      <h2>Ачивки</h2>
+      <div class="badges" id="badges"></div>
+    </div>
+
+    <div class="sec">
+      <h2>Твой типаж</h2>
+      <div class="typaj" id="typaj"></div>
+    </div>
+
+    <div class="tiers" id="tiers"></div>
+
+    <div class="sec">
+      <h2>Ни за что</h2>
+      <p class="sec-sub">Три чемпиона с самого дна. Вот почему у вас бы не сложилось.</p>
+      <div class="anti" id="anti"></div>
+    </div>
+
+    <div class="sec">
+      <h2>Сетка плей-офф</h2>
+      <p class="sec-sub">Двойное выбывание: кто через кого прошёл и кто вернулся из сетки второго шанса.</p>
+      <div class="bracket-wrap" id="bracketRes"></div>
+    </div>
+
+    <div class="sec">
+      <h2>Сертификат и картинка</h2>
+      <div class="share-grid">
+        <canvas id="certPreview" width="1080" height="1350" aria-label="Превью сертификата"></canvas>
+        <div style="display:grid;gap:14px;align-content:start">
+          <div class="field">
+            <label for="certName">Чьё сердце (в родительном падеже)</label>
+            <input class="input" id="certName" maxlength="40" placeholder="Например, Анны">
+          </div>
+          <div class="res-actions">
+            <button class="btn primary" type="button" id="certBtn">Скачать сертификат</button>
+            <button class="btn" type="button" id="tierImgBtn">Скачать тир-лист</button>
+          </div>
+          <p class="sec-sub">На телефоне откроется меню «Поделиться», на компьютере картинка скачается.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="res-actions">
+      <button class="btn primary" type="button" id="copyBtn">Скопировать тир-лист текстом</button>
+      <button class="btn" type="button" id="newBtn">Новый турнир</button>
+      <button class="btn" type="button" id="toRoomBtn" hidden>В комнату</button>
+      <button class="btn ghost" type="button" id="refinalBtn">Переиграть гранд-финал</button>
+    </div>
+    <textarea id="copyFallback" hidden readonly aria-label="Тир-лист текстом"></textarea>
+    <p class="method" id="method"></p>
+  </div>
+</section>
+
+<!-- КОМНАТА -->
+<section id="scr-room" class="screen" hidden>
+  <div class="res">
+    <div class="room-head">
+      <div>
+        <p class="eyebrow">Живая комната</p>
+        <p class="room-code" id="rCode"></p>
+      </div>
+      <div class="res-actions">
+        <button class="btn" type="button" id="rCopy">Скопировать приглашение</button>
+        <button class="btn ghost" type="button" id="rLeave">Выйти из комнаты</button>
+      </div>
+    </div>
+    <p class="muted" id="rHint"></p>
+    <div class="players" id="rPlayers"></div>
+    <div class="room-actions" id="rActions"></div>
+    <p class="err" id="rErr" role="alert"></p>
+  </div>
+</section>
+
+<!-- СРАВНЕНИЕ -->
+<section id="scr-compare" class="screen" hidden>
+  <div class="res">
+    <div>
+      <p class="eyebrow">Сравнение вкусов</p>
+      <h1 id="cTitle" style="font-size:clamp(38px,6vw,64px)"></h1>
+    </div>
+    <div class="cmp-head" id="cHead"></div>
+    <p class="sec-sub" id="cNote"></p>
+    <div class="cmp-cols">
+      <div class="sec"><h2>Общие любимцы</h2><div class="list" id="cBoth"></div></div>
+      <div class="sec"><h2>Главные разногласия</h2><div class="list" id="cFights"></div></div>
+      <div class="sec"><h2>Общий антитоп</h2><div class="list" id="cHate"></div></div>
+    </div>
+    <div class="sec" id="cGuessSec"><h2>«Угадай мой выбор»</h2><div id="cGuess"></div></div>
+    <div class="res-actions"><button class="btn" type="button" id="cBack">В комнату</button></div>
+  </div>
+</section>
+
+</div>
+
+<!-- вступление стадии -->
+<div class="intro" id="intro" hidden role="dialog" aria-live="assertive">
+  <div class="intro-in">
+    <p class="intro-eyebrow">Плей-офф</p>
+    <p class="intro-title"></p>
+    <p class="intro-sub"></p>
+    <p class="intro-skip">нажми, чтобы продолжить</p>
+  </div>
+</div>
+<!-- модальное окно -->
+<div class="modal" id="modal" hidden role="dialog" aria-modal="true">
+  <div class="modal-box">
+    <button class="icon-btn modal-close" type="button" id="modalClose" aria-label="Закрыть"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+    <div id="modalBody"></div>
+  </div>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<footer class="app foot">
+  <p>«Пара из Рунтерры» — некоммерческий фан-проект. Он не одобрен Riot Games и не отражает взгляды или мнения Riot Games или кого-либо, официально участвующего в создании или управлении собственностью Riot Games. Riot Games и все связанные с ней объекты являются товарными знаками или зарегистрированными товарными знаками Riot Games, Inc. Арты чемпионов взяты из Data Dragon.</p>
+</footer>
+
+<script src="js/config.js"></script>
+<script src="js/vendor/supabase.js"></script>
+<script src="js/roster.js"></script>
+<script src="js/profiles.js"></script>
+<script src="js/engine.js"></script>
+<script src="js/analysis.js"></script>
+<script src="js/fx.js"></script>
+<script src="js/share.js"></script>
+<script src="js/room.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

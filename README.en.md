@@ -36,7 +36,7 @@ Once you're both done you get a comparison: how close your tastes are and whose 
 
 Then your two winners meet in one last duel, the battle of tastes, and you both vote. There's a joint certificate for the two of you, signed by your shared favourites as witnesses, and a little guessing game where you try to predict the other person's picks.
 
-Or you can play a shared tournament: 16 champions, random or themed, with the same pair on both screens at the same time. You each pick in secret and the answers are revealed together. If you disagree, you get one re-vote, and after that a coin toss decides. At the end you get a shared tier list for the couple and how often you agreed.
+Or you can play a shared tournament: random champions or a theme, with the same pair on both screens at the same time. You pick the length: quick (16 champions, about three minutes), normal (16, about seven) or thorough (32, about a quarter of an hour). You each pick in secret and the answers are revealed together. If you disagree, you get one re-vote, and after that a coin toss decides. At the end you get a shared tier list for the couple and how often you agreed.
 
 ## Running it yourself
 
@@ -101,7 +101,7 @@ Playing together:
 - [x] Battle of tastes: your winners meet in one last duel and you both vote
 - [x] A joint certificate, signed by your shared favourites as witnesses
 - [x] Live updates from your partner's playoffs with reactions, and a switch for spoiler haters
-- [x] Shared tournament: the same pair for both of you, secret picks, a re-vote and a coin toss, a shared tier list
+- [x] Shared tournament: the same pair for both of you, secret picks, a re-vote and a coin toss, a shared tier list, three lengths to choose from
 
 Everywhere:
 

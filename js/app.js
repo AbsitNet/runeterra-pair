@@ -1207,6 +1207,9 @@ function showReaction(who, e, about){
 
 /* ================= общий турнир: одна и та же пара у обоих, выбор втайне, ответы открываются разом ================= */
 const SYNC_N = 16;
+/* длина общего турнира: сколько участников и в каком режиме движка */
+const SYNC_LEN = {fast:{n:16, mode:'fast', label:'Быстро'}, normal:{n:16, mode:'normal', label:'Обычно'}, deep:{n:32, mode:'normal', label:'Подробно'}};
+const syncMin = d => Math.max(1, Math.round(d * 5 / 60));   // вдвоём дуэль идёт дольше: ждёте друг друга и смотрите на раскрытие
 const syncOf = p => { const y = p && p.state && p.state.sync; return y && y.id && y.cfg && Array.isArray(y.cfg.roster) && validTournament({cfg:y.cfg, dec:[]}) ? y : null; };
 function syncStatus(){
   const pp = partner(), th = syncOf(pp);
@@ -1216,7 +1219,8 @@ function syncStatus(){
   if (SY && SY.host === sess.slot) return {state:'waiting', pp};
   return {state:'none', pp};
 }
-const syncTitle = cfg => cfg.theme && themeOf(cfg.theme) ? `«${themeOf(cfg.theme)[1]}»` : 'на 16 случайных чемпионов';
+const syncTitle = cfg => { const n = cfg.roster.length; return cfg.theme && themeOf(cfg.theme) ? `«${themeOf(cfg.theme)[1]}»` : `на ${n} ${plural(n,'случайного чемпиона','случайных чемпиона','случайных чемпионов')}`; };
+const syncSize = cfg => { const n = cfg.roster.length, d = estimate(n, cfg.mode); return `${n} ${plural(n,'участник','участника','участников')}, примерно ${d} ${duelsWord(d)}, ~${syncMin(d)} мин`; };
 /* кто за что голосовал и чем решилась каждая дуэль; одинаково считается у обоих */
 function syncCalc(){
   const st = syncStatus(); if (st.state !== 'on') return null;
@@ -1241,19 +1245,28 @@ function syncSetup(){
   const all = CH.map(c => c[0]);
   openModal(`<p class="eyebrow">Вдвоём</p><h2>Общий турнир</h2>
     <p style="margin-top:12px">Одна и та же пара у вас обоих одновременно. Каждый выбирает втайне, ответы открываются разом. Если разошлись, можно один раз переголосовать, а дальше решает жребий. В конце — общий тир-лист пары и процент согласия.</p>
-    <p class="muted" style="margin-top:8px">16 участников, примерно ${estimate(SYNC_N, 'fast')} ${duelsWord(estimate(SYNC_N, 'fast'))}, минуты на три. Играйте, когда оба в сети.</p>
+    <fieldset class="sy-len"><legend>Длина</legend><div class="seg">
+      ${Object.entries(SYNC_LEN).map(([k, L], i) => { const d = estimate(L.n, L.mode); return `<label><input type="radio" name="syLen" value="${k}" ${i ? '' : 'checked'}><span><b>${L.label}</b><small>≈ ${d} ${duelsWord(d)}<br>~${syncMin(d)} мин<br>${L.n} чемп.</small></span></label>`; }).join('')}
+    </div></fieldset>
+    <p class="muted" style="margin-top:4px">Играйте, когда оба в сети. В небольших темах участников может быть меньше.</p>
     <div class="sy-pick">
-      <button type="button" class="mini" data-k=""><span class="mini-faces" aria-hidden="true">${['Ahri','Garen','Jinx'].map(id => face(id)).join('')}</span><b>Случайные</b><small>16 чемпионов наугад</small></button>
+      <button type="button" class="mini" data-k=""><span class="mini-faces" aria-hidden="true">${['Ahri','Garen','Jinx'].map(id => face(id)).join('')}</span><b>Случайные</b><small>Чемпионы наугад из всех</small></button>
       ${THEMES.map(([k, t, d, f, pics]) => `<button type="button" class="mini" data-k="${k}"><span class="mini-faces" aria-hidden="true">${pics.map(id => face(id)).join('')}</span><b>${esc(t)}</b><small>${esc(d)}</small></button>`).join('')}
     </div>`);
-  $('#modalBody').querySelectorAll('[data-k]').forEach(b => b.addEventListener('click', () => syncCreate(b.dataset.k || null)));
+  $('#modalBody').querySelectorAll('[data-k]').forEach(b => b.addEventListener('click', () => {
+    const len = ($('#modalBody input[name=syLen]:checked') || {}).value || 'fast';
+    syncCreate(b.dataset.k || null, len);
+  }));
 }
-function syncCreate(k){
+function syncCreate(k, len = 'fast'){
+  const L = SYNC_LEN[len] || SYNC_LEN.fast;
   const t = k && themeOf(k), ids = CH.map(c => c[0]).filter(id => !t || t[3](id));
   for (let i = ids.length - 1; i > 0; i--){ const j = Math.floor(Math.random() * (i + 1)); [ids[i], ids[j]] = [ids[j], ids[i]]; }
-  const roster = ids.slice(0, SYNC_N).sort((a, b) => IDX[a] - IDX[b]);
+  const roster = ids.slice(0, L.n).sort((a, b) => IDX[a] - IDX[b]);
+  /* в маленькой теме «Подробно» добирает длину не составом, а дополнительными дуэлями */
+  const mode = len === 'deep' && roster.length < L.n ? 'deep' : L.mode;
   const id = (crypto.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2)).slice(0, 12);
-  SY = {id, host:sess.slot, at:Date.now(), cfg:{v:ENGINE_VERSION, who:'all', extra:true, mode:'fast', seed:(Math.random() * 4294967296) >>> 0, roster, removed:[], bet:null}, v:[]};
+  SY = {id, host:sess.slot, at:Date.now(), cfg:{v:ENGINE_VERSION, who:'all', extra:true, mode, seed:(Math.random() * 4294967296) >>> 0, roster, removed:[], bet:null}, v:[]};
   if (k) SY.cfg.theme = k;
   store.set(syKey(sess.code), SY); pushState(true); closeModal(); preloadAll(roster);
   show('scr-room'); renderRoom();
@@ -1366,10 +1379,10 @@ function syncReveal(x){
 function renderSyncBox(){
   const box = $('#rSync'), st = syncStatus(); let h = '';
   if (st.state === 'invited') h = `<h3>${esc(st.pp.name)} зовёт в общий турнир ${esc(syncTitle(st.th.cfg))}</h3>
-      <p>Одна и та же пара у обоих, выбор втайне, ответы открываются разом. Примерно ${estimate(st.th.cfg.roster.length, st.th.cfg.mode)} ${duelsWord(estimate(st.th.cfg.roster.length, st.th.cfg.mode))}.</p>
+      <p>Одна и та же пара у обоих, выбор втайне, ответы открываются разом. ${esc(syncSize(st.th.cfg))}.</p>
       <div class="res-actions"><button class="btn primary" type="button" data-act="sync-join">Присоединиться</button></div>`;
   if (st.state === 'waiting') h = `<h3>Общий турнир ${esc(syncTitle(SY.cfg))}</h3>
-      <p>Приглашение отправлено. Турнир начнётся, когда ${esc(st.pp.name)} присоединится.</p>
+      <p>Приглашение отправлено: ${esc(syncSize(SY.cfg))}. Турнир начнётся, когда ${esc(st.pp.name)} присоединится.</p>
       <div class="res-actions"><button class="btn ghost" type="button" data-act="sync-cancel">Отменить</button></div>`;
   if (st.state === 'on'){
     const x = syncCalc();

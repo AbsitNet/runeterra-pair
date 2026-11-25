@@ -864,3 +864,4 @@ body::before{content:"";position:fixed;inset:-20vmax;z-index:0;pointer-events:no
   body::after{display:none}
   body::before{animation:none}
 }
+.sy-len{margin-top:16px}

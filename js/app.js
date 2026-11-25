@@ -48,6 +48,7 @@ function validTournament(v){
    В коде лежит лишь SHA-256 ключа; устройство, где ключ однажды подошёл, запоминается — дальше хватает ?tools */
 const DEV_HASH = '855de0401810a660ec22632e2ddd646216b9cab5d7ac543f7873588e09117341';
 let TOOLS = false;   // в режиме проверки ничего не сохраняем
+let VIEW = null;     // чужой результат по ссылке: {name} — тоже ничего не сохраняем
 async function sha256hex(t){
   const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t));
   return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join('');
@@ -65,7 +66,7 @@ async function devAccess(){
     return store.get('rp-dev') === DEV_HASH;
   } catch(e){ return false; }
 }
-function saveLocal(){ if (TOOLS) return; store.set(ctx === 'room' && sess ? roomKey(sess.code) : SOLO_KEY, S); if (ctx === 'room') queueSync(); }
+function saveLocal(){ if (TOOLS || VIEW) return; store.set(ctx === 'room' && sess ? roomKey(sess.code) : SOLO_KEY, S); if (ctx === 'room') queueSync(); }
 function loadFor(c){
   const v = store.get(c === 'room' && sess ? roomKey(sess.code) : SOLO_KEY);
   S = validTournament(v) ? v : {cfg:null, dec:[]};
@@ -388,7 +389,10 @@ function openProfile(id){
 /* ================= итоги ================= */
 function renderResult(m){
   show('scr-result'); FX.setLevel(0);
-  const w = BY[m.champ], pr = PROFILE[m.champ];
+  const w = BY[m.champ], pr = PROFILE[m.champ], V = !!VIEW;
+  $('#wEyebrow').textContent = V ? (VIEW.name ? `Выбор ${VIEW.name}` : 'Результат по ссылке') : 'Твоя пара в Рунтерре';
+  $('#typajH').textContent = V ? 'Типаж' : 'Твой типаж';
+  if (V && VIEW.name) $('#certName').value = VIEW.name;
   $('#wImg').src = img(w.id); $('#wImg').alt = w.name;
   $('#wName').textContent = w.name; $('#wTitle').textContent = w.title;
   $('#wLong').textContent = pr[4];
@@ -411,16 +415,16 @@ function renderResult(m){
   $('#badges').innerHTML = badges.map(b => `<div class="badge"><span class="hex" aria-hidden="true">${b.icon}</span><div><b>${esc(b.t)}</b><small>${esc(b.d)}</small></div></div>`).join('');
 
   const pf = profileOf(m.order), A = ARCH[pf.arch];
-  $('#typaj').innerHTML = `<div><p class="eyebrow">Твой типаж</p><h3>${esc(A[0])}</h3><p style="margin-top:12px">${esc(A[1])}</p>
-      ${pf.archSecond ? `<p class="muted" style="margin-top:10px">Ещё тебе близко: ${esc(ARCH[pf.archSecond][0].toLowerCase())}.</p>` : ''}
-      ${pf.archWorst ? `<p class="muted">Совсем не твоё: ${esc(ARCH[pf.archWorst][0].toLowerCase())}.</p>` : ''}</div>
+  $('#typaj').innerHTML = `<div><p class="eyebrow">${V ? 'Типаж' : 'Твой типаж'}</p><h3>${esc(A[0])}</h3><p style="margin-top:12px">${esc(A[1])}</p>
+      ${pf.archSecond ? `<p class="muted" style="margin-top:10px">${V ? 'Ещё близко' : 'Ещё тебе близко'}: ${esc(ARCH[pf.archSecond][0].toLowerCase())}.</p>` : ''}
+      ${pf.archWorst ? `<p class="muted">${V ? 'Совсем не то' : 'Совсем не твоё'}: ${esc(ARCH[pf.archWorst][0].toLowerCase())}.</p>` : ''}</div>
     <div class="facts">
-      <div class="fact"><small>Самые яркие примеры в твоём топе</small><b>${pf.archTop.length ? esc(listNames(pf.archTop)) : '—'}</b>${pf.archTop.length ? `<div class="faces">${pf.archTop.map(id => face(id)).join('')}</div>` : ''}</div>
+      <div class="fact"><small>Самые яркие примеры в ${V ? 'топе' : 'твоём топе'}</small><b>${pf.archTop.length ? esc(listNames(pf.archTop)) : '—'}</b>${pf.archTop.length ? `<div class="faces">${pf.archTop.map(id => face(id)).join('')}</div>` : ''}</div>
       <div class="fact"><small>Любимый край</small><b>${esc(REGIONS[pf.region][0])}: ${pf.regionTop.length} в топ-15</b><div class="faces">${pf.regionTop.map(id => face(id)).join('')}</div></div>
-      <div class="fact"><small>Любимый класс</small><b>Ты выбираешь ${esc(CLASSES[pf.cls][1])}</b><div class="faces">${pf.clsTop.map(id => face(id)).join('')}</div></div>
+      <div class="fact"><small>Любимый класс</small><b>${V ? esc(CLASSES[pf.cls][0]) : 'Ты выбираешь ' + esc(CLASSES[pf.cls][1])}</b><div class="faces">${pf.clsTop.map(id => face(id)).join('')}</div></div>
     </div>`;
 
-  const t = $('#tiers'); t.innerHTML = '<h2>Твой тир-лист</h2>';
+  const t = $('#tiers'); t.innerHTML = `<h2>${V ? 'Тир-лист' : 'Твой тир-лист'}</h2>`;
   const sizes = tierSizesOf(m); let pos = 0;
   TIERS.forEach(([L, label, tok], ti) => { t.appendChild(tierRow(L, label, tok, m.order.slice(pos, pos + sizes[ti]), pos)); pos += sizes[ti]; });
   const removed = (S.cfg.removed || []).filter(id => BY[id]);
@@ -429,8 +433,9 @@ function renderResult(m){
   $('#anti').innerHTML = antiTop(m.order).map(id => `<div class="card">${face(id)}<span class="stamp">НИ ЗА ЧТО</span><div class="txt"><b>${esc(name(id))}</b><p>${esc(PROFILE[id][5])}</p></div></div>`).join('');
   $('#bracketRes').innerHTML = bracketHTML(m.bracket);
   $('#copyFallback').hidden = true;
-  $('#toRoomBtn').hidden = !(ctx === 'room' && sess);
-  $('#method').textContent = `Режим «${MODES[S.cfg.mode].label}», ${m.total} ${duelsWord(m.total)}: ${m.R} ${plural(m.R,'круг','круга','кругов')} отбора, битвы за место${MODES[S.cfg.mode].D ? ', спорные места' : ''} и плей-офф с двойным выбыванием на ${m.P}. Первые ${m.P} мест решены плей-офф, остальные стоят по рейтингу всех дуэлей с учётом силы соперников; если соседи по списку встречались, выше стоит победитель. Результат сохранён в этом браузере.`;
+  $('#toRoomBtn').hidden = V || !(ctx === 'room' && sess);
+  $('#selfBtn').hidden = !V; $('#shareBtn').hidden = V; $('#newBtn').hidden = V; $('#refinalBtn').hidden = V;
+  $('#method').textContent = `Режим «${MODES[S.cfg.mode].label}», ${m.total} ${duelsWord(m.total)}: ${m.R} ${plural(m.R,'круг','круга','кругов')} отбора, битвы за место${MODES[S.cfg.mode].D ? ', спорные места' : ''} и плей-офф с двойным выбыванием на ${m.P}. Первые ${m.P} мест решены плей-офф, остальные стоят по рейтингу всех дуэлей с учётом силы соперников; если соседи по списку встречались, выше стоит победитель. ${V ? 'Результат открыт по ссылке и в этом браузере не сохраняется.' : 'Результат сохранён в этом браузере.'}`;
   drawCertPreview();
 }
 let certT = 0;
@@ -467,6 +472,71 @@ function resultText(){
   if (removed.length) lines.push(`Сразу мимо: ${removed.map(name).join(', ')}`);
   return lines.join('\n');
 }
+/* ================= ссылка на результат =================
+   Турнир детерминирован, поэтому в ссылку достаточно положить настройки, состав, сид, ставку и все выборы.
+   Состав и выборы — битовые маски, всё вместе — base64url, около 200 символов. */
+const SHARE_FMT = 1, MODE_KEYS = ['quick','normal','deep'], WHO_KEYS = ['all','m','f'];
+const IDX = {}; CH.forEach((c, i) => IDX[c[0]] = i);
+function rosterHash(n){ let h = 2166136261; for (let i = 0; i < n; i++) for (const ch of CH[i][0]){ h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); } return h & 0xffff; }
+const b64u = bytes => { let t = ''; bytes.forEach(b => t += String.fromCharCode(b)); return btoa(t).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); };
+const unb64u = t => Uint8Array.from(atob(t.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0));
+function packResult(cfg, dec, who){
+  const N = CH.length, L = Math.ceil(N / 8);
+  const mask = ids => { const a = new Uint8Array(L); ids.forEach(id => { const i = IDX[id]; if (i != null) a[i >> 3] |= 1 << (i & 7); }); return a; };
+  const d = new Uint8Array(Math.ceil(dec.length / 8)); dec.forEach((x, i) => { if (x) d[i >> 3] |= 1 << (i & 7); });
+  const nm = who ? new TextEncoder().encode(who.slice(0, 40)) : new Uint8Array(0);
+  const head = new Uint8Array(16), dv = new DataView(head.buffer);
+  dv.setUint8(0, SHARE_FMT); dv.setUint8(1, cfg.v);
+  dv.setUint8(2, Math.max(0, MODE_KEYS.indexOf(cfg.mode)) | (Math.max(0, WHO_KEYS.indexOf(cfg.who)) << 2) | ((cfg.extra ? 1 : 0) << 4));
+  dv.setUint16(3, N); dv.setUint16(5, rosterHash(N)); dv.setUint32(7, cfg.seed >>> 0);
+  dv.setUint16(11, cfg.bet && IDX[cfg.bet] != null ? IDX[cfg.bet] + 1 : 0); dv.setUint16(13, dec.length);
+  dv.setUint8(15, 0);   // зарезервировано
+  const parts = [head, mask(cfg.roster), mask(cfg.removed || []), d, nm], out = new Uint8Array(parts.reduce((n, x) => n + x.length, 0));
+  let o = 0; parts.forEach(x => { out.set(x, o); o += x.length; });
+  return b64u(out);
+}
+function unpackResult(t){
+  const b = unb64u(t), dv = new DataView(b.buffer);
+  if (b.length < 16 || dv.getUint8(0) !== SHARE_FMT) throw new Error('format');
+  const v = dv.getUint8(1), fl = dv.getUint8(2), N = dv.getUint16(3);
+  if (v !== ENGINE_VERSION || N > CH.length || rosterHash(N) !== dv.getUint16(5)) throw new Error('old');
+  const L = Math.ceil(N / 8), nd = dv.getUint16(13), betI = dv.getUint16(11);
+  const ids = a => { const r = []; for (let i = 0; i < N; i++) if (a[i >> 3] & (1 << (i & 7))) r.push(CH[i][0]); return r; };
+  let o = 16;
+  const roster = ids(b.subarray(o, o + L)); o += L;
+  const removed = ids(b.subarray(o, o + L)); o += L;
+  const db = b.subarray(o, o + Math.ceil(nd / 8)); o += Math.ceil(nd / 8);
+  const dec = []; for (let i = 0; i < nd; i++) dec.push(db[i >> 3] & (1 << (i & 7)) ? 1 : 0);
+  const who = o < b.length ? new TextDecoder().decode(b.subarray(o)).slice(0, 40) : '';
+  const cfg = {v, who:WHO_KEYS[(fl >> 2) & 3] || 'all', extra:!!(fl & 16), mode:MODE_KEYS[fl & 3] || 'normal', seed:dv.getUint32(7), roster, removed, bet:betI && CH[betI - 1] ? CH[betI - 1][0] : null};
+  return {cfg, dec, who};
+}
+function resultLink(){
+  const m = ui.cur; if (!m || m.kind !== 'done') return null;
+  const code = packResult(S.cfg, S.dec, $('#certName').value.trim());
+  /* самопроверка: ссылка должна воспроизводить ровно этот же результат */
+  try { const r = unpackResult(code), mm = simulate(r.cfg, r.dec); if (mm.kind !== 'done' || mm.order.join() !== m.order.join()) return null; } catch(e){ return null; }
+  return location.origin + location.pathname + '?r=' + code;
+}
+async function shareResult(){
+  const url = resultLink(), m = ui.cur;
+  if (!url) return toast('Не получилось собрать ссылку для этого турнира');
+  if (navigator.share && touch){
+    try { await navigator.share({title:'Пара из Рунтерры', text:`Моя пара в Рунтерре — ${name(m.champ)}. Весь тир-лист по ссылке:`, url}); return; }
+    catch(e){ if (e && e.name === 'AbortError') return; }
+  }
+  const fallback = () => { const ta = $('#copyFallback'); ta.hidden = false; ta.value = url; ta.focus(); ta.select(); toast('Ссылка выделена, скопируй её вручную'); };
+  try { navigator.clipboard.writeText(url).then(() => toast('Ссылка на результат скопирована'), fallback); } catch(e){ fallback(); }
+}
+function startView(code){
+  let r = null;
+  try { r = unpackResult(code); } catch(e){}
+  if (!r || !validTournament(r) || simulate(r.cfg, r.dec).kind !== 'done'){ toast('Ссылка на результат повреждена или осталась от старой версии теста', 6000); return false; }
+  VIEW = {name:r.who}; ctx = 'solo'; S = {cfg:r.cfg, dec:r.dec};
+  go();
+  return true;
+}
+
 function copyResult(){
   const text = resultText();
   const fallback = () => { const ta = $('#copyFallback'); ta.hidden = false; ta.value = text; ta.focus(); ta.select(); toast('Текст выделен, скопируй его вручную'); };
@@ -675,6 +745,8 @@ function bind(){
   $('#interGo').addEventListener('click', () => { ui.ack = true; go(); });
   $('#interBack').addEventListener('click', undo);
   $('#copyBtn').addEventListener('click', copyResult);
+  $('#shareBtn').addEventListener('click', shareResult);
+  $('#selfBtn').addEventListener('click', () => { location.href = location.pathname; });
   $('#newBtn').addEventListener('click', () => { show('scr-start'); refreshStart(); });
   $('#toRoomBtn').addEventListener('click', () => { show('scr-room'); renderRoom(); fetchRoom(); });
   $('#refinalBtn').addEventListener('click', undo);
@@ -721,6 +793,8 @@ function start(){
   document.body.dataset.screen = ui.screen;
   bind();
   heroInit();
+  const rCode = new URLSearchParams(location.search).get('r');
+  if (rCode && startView(rCode)) return;
   const askDev = /^#dev=/.test(location.hash) || new URLSearchParams(location.search).has('tools');
   if (askDev && window.crypto && crypto.subtle){ devAccess().then(ok => ok ? startTools() : startNormal()); return; }
   startNormal();

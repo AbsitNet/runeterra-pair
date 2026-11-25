@@ -51,6 +51,9 @@ Ideas for future updates:
 - Live reactions: when your partner reaches the playoffs, you see who they're choosing between and can send a reaction back (can be turned off if you hate spoilers)
 - Synchronous duels: you both get the same pair at the same time, pick in secret, and the answers are revealed together, ending with a shared tier list for the couple
 - Rooms for a whole group of friends: who matches whom and a shared anti-top
+- Themed mini-tournaments of 16 that take about ten minutes: Ionia only, villains only, mages only, newest champions only
+- A link to your result: the tier list opens from a link with no room needed, so you can just send it to friends
+- Install it like an app: an icon on your phone's home screen, full-screen launch, and solo mode that works offline
 
 ## Legal
 

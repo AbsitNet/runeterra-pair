@@ -1,0 +1,16 @@
+{
+  "name": "Пара из Рунтерры",
+  "short_name": "Пара",
+  "description": "Тест-турнир по чемпионам League of Legends: выбирай из двух, пока не найдёшь свою идеальную пару.",
+  "lang": "ru",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#090E15",
+  "theme_color": "#090E15",
+  "icons": [
+    {"src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png"},
+    {"src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png"},
+    {"src": "icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
+  ]
+}

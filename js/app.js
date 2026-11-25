@@ -129,6 +129,30 @@ function heroLoop(){
   }, 4600);
 }
 
+/* ================= установка как приложение ================= */
+let installEvt = null;
+const standalone = () => (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
+const isIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+function refreshInstall(){
+  const box = $('#installBox'), btn = $('#installBtn'), t = $('#installText');
+  if (standalone() || TOOLS || VIEW){ box.hidden = true; return; }
+  if (installEvt){
+    box.hidden = false; btn.hidden = false;
+    t.textContent = 'Тест можно поставить как приложение: своя иконка, открывается на весь экран, а турнир в одиночку работает без интернета.';
+  } else if (isIOS()){
+    box.hidden = false; btn.hidden = true;
+    t.textContent = 'На iPhone тест можно поставить как приложение: в Safari нажми «Поделиться» и выбери «На экран „Домой“». Он будет открываться на весь экран, а турнир в одиночку заработает без интернета.';
+  } else box.hidden = true;
+}
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; refreshInstall(); });
+window.addEventListener('appinstalled', () => { installEvt = null; refreshInstall(); toast('Готово: иконка появилась на главном экране'); });
+function registerSW(){
+  if (!('serviceWorker' in navigator)) return;
+  if (location.protocol !== 'https:' && !/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) return;
+  const go = () => navigator.serviceWorker.register('sw.js').catch(() => {});
+  document.readyState === 'complete' ? go() : window.addEventListener('load', go);
+}
+
 /* ================= старт ================= */
 function settings(){
   return {
@@ -159,6 +183,7 @@ function refreshStart(){
     else { $('#resumeText').innerHTML = `Есть незаконченный турнир: позади <b>${m.played}</b> из примерно ${m.est} ${duelsWord(m.est)}.`; $('#resumeBtn').textContent = 'Продолжить'; }
   } else r.hidden = true;
   refreshRoomBox();
+  refreshInstall();
 }
 function startFlow(){
   const s = settings();
@@ -746,6 +771,7 @@ function bind(){
   $('#interBack').addEventListener('click', undo);
   $('#copyBtn').addEventListener('click', copyResult);
   $('#shareBtn').addEventListener('click', shareResult);
+  $('#installBtn').addEventListener('click', async () => { if (!installEvt) return; const e = installEvt; installEvt = null; e.prompt(); try { await e.userChoice; } catch(err){} refreshInstall(); });
   $('#selfBtn').addEventListener('click', () => { location.href = location.pathname; });
   $('#newBtn').addEventListener('click', () => { show('scr-start'); refreshStart(); });
   $('#toRoomBtn').addEventListener('click', () => { show('scr-room'); renderRoom(); fetchRoom(); });
@@ -792,6 +818,7 @@ function bind(){
 function start(){
   document.body.dataset.screen = ui.screen;
   bind();
+  registerSW();
   heroInit();
   const rCode = new URLSearchParams(location.search).get('r');
   if (rCode && startView(rCode)) return;

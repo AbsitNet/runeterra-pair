@@ -44,6 +44,8 @@ let G = null;                         // «Угадай мой выбор»: {ta
 let PB = null;                        // ставка на партнёра: {id, on: слот партнёра}
 let BT = null;                        // голос в битве вкусов: {key: «пара1|пара2», pick}
 let RX = null;                        // последняя отправленная реакция: {to:{seed, idx}, e, at}
+let WATCHING = false;                 // смотрю ли сейчас турнир партнёра
+let HINT = null;                      // подсказка партнёру из просмотра: {to:{seed, idx}, side, at}
 let SY = null;                        // общий турнир: {id, host, cfg, v:[[первый голос, переголосовка], …]}
 const ui = {screen:'scr-start', cur:null, lock:false, ack:false, toastKey:'', introKey:'', off:new Set(), bet:null, betRoster:null, betRemoved:null, mode:'play', swipeHinted:false};
 
@@ -305,6 +307,7 @@ function newTournament(roster, removed, bet){
 
 /* ================= ход турнира ================= */
 function go(){
+  if (WATCHING) stopWatch();
   ui.mode = 'play';
   const m = simulate(S.cfg, S.dec);
   ui.cur = m;
@@ -365,9 +368,11 @@ function renderDuel(m, silent){
   void ar.offsetWidth; ar.classList.add('enter');
   FX.setLevel(m.level || 0);
   $('#undoBtn').hidden = false; $('#undoBtn').disabled = S.dec.length === 0;
+  $('#watchBar').hidden = true;
   $('#bracketBtn').hidden = !['ub','lb','final'].includes(m.stage);
   $('#reveal').textContent = ''; $('#reveal').className = 'reveal';
   renderPartnerChip();
+  applyHint();
   if (!silent){
     const tk = m.stage + ':' + (m.round || m.label);
     if (m.k === 0 && ui.toastKey !== tk){
@@ -392,6 +397,7 @@ function pick(side){
   if (ui.mode === 'guess') return guessPick(side);
   if (ui.mode === 'battle') return battlePick(side);
   if (ui.mode === 'sync') return syncPick(side);
+  if (ui.mode === 'watch') return watchHint(side);
   ui.lock = true; hideSwipeHint();
   const m = ui.cur, cards = [$('#card0'), $('#card1')];
   cards.forEach(c => c.style.transform = '');
@@ -884,6 +890,8 @@ async function fetchRoom(){
   renderPartnerChip();
   checkLive();
   syncOnFetch();
+  if (ui.mode === 'watch') renderWatch();
+  else applyHint();
 }
 const partner = () => roomData && sess && roomData.players.find(p => p.slot !== sess.slot);
 const meRemote = () => roomData && sess && roomData.players.find(p => p.slot === sess.slot);
@@ -898,9 +906,13 @@ function myState(){
   if (BT) st.battle = BT;
   if (RX) st.react = RX;
   if (SY) st.sync = SY;
+  if (WATCHING) st.watching = true;
+  if (HINT) st.hint = HINT;
   return st;
 }
-function queueSync(){ if (!sess) return; clearTimeout(saveT); saveT = setTimeout(() => pushState(), 1200); }
+/* если партнёр смотрит мой турнир, выбор уходит почти сразу, иначе — пачкой раз в секунду с небольшим */
+const partnerWatching = () => { const pp = partner(); return !!(pp && pp.state && pp.state.watching && online.has(pp.slot)); };
+function queueSync(){ if (!sess) return; clearTimeout(saveT); saveT = setTimeout(() => pushState(), partnerWatching() ? 120 : 1200); }
 async function pushState(quiet){
   if (!sess) return; clearTimeout(saveT);
   try { await Room.save(sess.code, sess.token, myState()); if (sub) sub.ping(); if (!quiet) fetchRoom(); }
@@ -949,7 +961,8 @@ function renderRoom(){
   }
   const bx = battleInfo();
   if (bx && !bx.same && !bx.my) acts.push(`<button class="btn" type="button" data-act="battle">Битва вкусов</button>`);
-  if (pp && (their.status === 'idle' || (their.status === 'play' && !inPlayoff(their.m)))) acts.push(`<button class="btn" type="button" data-act="pbet">${PB ? 'Изменить ставку на пару партнёра' : 'Поставить на пару партнёра'}</button>`);
+  if (pp && their.status === 'play') acts.push(`<button class="btn" type="button" data-act="watch">Смотреть турнир: ${esc(pp.name)}</button>`);
+  if (pp && (their.status === 'idle' || (their.status === 'play' && !inPlayoff(their.m) && store.get(watchedKey()) !== their.s.cfg.seed))) acts.push(`<button class="btn" type="button" data-act="pbet">${PB ? 'Изменить ставку на пару партнёра' : 'Поставить на пару партнёра'}</button>`);
   if (pp && syncStatus().state === 'none') acts.push(`<button class="btn" type="button" data-act="sync-new">Общий турнир</button>`);
   if (mine && mine.kind === 'done' && their.status === 'done') acts.push(`<button class="btn" type="button" data-act="compare">Сравнить результаты</button>`);
   else if (pp) acts.push(`<button class="btn ghost" type="button" disabled>Сравнение откроется, когда оба закончат</button>`);
@@ -962,6 +975,7 @@ function openPartnerBet(){
   if (!pp) return toast('Сначала дождись партнёра в комнате');
   if (ps.status === 'done') return toast('Партнёр уже закончил — ставки закрыты');
   if (inPlayoff(ps.m)) return toast('Партнёр уже в плей-офф — ставки закрыты');
+  if (ps.status === 'play' && store.get(watchedKey()) === ps.s.cfg.seed) return toast('Ты уже смотрел(а) этот турнир — ставка на пару закрыта');
   const roster = ps.status === 'play' ? ps.s.cfg.roster.slice() : CH.map(c => c[0]);
   openBet(roster, [], true);
 }
@@ -987,6 +1001,7 @@ function roomAction(a){
   if (a === 'battle') startBattle();
   if (a === 'compare'){ show('scr-compare'); renderCompare(); }
   if (a === 'sync-new') syncSetup();
+  if (a === 'watch') startWatch();
   if (a === 'sync-join') syncJoin();
   if (a === 'sync-go') startSync();
   if (a === 'sync-res') renderSyncResult();
@@ -999,7 +1014,7 @@ function renderPartnerChip(){
   if (!pp){ chip.hidden = false; chip.innerHTML = '<span class="dot"></span>Ждём партнёра'; return; }
   const ps = playerState(pp), on = online.has(pp.slot);
   chip.hidden = false;
-  chip.innerHTML = `<span class="dot ${on ? 'on' : ''}"></span><b>${esc(pp.name)}</b> ` + (ps.status === 'done' ? '· уже нашёл(ла) пару' : ps.status === 'play' ? `· ${ps.m.played}/≈${ps.m.est}` : '· ещё не начал(а)');
+  chip.innerHTML = `<span class="dot ${on ? 'on' : ''}"></span><b>${esc(pp.name)}</b> ` + (partnerWatching() ? '· смотрит твой турнир' : ps.status === 'done' ? '· уже нашёл(ла) пару' : ps.status === 'play' ? `· ${ps.m.played}/≈${ps.m.est}` : '· ещё не начал(а)');
 }
 
 /* сравнение */
@@ -1141,7 +1156,7 @@ function checkLive(){
   }
   if (!inPlayoff(ps.m)){ live.shown = null; return; }
   live.shown = {seed, idx:dec.length, a:ps.m.a, b:ps.m.b};
-  if (liveOn()) showLive({pp, m:ps.m, chose, to:{seed, idx:dec.length}});
+  if (liveOn() && ui.mode !== 'watch') showLive({pp, m:ps.m, chose, to:{seed, idx:dec.length}});
 }
 function showLive(o){
   const el = $('#live');
@@ -1152,11 +1167,13 @@ function showLive(o){
   el.innerHTML = `<div class="live-faces">${faces}</div>
     <div class="live-txt">${was}<small>${top}</small><b>${main}</b>
       <div class="live-re">${REACTS.map(r => `<button type="button" data-r="${r}" aria-label="Ответить реакцией ${r}">${r}</button>`).join('')}</div>
+      ${o.done ? '' : '<button class="live-watch" type="button">Смотреть вживую</button>'}
       <button class="live-off" type="button">Выключить эти новости</button>
     </div>
     <button class="live-x" type="button" aria-label="Скрыть">×</button>`;
   el.querySelectorAll('[data-r]').forEach(b => b.addEventListener('click', () => sendReaction(o, b.dataset.r)));
   el.querySelector('.live-x').addEventListener('click', hideLive);
+  const lw = el.querySelector('.live-watch'); if (lw) lw.addEventListener('click', () => { hideLive(); startWatch(); });
   el.querySelector('.live-off').addEventListener('click', () => { setLive(false); toast('Новости из плей-офф выключены. Включить можно в комнате'); });
   el.hidden = false; void el.offsetWidth; el.classList.add('on');
   clearTimeout(live.t); live.t = setTimeout(hideLive, o.done ? 16000 : 14000);
@@ -1203,6 +1220,88 @@ function showReaction(who, e, about){
     f.style.animationDelay = (i * 120) + 'ms';
     document.body.appendChild(f); setTimeout(() => f.remove(), 2800 + i * 120);
   }
+}
+
+/* ================= совместный просмотр: турнир партнёра в прямом эфире ================= */
+const watchedKey = () => 'rp-watched-' + (sess ? sess.code + '-' + sess.slot : '');
+function startWatch(){
+  const pp = partner(); if (!pp) return toast('Сначала дождись партнёра в комнате');
+  const ps = playerState(pp);
+  if (ps.status === 'idle') return toast(`${pp.name} ещё не начал(а) турнир`);
+  if (ps.status === 'done') return toast(`${pp.name} уже нашёл(ла) пару`);
+  if (!PB) store.set(watchedKey(), ps.s.cfg.seed);   // посмотрев ход турнира, ставить на пару уже нечестно
+  ui.mode = 'watch'; ui.watch = null; ui.watchAnim = false; ui.lock = false;
+  WATCHING = true; pushState(true);
+  show('scr-duel'); renderWatch();
+}
+function stopWatch(){
+  WATCHING = false; clearTimeout(ui.watchPoll); $('#watchBar').hidden = true; clearVtags();
+  pushState(true);
+}
+function renderWatch(){
+  if (ui.mode !== 'watch' || ui.watchAnim) return;
+  const pp = partner();
+  if (!pp){ stopWatch(); ui.mode = 'play'; show('scr-room'); renderRoom(); return; }
+  clearTimeout(ui.watchPoll); ui.watchPoll = setTimeout(() => { if (ui.mode === 'watch') fetchRoom(); }, 4000);
+  const ps = playerState(pp), dec = ps.s ? ps.s.dec || [] : [], seed = ps.s ? ps.s.cfg.seed : 0, prev = ui.watch;
+  const cards = [$('#card0'), $('#card1')], r = $('#reveal');
+  /* партнёр только что выбрал — показываем, кого */
+  if (prev && prev.seed === seed && dec.length === prev.idx + 1){
+    const side = dec[prev.idx];
+    ui.watchAnim = true; ui.watch = null;
+    cards[side].classList.add('chosen'); cards[1 - side].classList.add('lost');
+    r.className = 'reveal ok'; r.textContent = `${pp.name} ${ps.status === 'done' ? 'нашёл(ла) пару' : 'выбрал(а)'}: ${name(side ? prev.b : prev.a)}`;
+    Sound.pick(prev.level || 0);
+    if (ps.status === 'done'){ Sound.fanfare(); FX.celebrate(); }
+    setTimeout(() => { ui.watchAnim = false; renderWatch(); }, ps.status === 'done' ? 2600 : 1100);
+    return;
+  }
+  if (ps.status !== 'play'){
+    stopWatch(); ui.mode = 'play'; show('scr-room'); renderRoom();
+    toast(ps.status === 'done' ? `${pp.name} нашёл(ла) пару: ${name(ps.m.champ)}` : `${pp.name} пока не играет`);
+    return;
+  }
+  const m = ps.m, fresh = !prev || prev.seed !== seed || prev.idx !== dec.length;
+  if (ui.screen !== 'scr-duel') show('scr-duel');
+  if (fresh){
+    setCard(0, m.a); setCard(1, m.b);
+    const ar = $('#arena'); ar.className = 'arena' + (m.level ? ' lv' + m.level : ''); void ar.offsetWidth; ar.classList.add('enter');
+    FX.setLevel(m.level || 0);
+    r.className = 'reveal'; r.textContent = '';
+  }
+  ui.watch = {seed, idx:dec.length, a:m.a, b:m.b, level:m.level};
+  ui.cur = {kind:'duel', a:m.a, b:m.b, level:m.level, stage:'watch'};
+  $('#stage').textContent = `Смотришь: ${pp.name} · ${stageLabel(m)}`;
+  $('#counter').textContent = `Дуэль ${m.played + 1} из ≈${m.est}`;
+  $('#barFill').style.width = Math.min(99.5, 100 * m.played / m.est).toFixed(2) + '%';
+  const p = $('#prompt'); p.classList.toggle('final', m.stage === 'final'); p.classList.remove('egg');
+  p.textContent = m.stage === 'final' ? `Гранд-финал. Кого выберет ${pp.name}?` : `Кого выберет ${pp.name}?`;
+  $('#subprompt').hidden = true;
+  const hinted = HINT && HINT.to.seed === seed && HINT.to.idx === dec.length ? HINT.side : -1;
+  [0, 1].forEach(sd => { $('#vt' + sd).innerHTML = sd === hinted ? '<b class="mine">Твоя подсказка</b>' : ''; });
+  $('#undoBtn').hidden = true; $('#bracketBtn').hidden = true;
+  const chip = $('#partnerChip'), on = online.has(pp.slot); chip.hidden = false;
+  chip.innerHTML = `<span class="dot ${on ? 'on' : ''}"></span><b>${esc(pp.name)}</b> · ${on ? 'в сети' : 'не в сети — ждём'}`;
+  const wb = $('#watchBar'); wb.hidden = false;
+  if (fresh || !$('#watchRe').childElementCount) $('#watchRe').innerHTML = REACTS.map(e => `<button type="button" data-r="${e}" aria-label="Реакция ${e}">${e}</button>`).join('');
+  $('#watchRe').querySelectorAll('[data-r]').forEach(b => b.onclick = () => {
+    sendReaction({to:{seed, idx:dec.length}}, b.dataset.r);
+    $('#reveal').className = 'reveal'; $('#reveal').textContent = `${b.dataset.r} отправлено`;
+  });
+}
+function watchHint(side){
+  const w = ui.watch; if (!w) return;
+  HINT = {to:{seed:w.seed, idx:w.idx}, side, at:Date.now()}; pushState(true);
+  [0, 1].forEach(sd => { $('#vt' + sd).innerHTML = sd === side ? '<b class="mine">Твоя подсказка</b>' : ''; });
+  $('#reveal').className = 'reveal'; $('#reveal').textContent = 'Подсказка отправлена: она появится на карте у партнёра';
+  Sound.pick(0);
+}
+/* у игрока: подсказка партнёра на карте текущей дуэли */
+function applyHint(){
+  if (ctx !== 'room' || !sess || ui.mode !== 'play' || ui.screen !== 'scr-duel' || !S.cfg) return;
+  const pp = partner(), h = pp && pp.state && pp.state.hint;
+  const ok = h && h.to && h.to.seed === S.cfg.seed && h.to.idx === S.dec.length && (h.side === 0 || h.side === 1) && Date.now() - h.at < 10 * 60 * 1000;
+  [0, 1].forEach(sd => { $('#vt' + sd).innerHTML = ok && h.side === sd ? `<b class="hint">${esc(pp.name)} советует</b>` : ''; });
 }
 
 /* ================= общий турнир: одна и та же пара у обоих, выбор втайне, ответы открываются разом ================= */
@@ -1479,7 +1578,7 @@ function bind(){
   $('#card0').addEventListener('click', () => { if (!ui.swallowClick) pick(0); });
   $('#card1').addEventListener('click', () => { if (!ui.swallowClick) pick(1); });
   $('#undoBtn').addEventListener('click', undo);
-  $('#menuBtn').addEventListener('click', () => { if (ui.mode === 'guess' || ui.mode === 'battle' || ui.mode === 'sync'){ ui.mode = 'play'; clearVtags(); show('scr-room'); renderRoom(); return; } if (ctx === 'room' && sess){ show('scr-room'); renderRoom(); } else { show('scr-start'); refreshStart(); } });
+  $('#menuBtn').addEventListener('click', () => { if (ui.mode === 'watch') stopWatch(); if (ui.mode === 'guess' || ui.mode === 'battle' || ui.mode === 'sync' || ui.mode === 'watch'){ ui.mode = 'play'; clearVtags(); show('scr-room'); renderRoom(); return; } if (ctx === 'room' && sess){ show('scr-room'); renderRoom(); } else { show('scr-start'); refreshStart(); } });
   $('#interGo').addEventListener('click', () => { ui.ack = true; go(); });
   $('#interBack').addEventListener('click', undo);
   $('#copyBtn').addEventListener('click', copyResult);

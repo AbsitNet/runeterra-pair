@@ -234,6 +234,7 @@ function refreshStart(){
   renderMinis();
   svRenderCta();
   renderDaily($('#dailyBox'), false);
+  collRenderCta();
 }
 function startFlow(){
   ui.betTheme = null;
@@ -533,9 +534,12 @@ function renderResult(m){
   } else bl.hidden = true;
   $('#podium').innerHTML = [[1,'2-е место'],[2,'3-е место']].filter(([i]) => m.order[i]).map(([i, lab]) => `<div class="pod">${face(m.order[i])}<div><small>${lab}</small><b>${esc(name(m.order[i]))}</b></div></div>`).join('');
 
-  const badges = achievements(m, S.cfg);
-  $('#badgesSec').hidden = !badges.length;
-  $('#badges').innerHTML = badges.map(b => `<div class="badge"><span class="hex" aria-hidden="true">${b.icon}</span><div><b>${esc(b.t)}</b><small>${esc(b.d)}</small></div></div>`).join('');
+  collTournament(m);
+  const badges = achievements(m, S.cfg), cf = ui.collFresh && ui.collFresh.seed === S.cfg.seed ? ui.collFresh.keys : [];
+  $('#badgesSec').hidden = !badges.length && V;
+  $('#badges').innerHTML = badges.map(b => `<div class="badge ${cf.includes(b.k) ? 'new' : ''}"><span class="hex" aria-hidden="true">${b.icon}</span><div><b>${esc(b.t)}</b><small>${esc(b.d)}</small>${cf.includes(b.k) ? '<em class="b-new">Новый в коллекции</em>' : ''}</div></div>`).join('')
+    || '<p class="muted">В этот раз без значков: топ получился слишком разным. Попробуй ещё — их можно собирать.</p>';
+  $('#collFromRes').hidden = V;
 
   const pf = profileOf(m.order), A = ARCH[pf.arch];
   $('#typaj').innerHTML = `<div><p class="eyebrow">${V ? 'Типаж' : 'Твой типаж'}</p><h3>${esc(A[0])}</h3><p style="margin-top:12px">${esc(A[1])}</p>
@@ -666,7 +670,7 @@ function renderMutualResult(){
     <h2>${esc(title)}</h2>
     <p>${esc(text)}</p>${why}
     <div class="res-actions"><button class="btn primary" type="button" id="muDone">К итогам</button><button class="btn ghost" type="button" id="muAgain">Ответить заново</button></div>`;
-  if (r.pct >= 90){ Sound.fanfare(); FX.celebrate(); }
+  if (r.pct >= 90){ Sound.fanfare(); FX.celebrate(); if (!VIEW) collEvent('mutual'); }
   $('#muDone').addEventListener('click', () => go());
   $('#muAgain').addEventListener('click', () => startMutual(id));
 }
@@ -1281,6 +1285,7 @@ async function dailyVote(side){
   store.set(DAILY_KEY, trimmed);
   Sound.pick(1);
   renderDailyAll();
+  collDaily();
   if (sess) pushState(true);
   if (Room.configured()){ try { await Room.daily.vote(day, voterId(), pick); } catch(e){} await dailyLoad(day); renderDailyAll(); }
 }
@@ -1420,6 +1425,7 @@ function lbResolve(){
     const dec = ps.s.dec || [];
     if (dec.length > b.i){ b.w = dec[b.i] === b.p; b.r = b.w ? b.k : b.free ? 0 : -b.k; out.push(b); }
   });
+  collHearts(out.filter(b => b.w).length);
   if (out.length || LB.bets.some(b => b.v)){ LB.bets = LB.bets.slice(-200); store.set(lbKey(), LB); if (out.length) pushState(true); }
   return out;
 }
@@ -1726,6 +1732,7 @@ function renderSyncBox(){
 function renderSyncResult(){
   const x = syncCalc(); if (!x || x.phase !== 'done') return;
   ui.cur = null; show('scr-sync'); FX.setLevel(0);
+  collEvent('sync');
   const it = $('#intro'); if (!it.hidden && it.onclick) it.onclick();
   const m = x.m, w = BY[m.champ], pp = x.pp, n = x.log.length;
   const agree = x.log.filter(l => l.how === 'agree').length, re = x.log.filter(l => l.how === 'revote').length, coin = n - agree - re;
@@ -1763,6 +1770,7 @@ function renderGuess(){
     G.done = true; store.set(guessKey(sess.code), G); pushState(true);
     const ok = G.picks.filter(p => p.ok).length;
     ui.mode = 'play'; show('scr-room'); renderRoom();
+    if (ok >= G.list.length * .8) collEvent('mind');
     toast(`Угадано ${ok} из ${G.list.length}. ${ok >= G.list.length * .8 ? 'Вы прекрасно друг друга знаете!' : ok >= G.list.length * .6 ? 'Неплохо!' : 'Есть куда расти — и о чём поговорить.'}`, 6000);
     return;
   }
@@ -1833,6 +1841,10 @@ function bind(){
   $('#soundBtn').setAttribute('aria-pressed', String(Sound.on)); $('#soundWaves').style.display = Sound.on ? '' : 'none';
   $('#bracketBtn').addEventListener('click', () => { const m = ui.cur; openModal(`<p class="eyebrow">Плей-офф</p><h2 style="font-size:32px;margin:4px 0 14px">Сетка</h2><div class="bracket-wrap">${bracketHTML(m.bracket || [], m)}</div>`); });
   $('#modalClose').addEventListener('click', closeModal);
+  const openColl = () => { ui.collFrom = ui.screen; renderCollection(); };
+  $('#collOpen').addEventListener('click', openColl);
+  $('#collFromRes').addEventListener('click', openColl);
+  $('#clBack').addEventListener('click', () => { if (ui.collFrom === 'scr-result' && S.cfg){ go(); return; } show('scr-start'); refreshStart(); });
   const chipEl = $('#partnerChip');
   chipEl.addEventListener('click', openChat);
   chipEl.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); openChat(); } });

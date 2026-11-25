@@ -7,7 +7,7 @@ importScripts('js/roster.js');   // список чемпионов → спис
 const CACHE = 'rp-app-v1', FONTS = 'rp-fonts-v1';
 const SHELL = ['./', 'index.html', 'manifest.webmanifest', 'css/style.css',
   'js/config.js', 'js/vendor/supabase.js', 'js/roster.js', 'js/profiles.js', 'js/engine.js', 'js/analysis.js',
-  'js/fx.js', 'js/share.js', 'js/room.js', 'js/svaha.js', 'js/app.js',
+  'js/fx.js', 'js/share.js', 'js/room.js', 'js/svaha.js', 'js/collection.js', 'js/app.js',
   'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png'];
 const REGIONS = ['ion','nox','dem','frl','pil','zau','bil','shu','tar','ixt','sha','void','rt'];
 const ART = CH.map(c => `img/${c[0]}.webp`).concat(REGIONS.map(r => `img/regions/${r}.png`));

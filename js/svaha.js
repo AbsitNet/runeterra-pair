@@ -306,6 +306,7 @@ function svFinale(){
 }
 function svResult(){
   const m = svMatch(sv.ans), best = m.list[0];
+  collEvent('svaha-done');
   show('scr-svaha'); $('#svWrap').hidden = true; const box = $('#svRes'); box.hidden = false;
   if (!best){ box.innerHTML = '<p>Под такие условия никто не подошёл. Попробуй пройти ещё раз.</p>'; return; }
   const id = best.id, c = BY[id], pr = PROFILE[id], q = quoteOf(id), she = verb(id, 'она', 'он');

@@ -400,10 +400,14 @@ function pick(side){
   if (m.level) FX.burst(...cardCenter(side), m.level);
   const final = m.stage === 'final';
   if (final){ Sound.fanfare(); FX.celebrate(); }
-  setTimeout(() => { S.dec.push(side); saveLocal(); ui.lock = false; go(); }, reduced ? 80 : final ? 1100 : m.level ? 520 : 340);
+  $('#undoBtn').disabled = false;   // пока выбор не записан, его можно отменить
+  ui.pickT = setTimeout(() => { ui.pickT = 0; S.dec.push(side); saveLocal(); ui.lock = false; if (ui.screen === 'scr-duel') go(); }, reduced ? 80 : final ? 1100 : m.level ? 520 : 340);
 }
 function undo(){
-  if (ui.lock || ui.mode !== 'play' || !S.dec.length) return;
+  if (ui.mode !== 'play') return;
+  /* «Назад» сразу после нажатия: выбор ещё не записан — просто отменяем его и остаёмся на этой же паре */
+  if (ui.pickT){ clearTimeout(ui.pickT); ui.pickT = 0; ui.lock = false; go(); return; }
+  if (ui.lock || !S.dec.length) return;
   S.dec.pop(); saveLocal();
   const m = simulate(S.cfg, S.dec);
   if (m.kind === 'duel' && ['swiss','battle','dispute'].includes(m.stage)) ui.ack = false;

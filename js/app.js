@@ -704,6 +704,28 @@ function renderCompare(){
   const myG = G && G.done ? `<p>${esc(sess.name)} угадывает выборы партнёра: <b>${G.picks.filter(x => x.ok).length} из ${G.list.length}</b>.</p>` : '';
   const thG = pp.state && pp.state.guess && pp.state.guess.done ? `<p>${esc(pp.name)} угадывает выборы партнёра: <b>${+pp.state.guess.correct || 0} из ${+pp.state.guess.total || 0}</b>.</p>` : '';
   $('#cGuess').innerHTML = (myG + thG) || '<p class="muted">Пока никто не сыграл. Кнопка «Угадать выборы» — в комнате.</p>';
+  drawPairPreview();
+}
+/* данные для общего сертификата */
+function pairData(){
+  const pp = partner(), mine = S.cfg ? simulate(S.cfg, S.dec) : null, their = playerState(pp);
+  if (!pp || !mine || mine.kind !== 'done' || their.status !== 'done') return null;
+  const c = compareOrders(mine.order, their.m.order), skip = new Set([mine.champ, their.m.champ]);
+  const ra = {}, rb = {}; mine.order.forEach((id, i) => ra[id] = i); their.m.order.forEach((id, i) => rb[id] = i);
+  let wit = c.both.filter(id => !skip.has(id));
+  if (wit.length < 2) wit = wit.concat(mine.order.filter(id => rb[id] != null && !skip.has(id) && !wit.includes(id)).sort((x, y) => (ra[x] + rb[x]) - (ra[y] + rb[y])));
+  const me = sess.slot === 1;   // слева всегда тот, кто создал комнату
+  const A = {name:sess.name, champ:mine.champ}, B = {name:pp.name, champ:their.m.champ};
+  return {a: me ? A : B, b: me ? B : A, percent:c.percent, witnesses:wit.slice(0, 2), same: mine.champ === their.m.champ};
+}
+let pairT = 0;
+function drawPairPreview(){
+  clearTimeout(pairT);
+  pairT = setTimeout(async () => {
+    const d = pairData(); if (!d) return;
+    const cv = await Share.pairCertificate(d), pv = $('#pairPreview'), cx = pv.getContext('2d');
+    cx.clearRect(0, 0, pv.width, pv.height); cx.drawImage(cv, 0, 0);
+  }, 150);
 }
 
 /* «Угадай мой выбор» */
@@ -785,6 +807,7 @@ function bind(){
     const r = await Share.save(cv, file); if (r === 'saved') toast(done);
   };
   $('#certBtn').addEventListener('click', async () => { const m = ui.cur; if (m && m.kind === 'done') saveImage(await Share.certificate(m, $('#certName').value), 'para-iz-runterry-sertifikat.png', 'Сертификат сохранён'); });
+  $('#pairCertBtn').addEventListener('click', async () => { const d = pairData(); if (d) saveImage(await Share.pairCertificate(d), 'para-iz-runterry-na-dvoih.png', 'Сертификат на двоих сохранён'); });
   $('#tierImgBtn').addEventListener('click', async () => { const m = ui.cur; if (m && m.kind === 'done') saveImage(await Share.tierList(m, (S.cfg.removed || []).filter(id => BY[id]), $('#certName').value.trim()), 'para-iz-runterry-tir-list.png', 'Тир-лист сохранён'); });
   $('#soundBtn').addEventListener('click', () => { const on = Sound.toggle(); $('#soundBtn').setAttribute('aria-pressed', String(on)); $('#soundWaves').style.display = on ? '' : 'none'; });
   $('#soundBtn').setAttribute('aria-pressed', String(Sound.on)); $('#soundWaves').style.display = Sound.on ? '' : 'none';

@@ -188,6 +188,66 @@ const Share = (() => {
     return cv;
   }
 
+  /* общий сертификат пары: два портрета, процент совпадения вкусов, общие любимцы — свидетели.
+     Печать — того края, если обе пары оттуда, иначе общая печать Рунтерры */
+  const heartPath = new Path2D('M12 21.4 10.6 20C5.4 15.4 2 12.3 2 8.5 2 5.4 4.4 3 7.5 3c1.7 0 3.4.8 4.5 2.1C13.1 3.8 14.8 3 16.5 3 19.6 3 22 5.4 22 8.5c0 3.8-3.4 6.9-8.6 11.5L12 21.4Z');
+  async function pairCertificate(d){
+    await fontsReady();
+    const W = 1080, H = 1350, [ia, ib] = await Promise.all([loadImg(d.a.champ), loadImg(d.b.champ)]);
+    const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+    const cx = cv.getContext('2d'); bg(cx, W, H);
+    cx.strokeStyle = C.gold; cx.lineWidth = 3; cx.strokeRect(36, 36, W - 72, H - 72);
+    cx.strokeStyle = C.lo; cx.lineWidth = 1; cx.strokeRect(52, 52, W - 104, H - 104);
+    [[52,52],[W-52,52],[52,H-52],[W-52,H-52]].forEach(([x,y]) => { cx.save(); cx.translate(x, y); cx.rotate(Math.PI / 4); cx.fillStyle = C.night; cx.fillRect(-12, -12, 24, 24); cx.strokeStyle = C.gold; cx.lineWidth = 2; cx.strokeRect(-12, -12, 24, 24); cx.restore(); });
+    cx.textAlign = 'center';
+    cx.fillStyle = C.gold; cx.font = `600 20px ${FU}`; cx.fillText('ПАРА ИЗ РУНТЕРРЫ', W / 2, 120);
+    cx.fillStyle = C.hi; cx.font = `72px ${FD}`; cx.fillText('Сертификат', W / 2, 205);
+    cx.font = `40px ${FD}`; cx.fillStyle = C.gold; cx.fillText('о совместимости двух сердец', W / 2, 255);
+    cx.fillStyle = C.text;
+    const line1 = `Настоящим удостоверяется, что ${d.a.name} и ${d.b.name}`;
+    fitText(cx, line1, W - 200, 24, FU); cx.fillText(line1, W / 2, 320);
+    cx.font = `24px ${FU}`; cx.fillText('прошли честный турнир сердец, и вот их пары:', W / 2, 356);
+    /* портреты */
+    const pw = 290, ph = 474, py = 430, xs = [110, W - 110 - pw];
+    [[d.a, ia, xs[0]], [d.b, ib, xs[1]]].forEach(([p, im, x]) => {
+      const c = BY[p.champ], mid = x + pw / 2;
+      cx.fillStyle = C.muted; fitText(cx, p.name, pw, 24, FU, '500'); cx.fillText(p.name, mid, py - 18);
+      cx.save(); cx.shadowColor = 'rgba(232,102,138,.45)'; cx.shadowBlur = 40; cx.fillStyle = C.deep; cx.fillRect(x, py, pw, ph); cx.restore();
+      cover(cx, im, x, py, pw, ph, .28);
+      cx.strokeStyle = C.gold; cx.lineWidth = 3; cx.strokeRect(x, py, pw, ph);
+      const gr = cx.createLinearGradient(0, py + ph - 130, 0, py + ph); gr.addColorStop(0, 'rgba(9,14,21,0)'); gr.addColorStop(1, 'rgba(9,14,21,.9)');
+      cx.fillStyle = gr; cx.fillRect(x, py + ph - 130, pw, 130);
+      cx.fillStyle = C.hi; fitText(cx, c.name.toUpperCase(), pw + 30, 50, FD); cx.fillText(c.name.toUpperCase(), mid, py + ph + 60);
+      cx.fillStyle = C.gold; fitText(cx, c.title, pw + 40, 24, FD); cx.fillText(c.title, mid, py + ph + 98);
+    });
+    /* середина: сердце и процент */
+    const mx = W / 2, my = py + ph / 2;
+    cx.save(); cx.translate(mx - 30, my - 150); cx.scale(2.5, 2.5);
+    cx.shadowColor = 'rgba(232,102,138,.6)'; cx.shadowBlur = 16; cx.fillStyle = C.rose; cx.fill(heartPath); cx.restore();
+    cx.fillStyle = C.hi; cx.font = `112px ${FD}`; cx.fillText(`${d.percent}%`, mx, my + 20);
+    cx.fillStyle = C.text; cx.font = `22px ${FU}`; cx.fillText('совпадение вкусов', mx, my + 60);
+    if (d.same){ cx.fillStyle = C.rose; cx.font = `22px ${FU}`; cx.fillText('одна пара на двоих', mx, my + 94); }
+    if (d.witnesses.length){
+      cx.fillStyle = C.muted; cx.font = `22px ${FU}`;
+      cx.fillText(`Свидетели: ${d.witnesses.map(id => BY[id].name).join(' и ')}`, W / 2, py + ph + 150);
+    }
+    /* печать и регистратор */
+    const ra = (PROFILE[d.a.champ] || ['rt'])[0], rb = (PROFILE[d.b.champ] || ['rt'])[0];
+    const region = ra === rb ? ra : 'rt', seal = SEAL[region] || SEAL.rt;
+    const stamp = await drawSeal(region, d.a.champ + d.b.champ);
+    cx.save(); cx.translate(W - 190, H - 188); cx.rotate(-.17);
+    cx.globalAlpha = .92; cx.shadowColor = seal.ink + '55'; cx.shadowBlur = 14;
+    cx.drawImage(stamp, -stamp.width / 2, -stamp.height / 2); cx.restore();
+    const reg = seal.reg.find(id => id !== d.a.champ && id !== d.b.champ && BY[id]) || seal.reg[0];
+    cx.textAlign = 'left'; cx.fillStyle = C.muted; cx.font = `20px ${FU}`;
+    const dt = new Date();
+    cx.fillText(`Дата: ${dt.toLocaleDateString('ru-RU', {day:'numeric', month:'long', year:'numeric'})}`, 100, H - 150);
+    fitText(cx, `Регистратор: ${BY[reg].name}, ${BY[reg].title}`, 640, 20, FU);
+    cx.fillText(`Регистратор: ${BY[reg].name}, ${BY[reg].title}`, 100, H - 118);
+    cx.font = `15px ${FU}`; cx.fillText('Фан-тест по League of Legends. Не одобрен Riot Games.', 100, H - 78);
+    return cv;
+  }
+
   async function save(cv, name){
     const blob = await new Promise(r => cv.toBlob(r, 'image/png'));
     const file = new File([blob], name, {type:'image/png'});
@@ -198,5 +258,5 @@ const Share = (() => {
     document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
     return 'saved';
   }
-  return {tierList, certificate, save};
+  return {tierList, certificate, pairCertificate, save};
 })();

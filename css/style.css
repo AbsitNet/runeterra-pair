@@ -1078,3 +1078,9 @@ b.hearts{color:var(--rose);font-weight:600}
   .dr-timer{min-width:0}
 }
 @media (prefers-reduced-motion:reduce){.dr-s.on img{animation:none}.dr-c.sel{transform:none}}
+
+/* ================= турнир образов ================= */
+.sk-cta{border-color:var(--gold-lo);background:color-mix(in srgb,var(--gold) 6%,var(--deep))}
+.sk-thumb{width:44px;height:80px;object-fit:cover;border:1px solid var(--gold-lo);flex:0 0 auto}
+.pick.skin .nm{font-size:clamp(15px,9.5cqi,26px);line-height:1.08;letter-spacing:.03em}
+.pick.skin .tt{color:var(--gold)}

@@ -403,6 +403,7 @@ function pick(side){
   if (ui.mode === 'sync') return syncPick(side);
   if (ui.mode === 'watch') return watchHint(side);
   if (ui.mode === 'draft') return draftPick(side);
+  if (ui.mode === 'skins') return skinPick(side);
   ui.lock = true; hideSwipeHint();
   const m = ui.cur, cards = [$('#card0'), $('#card1')];
   cards.forEach(c => c.style.transform = '');
@@ -415,6 +416,7 @@ function pick(side){
   ui.pickT = setTimeout(() => { ui.pickT = 0; S.dec.push(side); saveLocal(); ui.lock = false; if (ui.screen === 'scr-duel') go(); }, reduced ? 80 : final ? 1100 : m.level ? 520 : 340);
 }
 function undo(){
+  if (ui.mode === 'skins') return skinUndo();
   if (ui.mode !== 'play') return;
   /* «Назад» сразу после нажатия: выбор ещё не записан — просто отменяем его и остаёмся на этой же паре */
   if (ui.pickT){ clearTimeout(ui.pickT); ui.pickT = 0; ui.lock = false; go(); return; }
@@ -566,6 +568,8 @@ function renderResult(m){
   $('#method').textContent = `${th ? `Мини-турнир «${th[1]}» на ${m.order.length} ${plural(m.order.length,'участника','участников','участников')}. ` : ''}Режим «${MODES[S.cfg.mode].label}», ${m.total} ${duelsWord(m.total)}: ${m.R} ${plural(m.R,'круг','круга','кругов')} отбора, ${MODES[S.cfg.mode].L ? 'короткие битвы за выход в плей-офф' : 'битвы за место'}${MODES[S.cfg.mode].D ? ', спорные места' : ''} и плей-офф с двойным выбыванием на ${m.P}. Первые ${m.P} мест решены плей-офф, остальные стоят по рейтингу всех дуэлей с учётом силы соперников; если соседи по списку встречались, выше стоит победитель. ${V ? 'Результат открыт по ссылке и в этом браузере не сохраняется.' : 'Результат сохранён в этом браузере.'}`;
   drawCertPreview();
   renderMuCta(m);
+  renderSkCta(m);
+  skWinnerImg(m);
   renderHeartMap(m);
   renderGlobalStats(m);
 }
@@ -921,6 +925,7 @@ function myState(){
   if (RX) st.react = RX;
   if (SY) st.sync = SY;
   if (DR) st.draft = DR;
+  if (S.cfg && S.skins && S.skins.fav != null && st.champ === S.skins.c) st.skin = {c:S.skins.c, n:S.skins.fav, name:skName(S.skins, S.skins.fav)};
   if (WATCHING) st.watching = true;
   if (HINT) st.hint = HINT;
   if (CM && CM.list.length) st.chat = CM.list.slice(-CHAT_KEEP);
@@ -955,7 +960,11 @@ function renderRoom(){
     let body = '';
     if (ps.status === 'idle') body = '<p class="muted">Ещё не начал(а) турнир.</p>';
     if (ps.status === 'play') body = `<p>Позади ${ps.m.played} из ≈${ps.m.est} ${duelsWord(ps.m.est)}</p><div class="pbar"><i style="width:${Math.min(100, 100 * ps.m.played / ps.m.est).toFixed(1)}%"></i></div>`;
-    if (ps.status === 'done') body = `<div class="champ">${face(ps.m.champ)}<div><small class="muted">Пара в Рунтерре</small><br><b>${esc(name(ps.m.champ))}</b></div></div>`;
+    if (ps.status === 'done'){
+      const sv = me ? (S.skins && S.skins.c === ps.m.champ && S.skins.fav != null ? {n:S.skins.fav, name:skName(S.skins, S.skins.fav)} : null)
+        : (p.state && p.state.skin && p.state.skin.c === ps.m.champ && Number.isInteger(p.state.skin.n) && typeof p.state.skin.name === 'string' ? p.state.skin : null);
+      body = `<div class="champ">${sv && sv.n ? `<img src="${skinArt(ps.m.champ, sv.n)}" alt="" loading="lazy" onerror="this.onerror=null;this.src='${img(ps.m.champ)}'">` : face(ps.m.champ)}<div><small class="muted">Пара в Рунтерре</small><br><b>${esc(name(ps.m.champ))}</b>${sv ? `<br><small class="muted">Любимый образ: ${esc(sv.name.slice(0, 80))}</small>` : ''}</div></div>`;
+    }
     const gs = (me ? (G && {correct:G.picks.filter(x => x.ok).length, total:G.list.length, done:G.done}) : (p.state && p.state.guess));
     if (gs && gs.done) body += `<p class="muted">Угадал(а) выборы партнёра: ${gs.correct} из ${gs.total}</p>`;
     const hs = me ? (LB && LB.bets.length ? {bal:lbBalance(), won:LB.bets.filter(b => b.w).length, n:LB.bets.filter(b => b.r != null && !b.v).length} : null) : (p.state && p.state.hearts);
@@ -1826,7 +1835,7 @@ function bind(){
   $('#card0').addEventListener('click', () => { if (!ui.swallowClick) pick(0); });
   $('#card1').addEventListener('click', () => { if (!ui.swallowClick) pick(1); });
   $('#undoBtn').addEventListener('click', undo);
-  $('#menuBtn').addEventListener('click', () => { if (ui.mode === 'draft'){ ui.mode = 'play'; openDraft(); return; } if (ui.mode === 'watch') stopWatch(); if (ui.mode === 'guess' || ui.mode === 'battle' || ui.mode === 'sync' || ui.mode === 'watch'){ ui.mode = 'play'; clearVtags(); show('scr-room'); renderRoom(); return; } if (ctx === 'room' && sess){ show('scr-room'); renderRoom(); } else { show('scr-start'); refreshStart(); } });
+  $('#menuBtn').addEventListener('click', () => { if (ui.mode === 'skins'){ clearTimeout(ui.skT); ui.lock = false; ui.mode = 'play'; go(); return; } if (ui.mode === 'draft'){ ui.mode = 'play'; openDraft(); return; } if (ui.mode === 'watch') stopWatch(); if (ui.mode === 'guess' || ui.mode === 'battle' || ui.mode === 'sync' || ui.mode === 'watch'){ ui.mode = 'play'; clearVtags(); show('scr-room'); renderRoom(); return; } if (ctx === 'room' && sess){ show('scr-room'); renderRoom(); } else { show('scr-start'); refreshStart(); } });
   $('#interGo').addEventListener('click', () => { ui.ack = true; go(); });
   $('#interBack').addEventListener('click', undo);
   $('#copyBtn').addEventListener('click', copyResult);

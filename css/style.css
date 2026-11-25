@@ -650,3 +650,22 @@ textarea#copyFallback{width:100%;min-height:160px;background:var(--deep);color:v
 .sy-f{grid-template-columns:40px minmax(0,1fr)}
 .sy-f b{display:block;font-weight:600}
 .sy-f small{display:block;white-space:normal;margin-top:2px}
+
+/* ================= статистика всех игроков ================= */
+.gstats{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:clamp(18px,3vw,36px);align-items:start}
+.g-verdict{display:grid;gap:10px}
+.g-verdict h3{font-size:clamp(30px,4.4vw,44px);line-height:1;color:var(--gold-hi)}
+.g-verdict p{color:var(--text);max-width:34em}
+.g-verdict .muted{font-size:13px}
+.g-board{display:grid;gap:6px;min-width:0}
+.g-row{display:grid;grid-template-columns:20px 34px minmax(0,1fr) auto;gap:4px 10px;align-items:center;padding:4px 10px 4px 6px;border:1px solid var(--line);background:var(--deep)}
+.g-row i{font-style:normal;font-size:12px;color:var(--muted);text-align:right;font-variant-numeric:tabular-nums}
+.g-row img{width:34px;height:42px;object-fit:cover;object-position:50% 16%}
+.g-row b{font-family:var(--f-display);font-weight:400;font-size:18px;line-height:1.1;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.g-row small{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.g-row .g-bar{grid-column:3/5;height:3px;background:var(--line)}
+.g-row .g-bar span{display:block;height:100%;background:var(--gold-lo)}
+.g-row.me{border-color:var(--rose);background:color-mix(in srgb,var(--rose) 8%,var(--deep))}
+.g-row.me b{color:var(--gold-hi)}
+.g-row.me .g-bar span{background:var(--rose)}
+@media (max-width:760px){.gstats{grid-template-columns:minmax(0,1fr)}}

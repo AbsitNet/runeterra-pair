@@ -527,6 +527,50 @@ function renderResult(m){
   $('#selfBtn').hidden = !V; $('#shareBtn').hidden = V; $('#newBtn').hidden = V; $('#refinalBtn').hidden = V;
   $('#method').textContent = `${th ? `Мини-турнир «${th[1]}» на ${m.order.length} ${plural(m.order.length,'участника','участников','участников')}. ` : ''}Режим «${MODES[S.cfg.mode].label}», ${m.total} ${duelsWord(m.total)}: ${m.R} ${plural(m.R,'круг','круга','кругов')} отбора, битвы за место${MODES[S.cfg.mode].D ? ', спорные места' : ''} и плей-офф с двойным выбыванием на ${m.P}. Первые ${m.P} мест решены плей-офф, остальные стоят по рейтингу всех дуэлей с учётом силы соперников; если соседи по списку встречались, выше стоит победитель. ${V ? 'Результат открыт по ссылке и в этом браузере не сохраняется.' : 'Результат сохранён в этом браузере.'}`;
   drawCertPreview();
+  renderGlobalStats(m);
+}
+/* ================= статистика всех игроков: анонимно, только пара и топ-10 ================= */
+const STATS_MIN_ROSTER = 40;   // мини-турниры и совсем короткие составы в общую статистику не идут
+async function renderGlobalStats(m){
+  const sec = $('#gSec'), box = $('#gStats');
+  if (!Room.configured() || TOOLS){ sec.hidden = true; return; }
+  const counted = !VIEW && !S.cfg.theme && S.cfg.roster.length >= STATS_MIN_ROSTER;
+  sec.hidden = false; box.innerHTML = '<p class="muted">Считаем…</p>';
+  try {
+    if (counted){
+      if (!S.statId){ S.statId = crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-8xxx-xxxxxxxxxxxx'.replace(/x/g, () => (Math.random() * 16 | 0).toString(16)); saveLocal(); }
+      await Room.stats.submit({id:S.statId, champ:m.champ, top:m.order.slice(0, 10), who:S.cfg.who, n:S.cfg.roster.length});
+    }
+    const g = await Room.stats.get(m.champ);
+    if (ui.cur !== m) return;
+    box.innerHTML = statsHTML(m.champ, g, counted);
+  } catch(e){
+    if (ui.cur === m) box.innerHTML = '<p class="muted">Статистика сейчас недоступна. Загляни позже.</p>';
+  }
+}
+function statsHTML(id, g, counted){
+  const total = +g.total || 0, mine = +g.mine || 0, nm = name(id);
+  const pc = n => { const v = total ? 100 * n / total : 0; return v > 0 && v < 1 ? '<1' : v.toLocaleString('ru-RU', {maximumFractionDigits: v < 10 ? 1 : 0}); };
+  const note = `<p class="muted">Анонимно: в статистику попадают только итоговая пара и топ-10, без имён.${counted ? '' : ' Мини-турниры и результаты по ссылке не считаются.'}</p>`;
+  if (!total) return `<div class="g-verdict"><h3>Пока пусто</h3><p>Ещё никто не прошёл полный турнир. Стань первым результатом в статистике.</p>${note}</div>`;
+  const share = 100 * mine / total;
+  let h, t;
+  if (!mine){ h = 'Нетронутая пара'; t = `${nm} пока не ${verb(id,'стала','стал')} парой ни у кого из ${total} ${plural(total,'игрока','игроков','игроков')}.`; }
+  else if (counted && mine === 1 && total >= 5){ h = 'Первооткрытие'; t = `${nm} — пара только у тебя из ${total} ${plural(total,'игрока','игроков','игроков')}.`; }
+  else {
+    h = share >= 15 ? 'Популярный выбор' : share >= 5 ? 'Частый выбор' : share >= 1.5 ? 'Редкий выбор' : 'Очень редкий выбор';
+    t = `${nm} — пара у ${pc(mine)}% игроков (${mine} из ${total}), ${g.rank}-е место по популярности.`;
+  }
+  const top = +g.inTop > mine ? ` В топ-10 ${verb(id,'она попадает','он попадает')} у ${pc(+g.inTop)}% игроков.` : '';
+  const early = total < 20 ? `<p class="muted">Статистика только начинает собираться: пока ${total} ${plural(total,'результат','результата','результатов')}.</p>` : '';
+  const list = (g.top || []).filter(r => BY[r.id]).map(r => ({id:r.id, n:+r.n}));
+  const max = Math.max(1, ...list.map(r => r.n));
+  const row = (r, place) => `<div class="g-row ${r.id === id ? 'me' : ''}"><i>${place}</i>${face(r.id)}<b>${esc(name(r.id))}</b><small>${pc(r.n)}%</small><div class="g-bar"><span style="width:${(100 * r.n / max).toFixed(1)}%"></span></div></div>`;
+  /* одинаковое число голосов — одно и то же место */
+  let rows = list.map(r => row(r, 1 + list.filter(x => x.n > r.n).length)).join('');
+  if (mine && !list.some(r => r.id === id)) rows += row({id, n:mine}, +g.rank);
+  return `<div class="g-verdict"><h3>${h}</h3><p>${esc(t + top)}</p>${early}${note}</div>
+    <div class="g-board"><p class="muted" style="font-size:13px">Чаще всего становятся парой</p>${rows}</div>`;
 }
 let certT = 0;
 function drawCertPreview(){

@@ -74,6 +74,23 @@ const Room = (() => {
     }
   };
 
+  /* ---------- анонимная статистика всех игроков ---------- */
+  const SK = 'rp-local-stats';
+  const statsLocal = {
+    async submit(r){ const a = JSON.parse(localStorage.getItem(SK) || '{}'); a[r.id] = r; localStorage.setItem(SK, JSON.stringify(a)); },
+    async get(champ){
+      const rows = Object.values(JSON.parse(localStorage.getItem(SK) || '{}')), w = {};
+      rows.forEach(r => w[r.champ] = (w[r.champ] || 0) + 1);
+      const mine = w[champ] || 0, ids = Object.keys(w).sort((a, b) => w[b] - w[a] || (a < b ? -1 : 1));
+      return {total:rows.length, champs:ids.length, mine, rank:1 + ids.filter(id => w[id] > mine).length,
+        inTop:rows.filter(r => r.top.includes(champ)).length, top:ids.slice(0, 8).map(id => ({id, n:w[id]}))};
+    }
+  };
+  const statsRemote = {
+    submit: r => rpc('stats_submit', {p_id:r.id, p_champ:r.champ, p_top:r.top, p_who:r.who, p_n:r.n}),
+    get: champ => rpc('stats_get', {p_champ:champ})
+  };
+
   const api = () => localMode ? local : remote;
   return {
     configured, localMode,
@@ -82,6 +99,7 @@ const Room = (() => {
     get: code => api().get(code),
     save: (code, token, state) => api().save(code, token, state),
     subscribe: (code, me, a, b) => api().subscribe(code, me, a, b),
+    stats: {submit: r => (localMode ? statsLocal : statsRemote).submit(r), get: id => (localMode ? statsLocal : statsRemote).get(id)},
     errText
   };
 })();

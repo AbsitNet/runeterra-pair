@@ -288,5 +288,136 @@ const Share = (() => {
     document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
     return 'saved';
   }
-  return {tierList, certificate, pairCertificate, save};
+  /* ================= карта сердца: откуда родом топ-20 ================= */
+  /* стилизованная карта Рунтерры в координатах поля 940×640; география примерная, но узнаваемая */
+  const LANDS = [
+    /* Валоран: Фрельйорд, Демасия, Ноксус, Пилтовер и Заун */
+    [[58,232],[74,172],[108,132],[150,122],[170,86],[220,60],[262,40],[330,30],[400,22],[470,36],[540,28],[602,58],[624,100],[600,140],[642,170],[662,220],[640,262],[656,300],[622,332],[590,360],[604,398],[562,424],[522,410],[498,432],[458,426],[420,402],[380,412],[340,386],[300,392],[262,370],[220,382],[180,352],[130,348],[98,312],[70,292]],
+    /* Шурима с Таргоном, Ишталом и Икатией */
+    [[108,522],[150,482],[210,470],[252,456],[300,470],[360,462],[420,472],[470,456],[522,464],[580,448],[640,440],[692,456],[730,482],[746,522],[720,560],[736,600],[690,624],[630,614],[580,632],[500,626],[440,632],[380,622],[320,630],[260,614],[200,620],[150,596],[120,562]],
+    /* Иония и её островки */
+    [[718,162],[760,130],[800,110],[846,118],[880,140],[896,180],[880,214],[896,250],[870,286],[830,302],[790,296],[760,270],[734,240],[714,200]],
+    [[898,92],[926,88],[936,114],[910,126]],
+    [[846,322],[868,312],[880,330],[860,342]],
+    /* Билджвотер */
+    [[768,402],[800,386],[836,392],[852,420],[836,456],[800,466],[774,446]],
+    [[864,446],[884,440],[892,462],[872,472]],
+    /* Сумрачные острова */
+    [[850,530],[890,514],[926,524],[936,560],[916,596],[876,602],[850,576]],
+    [[812,598],[832,592],[838,612],[818,618]]
+  ];
+  const SPOTS = {
+    frl:[360,100], dem:[172,252], nox:[520,226], pil:[428,368], zau:[548,388], ion:[808,206],
+    bil:[810,426], shu:[420,548], tar:[202,548], ixt:[656,502], void:[560,592], sha:[892,560]
+  };
+  function blobPath(cx, pts, ox, oy, seed){
+    /* каждая сторона делится на три части с небольшим сдвигом — берег выходит неровным */
+    const rnd = mulberry32(seed), P = [];
+    pts.forEach((p, i) => {
+      const q = pts[(i + 1) % pts.length], dx = q[0] - p[0], dy = q[1] - p[1], L = Math.hypot(dx, dy) || 1;
+      P.push(p);
+      for (const t of [1 / 3, 2 / 3]){ const j = (rnd() - .5) * Math.min(22, L * .3); P.push([p[0] + dx * t - dy / L * j, p[1] + dy * t + dx / L * j]); }
+    });
+    const mid = (a, b) => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+    cx.beginPath();
+    let m0 = mid(P[P.length - 1], P[0]); cx.moveTo(ox + m0[0], oy + m0[1]);
+    P.forEach((p, i) => { const m = mid(p, P[(i + 1) % P.length]); cx.quadraticCurveTo(ox + p[0], oy + p[1], ox + m[0], oy + m[1]); });
+    cx.closePath();
+  }
+  function tinted(im, color, s){
+    const t = document.createElement('canvas'); t.width = t.height = Math.ceil(s);
+    const tx = t.getContext('2d'); tx.drawImage(im, 0, 0, s, s);
+    tx.globalCompositeOperation = 'source-in'; tx.fillStyle = color; tx.fillRect(0, 0, s, s);
+    return t;
+  }
+  async function heartMap(m, who){
+    await fontsReady();
+    const top = m.order.slice(0, 20), by = {};
+    top.forEach(id => { const r = (PROFILE[id] || ['rt'])[0]; (by[r] = by[r] || []).push(id); });
+    const regs = Object.keys(by).sort((a, b) => by[b].length - by[a].length || top.indexOf(by[a][0]) - top.indexOf(by[b][0]));
+    const keys = Object.keys(REGIONS);
+    const [ims, ems] = await Promise.all([Promise.all(top.map(loadImg)), Promise.all(keys.map(loadEmblem))]);
+    const IM = {}, EM = {}; top.forEach((id, i) => IM[id] = ims[i]); keys.forEach((k, i) => EM[k] = ems[i]);
+    const rows = Math.ceil(regs.length / 2), rowH = rows > 5 ? 74 : 84;
+    const W = 1080, MX = 70, MY = 262, MW = 940, MH = 640, LY = MY + MH + 64, H = LY + rows * rowH + 150;
+    const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+    const cx = cv.getContext('2d'); bg(cx, W, H);
+    cx.strokeStyle = C.gold; cx.lineWidth = 3; cx.strokeRect(36, 36, W - 72, H - 72);
+    cx.strokeStyle = C.lo; cx.lineWidth = 1; cx.strokeRect(52, 52, W - 104, H - 104);
+    cx.textAlign = 'center';
+    cx.fillStyle = C.gold; cx.font = `600 20px ${FU}`; cx.fillText('ПАРА ИЗ РУНТЕРРЫ', W / 2, 112);
+    cx.fillStyle = C.hi; cx.font = `72px ${FD}`; cx.fillText('Карта сердца', W / 2, 190);
+    cx.fillStyle = C.gold; const sub = who ? `Откуда родом топ-20: ${who}` : 'Откуда родом твой топ-20';
+    fitText(cx, sub, W - 200, 32, FD); cx.fillText(sub, W / 2, 234);
+
+    /* море: координатная сетка */
+    cx.save(); cx.beginPath(); cx.rect(MX, MY, MW, MH); cx.clip();
+    cx.fillStyle = '#0B121B'; cx.fillRect(MX, MY, MW, MH);
+    cx.strokeStyle = 'rgba(200,170,110,.06)'; cx.lineWidth = 1;
+    for (let x = MX + 47; x < MX + MW; x += 94){ cx.beginPath(); cx.moveTo(x, MY); cx.lineTo(x, MY + MH); cx.stroke(); }
+    for (let y = MY + 40; y < MY + MH; y += 80){ cx.beginPath(); cx.moveTo(MX, y); cx.lineTo(MX + MW, y); cx.stroke(); }
+    /* суша */
+    LANDS.forEach((pts, i) => {
+      blobPath(cx, pts, MX, MY, 9173 + i * 31);
+      cx.fillStyle = '#152131'; cx.fill();
+      cx.strokeStyle = 'rgba(200,170,110,.10)'; cx.lineWidth = 9; cx.stroke();
+      cx.strokeStyle = C.lo; cx.lineWidth = 1.6; cx.stroke();
+    });
+    /* роза ветров */
+    cx.save(); cx.translate(MX + 58, MY + MH - 62); cx.strokeStyle = C.lo; cx.fillStyle = C.lo; cx.lineWidth = 1;
+    cx.beginPath(); cx.arc(0, 0, 26, 0, Math.PI * 2); cx.stroke();
+    for (let k = 0; k < 4; k++){ cx.rotate(Math.PI / 2); cx.beginPath(); cx.moveTo(0, -34); cx.lineTo(5, 0); cx.lineTo(-5, 0); cx.closePath(); k === 3 ? (cx.fillStyle = C.gold, cx.fill()) : cx.stroke(); }
+    cx.fillStyle = C.gold; cx.font = `600 13px ${FU}`; cx.textAlign = 'center'; cx.fillText('С', 0, -40);
+    cx.restore();
+    cx.restore();
+    cx.strokeStyle = C.line; cx.lineWidth = 1; cx.strokeRect(MX, MY, MW, MH);
+
+    const inMap = (c, t, x) => { const w = c.measureText(t).width / 2 + 10; return Math.min(MX + MW - w, Math.max(MX + w, x)); };
+    /* отметки краёв: размер — по числу чемпионов из топ-20 */
+    Object.entries(SPOTS).sort((a, b) => (by[a[0]] || []).length - (by[b[0]] || []).length).forEach(([k, [x0, y0]]) => {
+      const x = MX + x0, y = MY + y0, n = (by[k] || []).length, ink = (SEAL[k] || SEAL.rt).ink;
+      if (!n){
+        if (EM[k]){ cx.globalAlpha = .38; const e = tinted(EM[k], C.muted, 26); cx.drawImage(e, x - 13, y - 13); cx.globalAlpha = 1; }
+        cx.fillStyle = 'rgba(140,154,169,.7)'; cx.font = `17px ${FD}`; cx.textAlign = 'center'; cx.fillText(REGIONS[k][0], inMap(cx, REGIONS[k][0], x), y + 32);
+        return;
+      }
+      const r = 22 + 9 * Math.sqrt(n);
+      const g = cx.createRadialGradient(x, y, r * .2, x, y, r * 1.9);
+      g.addColorStop(0, ink + '66'); g.addColorStop(1, ink + '00');
+      cx.fillStyle = g; cx.beginPath(); cx.arc(x, y, r * 1.9, 0, Math.PI * 2); cx.fill();
+      cx.fillStyle = C.night; cx.beginPath(); cx.arc(x, y, r, 0, Math.PI * 2); cx.fill();
+      cx.strokeStyle = ink; cx.lineWidth = 2.5; cx.stroke();
+      if (EM[k]){ const s = r * 1.25, e = tinted(EM[k], ink, s); cx.drawImage(e, x - s / 2, y - s / 2); }
+      /* число в плашке справа сверху */
+      const bx = x + r * .74, by_ = y - r * .74;
+      cx.fillStyle = ink; cx.beginPath(); cx.arc(bx, by_, 15, 0, Math.PI * 2); cx.fill();
+      cx.fillStyle = C.night; cx.font = `700 16px ${FU}`; cx.textAlign = 'center'; cx.textBaseline = 'middle'; cx.fillText(String(n), bx, by_ + 1); cx.textBaseline = 'alphabetic';
+      cx.fillStyle = C.hi; cx.font = `21px ${FD}`; cx.fillText(REGIONS[k][0], inMap(cx, REGIONS[k][0], x), y + r + 24);
+    });
+
+    /* легенда: края по убыванию, с портретами */
+    const colW = (W - 140 - 40) / 2;
+    regs.forEach((k, i) => {
+      const col = i < rows ? 0 : 1, row = col ? i - rows : i, x = 70 + col * (colW + 40), y = LY + row * rowH, ids = by[k], ink = (SEAL[k] || SEAL.rt).ink;
+      if (EM[k]){ cx.drawImage(tinted(EM[k], ink, 30), x, y + 4); }
+      cx.textAlign = 'left'; cx.fillStyle = C.hi; cx.font = `22px ${FD}`;
+      const label = k === 'rt' ? 'Странники' : REGIONS[k][0];
+      cx.fillText(label, x + 42, y + 26);
+      const lw = cx.measureText(label).width;
+      cx.fillStyle = C.muted; cx.font = `18px ${FU}`; cx.fillText(String(ids.length), x + 52 + lw, y + 26);
+      const fw = 34, fh = 40, step = 38, maxN = Math.floor((colW - 42) / step), show = ids.slice(0, ids.length > maxN ? maxN - 1 : maxN);
+      show.forEach((id, j) => {
+        const fx = x + 42 + j * step, fy = y + 36;
+        cover(cx, IM[id], fx, fy, fw, fh, .16);
+        cx.strokeStyle = C.line; cx.lineWidth = 1; cx.strokeRect(fx + .5, fy + .5, fw - 1, fh - 1);
+      });
+      if (show.length < ids.length){ cx.fillStyle = C.muted; cx.font = `16px ${FU}`; cx.fillText(`+${ids.length - show.length}`, x + 42 + show.length * step + 4, y + 62); }
+    });
+
+    cx.textAlign = 'left'; cx.fillStyle = C.muted; cx.font = `15px ${FU}`;
+    cx.fillText('Карта примерная. Фан-тест по League of Legends. Не одобрен Riot Games.', 70, H - 78);
+    return cv;
+  }
+
+  return {tierList, certificate, pairCertificate, heartMap, save};
 })();

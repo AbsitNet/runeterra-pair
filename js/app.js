@@ -527,7 +527,31 @@ function renderResult(m){
   $('#selfBtn').hidden = !V; $('#shareBtn').hidden = V; $('#newBtn').hidden = V; $('#refinalBtn').hidden = V;
   $('#method').textContent = `${th ? `Мини-турнир «${th[1]}» на ${m.order.length} ${plural(m.order.length,'участника','участников','участников')}. ` : ''}Режим «${MODES[S.cfg.mode].label}», ${m.total} ${duelsWord(m.total)}: ${m.R} ${plural(m.R,'круг','круга','кругов')} отбора, битвы за место${MODES[S.cfg.mode].D ? ', спорные места' : ''} и плей-офф с двойным выбыванием на ${m.P}. Первые ${m.P} мест решены плей-офф, остальные стоят по рейтингу всех дуэлей с учётом силы соперников; если соседи по списку встречались, выше стоит победитель. ${V ? 'Результат открыт по ссылке и в этом браузере не сохраняется.' : 'Результат сохранён в этом браузере.'}`;
   drawCertPreview();
+  renderHeartMap(m);
   renderGlobalStats(m);
+}
+/* ================= карта сердца: откуда родом топ-20 ================= */
+const REGION_TO = {ion:'в Ионию', nox:'в Ноксус', dem:'в Демасию', frl:'во Фрельйорд', pil:'в Пилтовер', zau:'в Заун', bil:'в Билджвотер',
+  shu:'в Шуриму', tar:'на Таргон', ixt:'в Иштал', sha:'на Сумрачные острова', void:'в Бездну'};
+let mapT = 0;
+function renderHeartMap(m){
+  const top = m.order.slice(0, 20), cnt = {};
+  top.forEach(id => { const r = (PROFILE[id] || ['rt'])[0]; cnt[r] = (cnt[r] || 0) + 1; });
+  const places = Object.keys(cnt).filter(k => k !== 'rt'), best = Math.max(0, ...places.map(k => cnt[k]));
+  const lead = places.filter(k => cnt[k] === best), V = !!VIEW;
+  $('#mapHead').textContent = best ? `Сердце тянется ${lead.map(k => REGION_TO[k]).join(' и ')}` : 'Сердце странствует';
+  const parts = [];
+  if (best) parts.push(lead.length > 1 ? `Оттуда по ${best} из ${top.length} ${V ? 'в топе' : 'в твоём топе'}.` : `${best} из ${top.length} ${V ? 'в топе' : 'в твоём топе'} — оттуда.`);
+  parts.push(`Всего краёв: ${places.length}.`);
+  if (cnt.rt) parts.push(cnt.rt === 1 ? 'Ещё один — странник без родного края.' : `Ещё ${cnt.rt} — странники без родного края.`);
+  $('#mapText').textContent = parts.join(' ');
+  clearTimeout(mapT);
+  mapT = setTimeout(async () => {
+    if (ui.cur !== m) return;
+    const cv = await Share.heartMap(m, V && VIEW.name ? VIEW.name : ''), pv = $('#mapPreview');
+    if (pv.width !== cv.width || pv.height !== cv.height){ pv.width = cv.width; pv.height = cv.height; }
+    pv.getContext('2d').drawImage(cv, 0, 0);
+  }, 260);
 }
 /* ================= статистика всех игроков: анонимно, только пара и топ-10 ================= */
 const STATS_MIN_ROSTER = 40;   // мини-турниры и совсем короткие составы в общую статистику не идут
@@ -1344,6 +1368,7 @@ function bind(){
   $('#liveToggle').checked = liveOn();
   $('#syImg').addEventListener('click', async () => { const x = syncCalc(); if (x && x.phase === 'done') saveImage(await Share.tierList(x.m, [], `${sess.name} и ${x.pp.name}`), 'para-iz-runterry-obshchiy-tir-list.png', 'Общий тир-лист сохранён'); });
   $('#syAgain').addEventListener('click', syncSetup);
+  $('#mapBtn').addEventListener('click', async () => { const m = ui.cur; if (m && m.kind === 'done') saveImage(await Share.heartMap(m, VIEW && VIEW.name ? VIEW.name : ''), 'para-iz-runterry-karta-serdca.png', 'Карта сердца сохранена'); });
   $('#syRoom').addEventListener('click', () => { show('scr-room'); renderRoom(); });
   $('#liveToggle').addEventListener('change', e => setLive(e.target.checked));
   $('#rCopy').addEventListener('click', () => {

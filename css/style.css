@@ -669,3 +669,10 @@ textarea#copyFallback{width:100%;min-height:160px;background:var(--deep);color:v
 .g-row.me b{color:var(--gold-hi)}
 .g-row.me .g-bar span{background:var(--rose)}
 @media (max-width:760px){.gstats{grid-template-columns:minmax(0,1fr)}}
+
+/* ================= карта сердца ================= */
+.map-txt{display:grid;gap:12px;align-content:start}
+.map-txt h3{font-size:clamp(28px,3.6vw,40px);line-height:1.05;color:var(--gold-hi);text-wrap:balance}
+.map-txt p{color:var(--text);max-width:34em}
+.share-grid.map-grid{grid-template-columns:minmax(0,460px) minmax(0,1fr)}
+@media (max-width:760px){.share-grid.map-grid{grid-template-columns:minmax(0,1fr)}.share-grid.map-grid canvas{max-width:100%}}

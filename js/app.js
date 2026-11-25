@@ -592,7 +592,7 @@ function renderMuCta(m){
   const r = S.mutual && S.mutual.champ === m.champ ? S.mutual : null, N = esc(name(m.champ));
   box.hidden = false;
   box.innerHTML = r
-    ? `<p>Взаимность: <b>${r.pct}%</b> — ${esc(muVerdict(m.champ, r.pct)[0].toLowerCase())}.</p><button class="btn ghost" type="button" id="muGo">Ответить заново</button>`
+    ? `<p>Взаимность: <b>${r.pct}%</b> — ${esc(muVerdict(m.champ, r.pct)[0].toLowerCase().replace(/([^!?])$/, '$1.'))}</p><button class="btn ghost" type="button" id="muGo">Ответить заново</button>`
     : `<p><b>А это взаимно?</b> ${N} задаст тебе семь вопросов.</p><button class="btn" type="button" id="muGo">Узнать</button>`;
   $('#muGo').addEventListener('click', () => startMutual(m.champ));
 }
@@ -684,7 +684,7 @@ function statsHTML(id, g, counted){
   const total = +g.total || 0, mine = +g.mine || 0, nm = name(id);
   const pc = n => { const v = total ? 100 * n / total : 0; return v > 0 && v < 1 ? '<1' : v.toLocaleString('ru-RU', {maximumFractionDigits: v < 10 ? 1 : 0}); };
   const note = `<p class="muted">Анонимно: в статистику попадают только итоговая пара и топ-10, без имён.${counted ? '' : ' Мини-турниры и результаты по ссылке не считаются.'}</p>`;
-  if (!total) return `<div class="g-verdict"><h3>Пока пусто</h3><p>Ещё никто не прошёл полный турнир. Стань первым результатом в статистике.</p>${note}</div>`;
+  if (!total) return `<div class="g-verdict"><h3>Пока пусто</h3><p>Полных турниров в статистике ещё нет. Она появится, когда наберутся первые результаты.</p>${note}</div>`;
   const share = 100 * mine / total;
   let h, t;
   if (!mine){ h = 'Нетронутая пара'; t = `${nm} пока не ${verb(id,'стала','стал')} парой ни у кого из ${total} ${plural(total,'игрока','игроков','игроков')}.`; }

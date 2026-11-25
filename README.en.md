@@ -14,6 +14,10 @@ Losing once doesn't knock anyone out. Everyone plays a few Swiss rounds against 
 
 At the end you get a full tier list, your "type", a few joke achievements, three champions it would never work out with (and why), and a compatibility certificate you can save as a picture and send to whoever needs to see it. Every winner comes with a line from their official bio, shown on the results screen and on the certificate.
 
+There's also a heart map: a stylised map of Runeterra marking where your top 20 come from. And stats across all players: how rare your pick is and who ends up as someone's pair most often. They're anonymous: only the final pair and the top 10 are stored, no names.
+
+You can also check whether it's mutual. The winner asks you seven questions (about dates, fights, their dark side and where you'd live together) and works out a mutual-feelings score based on their personality.
+
 You can share your result as a link. It opens your tier list for anyone, no room needed.
 
 There are 138 champions in the pool, adults only: no kids, no yordles. Rhaast and Kayn count as two different people, and so do Wolf and Lamb. Monsters like Kha'Zix and Warwick can be switched off with one toggle.
@@ -24,9 +28,13 @@ You can install it on your phone like an app: "Install" in Chrome, or Share → 
 
 ## Playing together
 
-Create a room, send the link, and each of you plays your own tournament on your own device. Before you start, you can bet on who the other person will end up with. You can see how far the other person has got, and once you're both done you get a comparison: how close your tastes are and whose bet paid off.
+Create a room, send the link, and each of you plays your own tournament on your own device. You can bet on who the other person will end up with; bets close once they reach the playoffs. You can see how far the other person has got, and once they're in the playoffs you get live updates: who they're choosing between and who they picked. You can reply with a reaction. If you hate spoilers, switch it off in the room.
+
+Once you're both done you get a comparison: how close your tastes are and whose bet paid off.
 
 Then your two winners meet in one last duel, the battle of tastes, and you both vote. There's a joint certificate for the two of you, signed by your shared favourites as witnesses, and a little guessing game where you try to predict the other person's picks.
+
+Or you can play a shared tournament: 16 champions, random or themed, with the same pair on both screens at the same time. You each pick in secret and the answers are revealed together. If you disagree, you get one re-vote, and after that a coin toss decides. At the end you get a shared tier list for the couple and how often you agreed.
 
 ## Running it yourself
 
@@ -38,7 +46,7 @@ python3 -m http.server 8000
 
 then open http://localhost:8000.
 
-The two-player room runs on Supabase. Apply the migration from `supabase/migrations/` and put your project URL and publishable key into `js/config.js`. Keeping the publishable key in the repo is fine: the tables are locked down with RLS, and the browser only reaches the database through a few `pair_*` functions. Rooms nobody has opened for 90 days are deleted automatically.
+The two-player room and the anonymous stats run on Supabase. Apply the migrations from `supabase/migrations/` and put your project URL and publishable key into `js/config.js`. Keeping the publishable key in the repo is fine: the tables are locked down with RLS, and the browser only reaches the database through a few `pair_*` and `stats_*` functions. Rooms nobody has opened for 90 days are deleted automatically.
 
 No Supabase handy? Open two tabs with `?room-backend=local` and the room will work inside your browser.
 
@@ -48,7 +56,7 @@ The tournament logic is in `js/engine.js`, the champion write-ups in `js/profile
 
 ## Feature tracker
 
-What already works and what's planned. Difficulty for the planned ones is a rough guess: "medium" is a couple of evenings, "long" is a big chunk of work of its own.
+What already works and what's planned. Everything left on the plan is a big chunk of work, several evenings each.
 
 ### Done
 
@@ -76,6 +84,9 @@ Results:
 - [x] A compatibility certificate with the seal and registrar of the winner's home region
 - [x] The winner's quote on the results screen and the certificate
 - [x] A link to your result: the tier list opens for anyone, no room needed
+- [x] Heart map: where your top 20 come from, as a picture you can download
+- [x] Stats across all players: how rare your pick is and who gets picked the most
+- [x] Mutual feelings: the winner asks seven questions and works out a score
 
 Playing together:
 
@@ -86,6 +97,8 @@ Playing together:
 - [x] Betting on your partner's pair
 - [x] Battle of tastes: your winners meet in one last duel and you both vote
 - [x] A joint certificate, signed by your shared favourites as witnesses
+- [x] Live updates from your partner's playoffs with reactions, and a switch for spoiler haters
+- [x] Shared tournament: the same pair for both of you, secret picks, a re-vote and a coin toss, a shared tier list
 
 Everywhere:
 
@@ -96,11 +109,6 @@ Everywhere:
 
 | Feature | What it is | Difficulty |
 |---|---|---|
-| Live reactions | When your partner reaches the playoffs, you see who they're choosing between and can send a reaction back. Can be turned off if you hate spoilers | medium |
-| Synchronous duels | You both get the same pair at the same time, pick in secret, and the answers are revealed together. Ends with a shared tier list for the couple | medium |
-| Stats across all players | Anonymously: who gets picked the most and how rare your choice is | medium |
-| Heart map | A map of Runeterra marking where your top 20 come from, saved as a picture | medium |
-| Mutual feelings | A reverse test, "would your pair actually like you back?": a few questions from the winner's point of view and a mutual-feelings score at the end | medium |
 | English, German and French | Translating the interface, champion write-ups and quotes | long |
 | Rooms for a group | More than two people: who matches whom and a shared anti-top | long |
 | The Star Matchmaker | A separate mode with no duels: about 30 questions about yourself (temperament, what you value, your ideal evening, how you behave in a fight), and the matchmaker finds your ideal partner and explains why | long |

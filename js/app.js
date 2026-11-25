@@ -54,7 +54,8 @@ function setCtx(c){ ctx = c; sstore.set('rp-ctx', c); loadFor(c); }
 /* ---------- мелочи ---------- */
 function show(id){
   document.querySelectorAll('.screen').forEach(s => s.hidden = s.id !== id);
-  ui.screen = id; window.scrollTo(0, 0);
+  ui.screen = id; document.body.dataset.screen = id; window.scrollTo(0, 0);
+  if (id !== 'scr-duel') hideSwipeHint();
   if (id !== 'scr-duel') FX.setLevel(0);
 }
 let toastT = 0;
@@ -190,7 +191,19 @@ function setCard(i, id){
   $('#ds' + i).textContent = p[3];
   const card = $('#card' + i); card.className = 'pick'; card.style.transform = '';
   card.setAttribute('aria-label', `Выбрать: ${c.name}, ${c.title}. ${p[3]}`);
+  fitName($('#nm' + i));
 }
+/* имя не рвём посреди слова: если самое длинное слово не влезает, уменьшаем шрифт */
+function fitName(el){
+  el.style.fontSize = '';
+  if (!el.clientWidth) return;
+  let fs = parseFloat(getComputedStyle(el).fontSize), n = 0;
+  while (el.scrollWidth > el.clientWidth + 1 && fs > 12 && n++ < 40){ fs -= 1; el.style.fontSize = fs + 'px'; }
+}
+let fitT = 0;
+const refitNames = () => { if (ui.screen === 'scr-duel'){ fitName($('#nm0')); fitName($('#nm1')); } };
+window.addEventListener('resize', () => { clearTimeout(fitT); fitT = setTimeout(refitNames, 120); });
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(refitNames);
 function renderDuel(m, silent){
   if (ui.screen !== 'scr-duel') show('scr-duel');
   $('#stage').textContent = stageLabel(m);
@@ -219,7 +232,7 @@ function renderDuel(m, silent){
       else if (m.stage === 'dispute' && m.round === 1) toast('Спорные места: решаем, кто окажется выше границы тира');
       else if (m.stage === 'lb' && /раунд 1$/.test(m.label)) toast('Сетка второго шанса: проигравшие продолжают борьбу');
     }
-    if (touch && !ui.swipeHinted && m.played === 0){ ui.swipeHinted = true; toast('Можно свайпать: вправо — правый, влево — левый'); }
+    if (touch && !ui.swipeHinted && !store.get('rp-swipe-hint')){ ui.swipeHinted = true; store.set('rp-swipe-hint', 1); showSwipeHint(); }
   }
   preloadNext();
 }
@@ -232,7 +245,7 @@ function cardCenter(i){ const r = $('#card' + i).getBoundingClientRect(); return
 function pick(side){
   if (ui.lock || ui.screen !== 'scr-duel' || !ui.cur || ui.cur.kind !== 'duel') return;
   if (ui.mode === 'guess') return guessPick(side);
-  ui.lock = true;
+  ui.lock = true; hideSwipeHint();
   const m = ui.cur, cards = [$('#card0'), $('#card1')];
   cards.forEach(c => c.style.transform = '');
   cards[side].classList.add('chosen'); cards[1 - side].classList.add('lost');
@@ -252,9 +265,15 @@ function undo(){
 }
 
 /* свайпы на телефоне */
+let hintT = 0;
+function showSwipeHint(){ const h = $('#swipeHint'); h.hidden = false; h.classList.remove('out'); clearTimeout(hintT); hintT = setTimeout(hideSwipeHint, 6000); }
+function hideSwipeHint(){
+  const h = $('#swipeHint'); if (h.hidden) return;
+  clearTimeout(hintT); h.classList.add('out'); hintT = setTimeout(() => { h.hidden = true; h.classList.remove('out'); }, 300);
+}
 function bindSwipe(){
   const ar = $('#arena'); let x0 = null, y0 = 0, dx = 0, moved = false;
-  ar.addEventListener('pointerdown', e => { if (e.pointerType === 'mouse') return; x0 = e.clientX; y0 = e.clientY; dx = 0; moved = false; });
+  ar.addEventListener('pointerdown', e => { if (e.pointerType === 'mouse') return; x0 = e.clientX; y0 = e.clientY; dx = 0; moved = false; hideSwipeHint(); });
   ar.addEventListener('pointermove', e => {
     if (x0 === null) return;
     dx = e.clientX - x0; const dy = e.clientY - y0;
@@ -504,7 +523,7 @@ function roomAction(a){
 }
 function renderPartnerChip(){
   const chip = $('#partnerChip');
-  if (!(ctx === 'room' && sess && ui.screen === 'scr-duel')){ chip.hidden = true; return; }
+  if (!(ctx === 'room' && sess && ui.screen === 'scr-duel' && ui.mode !== 'guess')){ chip.hidden = true; return; }
   const pp = partner();
   if (!pp){ chip.hidden = false; chip.innerHTML = '<span class="dot"></span>Ждём партнёра'; return; }
   const ps = playerState(pp), on = online.has(pp.slot);
@@ -639,6 +658,7 @@ function bind(){
 }
 
 function start(){
+  document.body.dataset.screen = ui.screen;
   bind();
   const qs = new URLSearchParams(location.search), inv = (qs.get('room') || '').toUpperCase();
   if (inv) $('#roomCode').value = inv;

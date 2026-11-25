@@ -52,7 +52,7 @@ button{font:inherit;color:inherit}
 .fan{position:relative;height:calc(clamp(104px,15vw,158px)*2.05);margin-top:8px}
 .fc{position:absolute;left:50%;bottom:0;width:clamp(104px,15vw,158px);aspect-ratio:308/560;border:1px solid var(--gold-lo);background:var(--deep);overflow:hidden;transform-origin:50% 115%;transform:translateX(calc(-50% + var(--x,0%))) rotate(var(--r)) translateY(var(--y));transition:transform .5s cubic-bezier(.2,.8,.2,1)}
 .fc img{width:100%;height:100%;object-fit:cover;display:block}
-.fan:hover .fc{transform:translateX(calc(-50% + var(--x,0%) * 1.15)) rotate(calc(var(--r) * 1.2)) translateY(var(--y))}
+@media (hover:hover){.fan:hover .fc{transform:translateX(calc(-50% + var(--x,0%) * 1.15)) rotate(calc(var(--r) * 1.2)) translateY(var(--y))}}
 .fc-q{z-index:3;display:grid;place-items:center;background:radial-gradient(circle at 50% 40%,color-mix(in srgb,var(--rose) 28%,var(--deep)),var(--night) 75%);border-color:var(--gold)}
 .fc-q span{font-family:var(--f-display);font-size:clamp(64px,9vw,104px);color:var(--gold-hi);line-height:1}
 .fc-q::after{content:"";position:absolute;inset:6px;border:1px solid color-mix(in srgb,var(--gold) 45%,transparent)}
@@ -123,7 +123,8 @@ details.who p b{color:var(--text);font-weight:600}
 .pick .nm{display:block;font-family:var(--f-display);font-size:clamp(21px,4.4vw,34px);line-height:1;letter-spacing:.05em;text-transform:uppercase;color:var(--gold-hi);overflow-wrap:anywhere}
 .pick .tt{display:block;margin-top:6px;font-size:clamp(11.5px,2.4vw,13.5px);line-height:1.3;color:var(--gold)}
 .pick .heart{position:absolute;z-index:3;top:42%;left:50%;width:clamp(52px,10vw,84px);height:clamp(48px,9.2vw,77px);color:var(--rose);opacity:0;transform:translate(-50%,-50%) scale(.4);transition:opacity .22s,transform .3s cubic-bezier(.2,1.6,.4,1);filter:drop-shadow(0 4px 18px color-mix(in srgb,var(--rose) 70%,transparent))}
-.pick:hover{transform:translateY(-4px);border-color:var(--gold);box-shadow:0 14px 44px -14px color-mix(in srgb,var(--gold) 55%,transparent)}
+@media (hover:hover){.pick:hover{transform:translateY(-4px);border-color:var(--gold);box-shadow:0 14px 44px -14px color-mix(in srgb,var(--gold) 55%,transparent)}}
+.pick,.gcard,.th,.btn,.icon-btn{-webkit-tap-highlight-color:transparent}
 .pick.chosen{border-color:var(--rose);box-shadow:0 0 0 2px var(--rose),0 0 60px -8px var(--rose)}
 .pick.chosen .heart{opacity:1;transform:translate(-50%,-50%) scale(1)}
 .pick.lost{opacity:.3;filter:grayscale(.8);transform:scale(.97)}
@@ -211,7 +212,10 @@ textarea#copyFallback{width:100%;min-height:160px;background:var(--deep);color:v
 .app{position:relative;z-index:1}
 
 /* верхняя панель дуэли */
-.duel-top{align-items:center}
+.duel-top{align-items:center;flex-wrap:nowrap}
+.duel-info{min-width:0;flex:1 1 auto}
+.duel-sub{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;margin-top:4px}
+.duel-tools{flex:none}
 .duel-tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .icon-btn{display:inline-grid;place-items:center;width:36px;height:36px;border:1px solid var(--line);background:transparent;color:var(--muted);cursor:pointer;transition:border-color .2s,color .2s}
 .icon-btn:hover{border-color:var(--gold-lo);color:var(--gold-hi)}
@@ -257,12 +261,15 @@ textarea#copyFallback{width:100%;min-height:160px;background:var(--deep);color:v
 .intro-title{font-family:var(--f-display);color:var(--gold-hi);font-size:clamp(40px,9vw,96px);line-height:1;letter-spacing:.04em;text-transform:uppercase;text-wrap:balance}
 .intro-sub{color:var(--text);font-size:15px;max-width:30em}
 .intro-skip{font-size:12px;color:var(--muted)}
-.intro::before{content:"";position:absolute;left:50%;top:50%;width:140vmax;height:2px;background:linear-gradient(90deg,transparent,var(--gold-hi),transparent);transform:translate(-50%,-50%) scaleX(0);opacity:.0}
+.intro{overflow:hidden}
+/* световая полоса проходит под заголовком, а не через него */
+.intro-sub{position:relative}
+.intro-sub::before{content:"";position:absolute;left:50%;top:-7px;width:140vmax;height:2px;background:linear-gradient(90deg,transparent,var(--gold-hi),transparent);transform:translate(-50%,-50%) scaleX(0);opacity:0;pointer-events:none}
 .intro.lv1 .intro-title{font-size:clamp(34px,7vw,72px);animation:rise .6s cubic-bezier(.2,.8,.2,1) both}
 .intro.lv2 .intro-title{animation:rise .7s cubic-bezier(.2,.8,.2,1) .15s both;text-shadow:0 0 40px color-mix(in srgb,var(--gold) 60%,transparent)}
-.intro.lv2::before{animation:sweep 1.4s ease .05s both}
+.intro.lv2 .intro-sub::before{animation:sweep 1.4s ease .05s both}
 .intro.lv3{background:radial-gradient(circle at 50% 45%,color-mix(in srgb,var(--rose) 24%,var(--night)),var(--night) 70%)}
-.intro.lv3::before{animation:sweep 1.8s ease .2s both;height:3px}
+.intro.lv3 .intro-sub::before{animation:sweep 1.8s ease .2s both;height:3px}
 .intro.lv3::after{content:"";position:absolute;inset:0;background:repeating-conic-gradient(from 0deg at 50% 45%,color-mix(in srgb,var(--gold) 6%,transparent) 0 6deg,transparent 6deg 18deg);animation:rays 8s linear infinite,fadein 1.2s ease both;pointer-events:none}
 .intro.lv3 .intro-title{font-size:clamp(46px,11vw,120px);animation:zoomin 1.1s cubic-bezier(.2,.8,.2,1) .35s both;text-shadow:0 0 60px color-mix(in srgb,var(--rose) 70%,transparent)}
 .intro.lv3 .intro-in{animation:beatbox 1.24s ease-in-out .2s 2}
@@ -275,7 +282,7 @@ textarea#copyFallback{width:100%;min-height:160px;background:var(--deep);color:v
 
 /* модальное окно */
 .modal{position:fixed;inset:0;z-index:25;display:grid;place-items:center;padding:20px max(16px,env(safe-area-inset-right,0px)) 20px max(16px,env(safe-area-inset-left,0px));background:color-mix(in srgb,var(--night) 82%,transparent);backdrop-filter:blur(3px)}
-.modal-box{position:relative;width:min(980px,100%);max-height:calc(100vh - 40px);overflow:auto;border:1px solid var(--gold-lo);background:var(--deep);padding:clamp(16px,3vw,28px)}
+.modal-box{position:relative;width:min(980px,100%);max-height:calc(100vh - 40px);max-height:calc(100svh - 40px);overflow:auto;overscroll-behavior:contain;border:1px solid var(--gold-lo);background:var(--deep);padding:clamp(16px,3vw,28px)}
 .modal-close{position:absolute;top:10px;right:10px}
 .prof{display:grid;grid-template-columns:minmax(0,180px) minmax(0,1fr);gap:20px;align-items:start}
 .prof img{width:100%;aspect-ratio:308/560;object-fit:cover;border:1px solid var(--gold-lo)}
@@ -394,7 +401,7 @@ textarea#copyFallback{width:100%;min-height:160px;background:var(--deep);color:v
 
 /* адаптивность: подписи карточек считаются от ширины самой карточки */
 .pick{container-type:inline-size}
-.pick .nm{font-size:clamp(16px,14cqi,34px);overflow-wrap:break-word}
+.pick .nm{font-size:clamp(16px,14cqi,34px);overflow-wrap:normal}
 .pick .tt{font-size:clamp(10.5px,6.4cqi,13.5px)}
 .pick .ds{font-size:clamp(10.5px,6.6cqi,12.5px)}
 /* веер на старте не должен давать горизонтальную прокрутку */
@@ -411,3 +418,99 @@ textarea#copyFallback{width:100%;min-height:160px;background:var(--deep);color:v
   .ctrl{margin-top:10px}
 }
 @media (orientation:landscape) and (max-height:520px){.toast{bottom:auto;top:calc(8px + env(safe-area-inset-top,0px))}}
+
+/* подсказка про свайп: появляется один раз, прямо над карточками */
+.nowrap{white-space:nowrap}
+.swipe-hint{position:absolute;z-index:6;left:50%;top:60%;transform:translate(-50%,-50%);display:flex;align-items:center;gap:8px;padding:8px 14px;white-space:nowrap;border:1px solid var(--gold-lo);background:color-mix(in srgb,var(--night) 88%,transparent);color:var(--gold-hi);font-size:13px;pointer-events:none;animation:fadein .3s ease both}
+.swipe-hint i{font-style:normal;color:var(--rose);display:inline-block;animation:nudgeL 1.2s ease-in-out infinite}
+.swipe-hint i:last-child{animation-name:nudgeR}
+.swipe-hint.out{animation:fadeout .3s ease both}
+@keyframes nudgeL{50%{transform:translateX(-4px)}}
+@keyframes nudgeR{50%{transform:translateX(4px)}}
+
+/* ================= узкий экран (телефон) ================= */
+@media (max-width:600px){
+  /* тир-лист: тир подписан полосой сверху, портреты идут на всю ширину */
+  .tier{grid-template-columns:minmax(0,1fr)}
+  .tlab{flex-direction:row;align-items:baseline;justify-content:flex-start;gap:10px;padding:6px 10px;border-right:0;border-bottom:2px solid var(--tc)}
+  .tlab b{font-size:28px}
+  .tier.x .tlab b{font-size:20px}
+  .tlab span{font-size:12.5px}
+  .tlist{display:grid;grid-template-columns:repeat(auto-fill,minmax(50px,1fr));gap:6px;padding:8px}
+  .th{width:auto;min-width:0}
+  .th img{width:100%;height:auto;aspect-ratio:4/5}
+  .th span{font-size:10.5px}
+  /* выбор из сетки: по четыре в ряд */
+  .grid,.seedgrid{grid-template-columns:repeat(auto-fill,minmax(72px,1fr));gap:8px}
+  .gcard span,.seed span{font-size:11.5px;padding:4px 5px 5px}
+  .search{width:100%}
+  .sticky-go{margin-inline:-16px;padding-inline:16px;padding-top:10px;row-gap:8px;border-top:1px solid var(--line);background:color-mix(in srgb,var(--night) 95%,transparent)}
+  .sticky-go .go{flex:1 1 100%;flex-wrap:nowrap}
+  .sticky-go .go .btn{padding-inline:12px}
+  .sticky-go .go .btn.primary{flex:1 1 auto}
+  /* главные кнопки во всю ширину — под большой палец */
+  .setup .go .btn,.resume .btn,.roombox .row .btn,.roombox .row .input,.res-actions .btn,.room-actions .btn{flex:1 1 100%}
+  .inter .go{flex-wrap:nowrap}
+  .inter .go .btn.primary{flex:1 1 auto}
+  /* антитоп: высоту карточки задаёт текст, а не портрет */
+  .anti .card{min-height:112px}
+  .anti img{contain:size;height:100%}
+  /* сравнение: процент сверху, две пары рядом */
+  .cmp-head{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 12px}
+  .cmp-pct{grid-column:1/-1;order:-1}
+  .cmp-p img{width:min(130px,100%)}
+}
+@media (max-width:420px){
+  .wimg{margin-inline:auto;width:100%}
+}
+
+/* ================= телефон вертикально ================= */
+@media (max-width:600px) and (orientation:portrait){
+  /* старт: веер поменьше, чтобы настройки были ближе */
+  .start{gap:14px;padding-top:0}
+  .start-side{padding-bottom:34px}
+  .fan{height:calc(clamp(76px,22vw,100px)*2.1)}
+  .fc{width:clamp(76px,22vw,100px)}
+  .fc-q span{font-size:52px}
+  .start-main{gap:18px}
+  .start .eyebrow{font-size:10.5px;letter-spacing:.1em}
+
+  /* дуэль: экран ровно по высоте, карточки занимают всё свободное место */
+  body[data-screen="scr-duel"]{padding-block:10px 12px;padding-left:max(12px,env(safe-area-inset-left,0px));padding-right:max(12px,env(safe-area-inset-right,0px));min-height:0}
+  body[data-screen="scr-duel"] .foot{display:none}
+  #scr-duel:not([hidden]){display:flex;flex-direction:column;min-height:430px;
+    height:calc(100vh - 22px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px));
+    height:calc(100svh - 22px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px))}
+  .duel-top{gap:10px}
+  #stage{font-size:10.5px;letter-spacing:.14em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .duel-top .cnt{font-size:12.5px;line-height:1.3}
+  .duel-sub{margin-top:3px}
+  .chip{padding:2px 8px;font-size:12px}
+  .icon-btn{width:40px;height:40px}
+  .bar{flex:none;margin:8px 0 10px}
+  .prompt{font-size:clamp(21px,6.4vw,27px);margin-bottom:10px}
+  .subprompt{margin:-4px 0 8px;font-size:16px}
+  .arena{flex:1 1 auto;min-height:0;width:100%;max-width:none;gap:8px;grid-template-rows:minmax(0,1fr);align-items:center}
+  .pick{height:100%;max-height:calc((100vw - 32px) * 1.42);display:grid;grid-template-rows:minmax(0,1fr) auto}
+  .pick img{height:100%;min-height:0;aspect-ratio:auto;object-fit:cover;object-position:50% 14%}
+  .pick .cap{position:relative;margin-top:-52px;padding:52px 10px 12px}
+  .pick .ds{-webkit-line-clamp:3}
+  .pick .heart{top:36%}
+  .vs{top:40%}
+  .reveal{position:relative;z-index:6;height:32px;margin:-40px auto 8px;padding:0 14px;display:flex;align-items:center;max-width:calc(100% - 16px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border:1px solid currentColor;background:color-mix(in srgb,var(--night) 90%,transparent);font-size:13.5px}
+  .reveal:empty{visibility:hidden}
+  .ctrl{flex:none;margin-top:10px;display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:8px}
+  .ctrl .btn{width:100%;min-height:44px}
+  .keys{display:none}
+  body[data-screen="scr-duel"] .toast{bottom:auto;top:calc(8px + env(safe-area-inset-top,0px));transform:translate(-50%,-12px)}
+  body[data-screen="scr-duel"] .toast.on{transform:translate(-50%,0)}
+
+  /* заставки стадий: заголовок помещается в строку */
+  .intro.lv3 .intro-title{font-size:clamp(34px,10.4vw,120px)}
+  .intro.lv2 .intro-title,.intro.lv1 .intro-title{font-size:clamp(30px,9vw,72px)}
+}
+@media (max-width:600px) and (orientation:portrait) and (min-height:740px){
+  .prompt{margin-bottom:14px}
+  .pick .ds{-webkit-line-clamp:4}
+  .ctrl{margin-top:14px}
+}

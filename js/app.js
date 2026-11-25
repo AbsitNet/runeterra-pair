@@ -231,6 +231,7 @@ function refreshStart(){
   refreshInstall();
   renderMinis();
   svRenderCta();
+  renderDaily($('#dailyBox'), false);
 }
 function startFlow(){
   ui.betTheme = null;
@@ -908,6 +909,8 @@ function myState(){
   if (SY) st.sync = SY;
   if (WATCHING) st.watching = true;
   if (HINT) st.hint = HINT;
+  const dm = dailyMine(), dk = Object.keys(dm).sort().slice(-60);
+  if (dk.length){ st.daily = {}; dk.forEach(k => st.daily[k] = dm[k]); }
   return st;
 }
 /* если партнёр смотрит мой турнир, выбор уходит почти сразу, иначе — пачкой раз в секунду с небольшим */
@@ -950,6 +953,7 @@ function renderRoom(){
     return `<div class="pcard ${me ? 'me' : ''}"><div class="who"><span class="dot ${on ? 'on' : ''}"></span>${esc(p.name)} ${me ? '<small>это ты</small>' : on ? '<small>в сети</small>' : ''}</div>${body}</div>`;
   };
   renderSyncBox();
+  renderDaily($('#rDaily'), true);
   $('#rPlayers').innerHTML = players.map(card).join('') + (pp ? '' : '<div class="pcard"><div class="who"><span class="dot"></span>Ждём партнёра…</div><p class="muted">Когда партнёр войдёт по коду, он появится здесь.</p></div>');
   const mine = S.cfg ? simulate(S.cfg, S.dec) : null, their = playerState(pp);
   const acts = [];
@@ -1220,6 +1224,90 @@ function showReaction(who, e, about){
     f.style.animationDelay = (i * 120) + 'ms';
     document.body.appendChild(f); setTimeout(() => f.remove(), 2800 + i * 120);
   }
+}
+
+/* ================= дуэль дня: одна пара в сутки для всех игроков ================= */
+const DAILY_KEY = 'rp-daily';
+const dailyDay = (shift = 0) => new Date(Date.now() + 3 * 3600e3 + shift * 864e5).toISOString().slice(0, 10);   // сутки — по Москве
+const dailyDate = d => new Intl.DateTimeFormat('ru-RU', {day:'numeric', month:'long', timeZone:'UTC'}).format(new Date(d + 'T00:00:00Z'));
+function dailyPair(day){
+  let h = 2166136261; for (const ch of 'rp-daily:' + day){ h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); }
+  const r = mulberry32(h >>> 0), ids = CH.filter(c => c[4] === 'core').map(c => c[0]);
+  const a = ids[Math.floor(r() * ids.length)]; let b = a;
+  while (b === a) b = ids[Math.floor(r() * ids.length)];
+  return [a, b];
+}
+const dailyMine = () => store.get(DAILY_KEY) || {};
+function voterId(){
+  let v = store.get('rp-voter');
+  if (!v){ v = crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-8xxx-xxxxxxxxxxxx'.replace(/x/g, () => (Math.random() * 16 | 0).toString(16)); store.set('rp-voter', v); }
+  return v;
+}
+/* выбор партнёра по дням: только из комнаты */
+const dailyTheirs = () => { const pp = partner(); return (pp && pp.state && pp.state.daily) || {}; };
+function dailyStreak(mine, theirs){
+  const key = d => d.toISOString().slice(0, 10), d = new Date(dailyDay() + 'T00:00:00Z');
+  if (!(mine[key(d)] && theirs[key(d)])) d.setUTCDate(d.getUTCDate() - 1);
+  let n = 0;
+  while (mine[key(d)] && mine[key(d)] === theirs[key(d)]){ n++; d.setUTCDate(d.getUTCDate() - 1); }
+  return n;
+}
+let dailyStats = {day:'', data:null};
+async function dailyLoad(day){
+  if (!Room.configured()) return null;
+  dailyStats = {day, data:dailyStats.day === day ? dailyStats.data : null};   // помечаем день сразу, чтобы не грузить дважды
+  try { dailyStats = {day, data:await Room.daily.get(day)}; } catch(e){}
+  return dailyStats.data;
+}
+async function dailyVote(side){
+  const day = dailyDay(), pair = dailyPair(day), mine = dailyMine();
+  if (mine[day]) return;
+  const pick = pair[side];
+  mine[day] = pick;
+  const keep = Object.keys(mine).sort().slice(-90), trimmed = {}; keep.forEach(k => trimmed[k] = mine[k]);
+  store.set(DAILY_KEY, trimmed);
+  Sound.pick(1);
+  renderDailyAll();
+  if (sess) pushState(true);
+  if (Room.configured()){ try { await Room.daily.vote(day, voterId(), pick); } catch(e){} await dailyLoad(day); renderDailyAll(); }
+}
+function renderDailyAll(){
+  renderDaily($('#dailyBox'), false);
+  if (sess) renderDaily($('#rDaily'), true);
+}
+function renderDaily(box, inRoom){
+  if (!box) return;
+  const day = dailyDay(), [a, b] = dailyPair(day), mine = dailyMine()[day] || null;
+  const pp = inRoom ? partner() : null, theirs = pp ? dailyTheirs() : {}, their = theirs[day] || null;
+  if (mine && Room.configured() && dailyStats.day !== day) dailyLoad(day).then(renderDailyAll);   // общий счёт — только после своего голоса
+  const data = dailyStats.day === day ? dailyStats.data : null, total = data ? data.total : 0;
+  const pct = id => total ? Math.round(100 * ((data.picks || {})[id] || 0) / total) : 0;
+  const card = (id, side) => {
+    const c = BY[id], tags = (mine === id ? '<em class="me">Ты</em>' : '') + (mine && their === id ? `<em>${esc(pp.name)}</em>` : '');
+    return `<button type="button" class="dcard ${mine ? (mine === id ? 'mine' : 'other') : ''}" data-side="${side}" ${mine ? 'disabled' : ''} aria-label="Выбрать: ${esc(c.name)}">
+      <img src="${img(id)}" alt="" loading="lazy">${tags ? `<span class="dwho">${tags}</span>` : ''}
+      ${mine && total ? `<span class="dpct">${pct(id)}%</span>` : ''}
+      <span class="dcap"><b>${esc(c.name)}</b><small>${esc(c.title)}</small></span>
+      ${mine && total ? `<span class="dbar"><i style="--p:${pct(id)}%"></i></span>` : ''}
+    </button>`;
+  };
+  let note;
+  if (!mine) note = 'С кем бы ты провёл(а) сегодняшний вечер? После голоса покажем, что выбрали остальные.' + (their ? ` ${esc(pp.name)} уже проголосовал(а) — узнаешь, за кого, после своего голоса.` : '');
+  else {
+    const p = pct(mine);
+    note = total ? `${p >= 50 ? 'Ты с большинством' : 'Ты в меньшинстве'}: так же проголосовали ${p}% из ${total} ${plural(total,'игрока','игроков','игроков')}.` : 'Голос принят.';
+    if (pp) note += their ? (their === mine ? ` ${esc(pp.name)} голосует так же — совпали!` : ` ${esc(pp.name)} голосует иначе: ${esc(name(their))}.`) : ` ${esc(pp.name)} ещё не голосовал(а).`;
+  }
+  const streak = pp ? dailyStreak(dailyMine(), theirs) : 0;
+  box.hidden = false;
+  box.innerHTML = `<div class="daily-txt">
+      <h2>Дуэль дня</h2>
+      <p class="daily-date">${dailyDate(day)} · новая пара в полночь по Москве</p>
+      <p>${note}</p>
+      ${streak > 1 ? `<p class="daily-streak">Серия совпадений: ${streak} ${plural(streak,'день','дня','дней')} подряд</p>` : ''}
+    </div>
+    <div class="daily-duel">${card(a, 0)}<span class="dvs" aria-hidden="true"><span>или</span></span>${card(b, 1)}</div>`;
+  box.querySelectorAll('.dcard:not(:disabled)').forEach(btn => btn.addEventListener('click', () => dailyVote(+btn.dataset.side)));
 }
 
 /* ================= совместный просмотр: турнир партнёра в прямом эфире ================= */

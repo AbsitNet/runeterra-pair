@@ -91,6 +91,17 @@ const Room = (() => {
     get: champ => rpc('stats_get', {p_champ:champ})
   };
 
+  /* ---------- дуэль дня ---------- */
+  const DK = 'rp-local-daily';
+  const dailyLocal = {
+    async vote(day, voter, pick){ const a = JSON.parse(localStorage.getItem(DK) || '{}'); a[day] = a[day] || {}; if (!a[day][voter]) a[day][voter] = pick; localStorage.setItem(DK, JSON.stringify(a)); },
+    async get(day){ const v = JSON.parse(localStorage.getItem(DK) || '{}')[day] || {}, picks = {}; Object.values(v).forEach(p => picks[p] = (picks[p] || 0) + 1); return {total:Object.keys(v).length, picks}; }
+  };
+  const dailyRemote = {
+    vote: (day, voter, pick) => rpc('daily_vote', {p_day:day, p_voter:voter, p_pick:pick}),
+    get: day => rpc('daily_get', {p_day:day})
+  };
+
   const api = () => localMode ? local : remote;
   return {
     configured, localMode,
@@ -100,6 +111,7 @@ const Room = (() => {
     save: (code, token, state) => api().save(code, token, state),
     subscribe: (code, me, a, b) => api().subscribe(code, me, a, b),
     stats: {submit: r => (localMode ? statsLocal : statsRemote).submit(r), get: id => (localMode ? statsLocal : statsRemote).get(id)},
+    daily: {vote: (d, v, p) => (localMode ? dailyLocal : dailyRemote).vote(d, v, p), get: d => (localMode ? dailyLocal : dailyRemote).get(d)},
     errText
   };
 })();

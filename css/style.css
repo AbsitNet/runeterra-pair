@@ -448,6 +448,13 @@ textarea#copyFallback{width:100%;min-height:160px;background:var(--deep);color:v
 .bet-row .who{font-size:12px;white-space:normal}
 .bet-row.win{border-color:var(--rose);background:color-mix(in srgb,var(--rose) 8%,var(--deep))}
 .bet-row.win>small{color:var(--rose);font-weight:600}
+/* битва вкусов */
+#cBattle{display:grid;gap:14px}
+.bt-pair{display:flex;align-items:center;gap:14px}
+.bt-pair img{width:72px;height:96px;object-fit:cover;object-position:50% 16%;border:1px solid var(--gold-lo)}
+.bt-pair span{font-family:var(--f-display);font-size:22px;color:var(--rose)}
+.bt-verdict h3{font-size:30px}
+.bt-verdict p{margin-top:6px}
 .cmp-cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px}
 
 /* угадай */

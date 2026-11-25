@@ -26,6 +26,7 @@ const SOLO_KEY = 'rp-solo-v3';
 const roomKey = code => 'rp-room-' + code + '-' + (sess ? sess.slot : 0);
 const guessKey = code => 'rp-guess-' + code + '-' + (sess ? sess.slot : 0);
 const pbetKey = code => 'rp-pbet-' + code + '-' + (sess ? sess.slot : 0);
+const battleKey = code => 'rp-battle-' + code + '-' + (sess ? sess.slot : 0);
 /* сессия комнаты: в локальном режиме проверки — своя у каждой вкладки */
 const sstore = Room.localMode ? {
   get(k){ try { return JSON.parse(sessionStorage.getItem(k) || 'null'); } catch(e){ return null; } },
@@ -40,6 +41,7 @@ let sess = sstore.get('rp-session');   // {code, slot, token, name}
 let roomData = null, online = new Set(), sub = null, pollT = 0, saveT = 0;
 let G = null;                         // «Угадай мой выбор»: {target, list, picks:[], done}
 let PB = null;                        // ставка на партнёра: {id, on: слот партнёра}
+let BT = null;                        // голос в битве вкусов: {key: «пара1|пара2», pick}
 const ui = {screen:'scr-start', cur:null, lock:false, ack:false, toastKey:'', introKey:'', off:new Set(), bet:null, betRoster:null, betRemoved:null, mode:'play', swipeHinted:false};
 
 function validTournament(v){
@@ -343,6 +345,7 @@ function cardCenter(i){ const r = $('#card' + i).getBoundingClientRect(); return
 function pick(side){
   if (ui.lock || ui.screen !== 'scr-duel' || !ui.cur || ui.cur.kind !== 'duel') return;
   if (ui.mode === 'guess') return guessPick(side);
+  if (ui.mode === 'battle') return battlePick(side);
   ui.lock = true; hideSwipeHint();
   const m = ui.cur, cards = [$('#card0'), $('#card1')];
   cards.forEach(c => c.style.transform = '');
@@ -609,7 +612,7 @@ async function roomJoin(){
 }
 function enterRoom(fresh){
   setCtx('room');
-  G = store.get(guessKey(sess.code)); PB = store.get(pbetKey(sess.code));
+  G = store.get(guessKey(sess.code)); PB = store.get(pbetKey(sess.code)); BT = store.get(battleKey(sess.code));
   if (sub) sub.close();
   sub = Room.subscribe(sess.code, sess, () => fetchRoom(), slots => { online = new Set(slots); if (ui.screen === 'scr-room') renderRoom(); renderPartnerChip(); });
   clearInterval(pollT); pollT = setInterval(() => { if (!document.hidden) fetchRoom(); }, 20000);
@@ -617,7 +620,7 @@ function enterRoom(fresh){
 }
 function leaveRoom(){
   if (sub) sub.close(); sub = null; clearInterval(pollT);
-  sstore.del('rp-session'); sess = null; roomData = null; G = null; PB = null;
+  sstore.del('rp-session'); sess = null; roomData = null; G = null; PB = null; BT = null;
   setCtx('solo'); show('scr-start'); refreshStart();
 }
 async function fetchRoom(){
@@ -638,6 +641,7 @@ function myState(){
   }
   if (G) st.guess = {target:G.target, total:G.list.length, correct:G.picks.filter(p => p.ok).length, answered:G.picks.length, done:!!G.done};
   if (PB) st.pbet = PB.id;
+  if (BT) st.battle = BT;
   return st;
 }
 function queueSync(){ if (!sess) return; clearTimeout(saveT); saveT = setTimeout(() => pushState(), 1200); }
@@ -686,6 +690,8 @@ function renderRoom(){
   if (pp && their.status === 'done'){
     if (!G || !G.done) acts.push(`<button class="btn" type="button" data-act="guess">${G && G.picks.length ? 'Продолжить угадывать' : 'Угадать выборы: ' + esc(pp.name)}</button>`);
   }
+  const bx = battleInfo();
+  if (bx && !bx.same && !bx.my) acts.push(`<button class="btn" type="button" data-act="battle">Битва вкусов</button>`);
   if (pp && their.status !== 'done') acts.push(`<button class="btn" type="button" data-act="pbet">${PB ? 'Изменить ставку на пару партнёра' : 'Поставить на пару партнёра'}</button>`);
   if (mine && mine.kind === 'done' && their.status === 'done') acts.push(`<button class="btn" type="button" data-act="compare">Сравнить результаты</button>`);
   else if (pp) acts.push(`<button class="btn ghost" type="button" disabled>Сравнение откроется, когда оба закончат</button>`);
@@ -719,11 +725,12 @@ function roomAction(a){
   if (a === 'resume' || a === 'result'){ setCtx('room'); preloadAll(S.cfg.roster); go(); }
   if (a === 'guess') startGuess();
   if (a === 'pbet') openPartnerBet();
+  if (a === 'battle') startBattle();
   if (a === 'compare'){ show('scr-compare'); renderCompare(); }
 }
 function renderPartnerChip(){
   const chip = $('#partnerChip');
-  if (!(ctx === 'room' && sess && ui.screen === 'scr-duel' && ui.mode !== 'guess')){ chip.hidden = true; return; }
+  if (!(ctx === 'room' && sess && ui.screen === 'scr-duel' && ui.mode === 'play')){ chip.hidden = true; return; }
   const pp = partner();
   if (!pp){ chip.hidden = false; chip.innerHTML = '<span class="dot"></span>Ждём партнёра'; return; }
   const ps = playerState(pp), on = online.has(pp.slot);
@@ -749,6 +756,9 @@ function renderCompare(){
   const myG = G && G.done ? `<p>${esc(sess.name)} угадывает выборы партнёра: <b>${G.picks.filter(x => x.ok).length} из ${G.list.length}</b>.</p>` : '';
   const thG = pp.state && pp.state.guess && pp.state.guess.done ? `<p>${esc(pp.name)} угадывает выборы партнёра: <b>${+pp.state.guess.correct || 0} из ${+pp.state.guess.total || 0}</b>.</p>` : '';
   $('#cGuess').innerHTML = (myG + thG) || '<p class="muted">Пока никто не сыграл. Кнопка «Угадать выборы» — в комнате.</p>';
+  const bh = battleHTML();
+  $('#cBattleSec').hidden = !bh; $('#cBattle').innerHTML = bh;
+  const bgo = $('#cBattleGo'); if (bgo) bgo.addEventListener('click', startBattle);
   const br = betRows();
   $('#cBetSec').hidden = !br.length;
   $('#cBets').innerHTML = br.map(r => `<div class="lrow bet-row ${r.win ? 'win' : ''}">${face(r.id)}<div><small class="who">${esc(r.who)} ставит</small><b>${esc(name(r.id))}</b></div><small>${r.txt}</small></div>`).join('');
@@ -774,6 +784,65 @@ function drawPairPreview(){
     const cv = await Share.pairCertificate(d), pv = $('#pairPreview'), cx = pv.getContext('2d');
     cx.clearRect(0, 0, pv.width, pv.height); cx.drawImage(cv, 0, 0);
   }, 150);
+}
+
+/* ================= битва вкусов: победители встречаются в одной дуэли, голосуют оба ================= */
+function battleInfo(){
+  const pp = partner(), mine = S.cfg ? simulate(S.cfg, S.dec) : null, their = playerState(pp);
+  if (!pp || !mine || mine.kind !== 'done' || their.status !== 'done') return null;
+  const first = sess.slot === 1;
+  const a = first ? mine.champ : their.m.champ, b = first ? their.m.champ : mine.champ, key = a + '|' + b;
+  const tb = pp.state && pp.state.battle;
+  return {a, b, key, same:a === b, A: first ? sess.name : pp.name, B: first ? pp.name : sess.name, pp,
+    myChamp:mine.champ, theirChamp:their.m.champ,
+    my: BT && BT.key === key ? BT.pick : null, their: tb && tb.key === key && (tb.pick === a || tb.pick === b) ? tb.pick : null};
+}
+function battleVerdict(x){
+  if (!x.my || !x.their) return null;
+  if (x.my === x.their) return {title:`Общая пара: ${name(x.my)}`, text: x.my === x.myChamp ? 'Партнёр проголосовал(а) за твою пару. Решено!' : 'Ты проголосовал(а) за пару партнёра. Решено!', win:x.my};
+  if (x.my === x.myChamp) return {title:'Каждый остался при своём', text:'Никто не уступил. Похоже, вкусы у вас и правда разные — и это нормально.'};
+  return {title:'Вы выбрали пары друг друга', text:'Каждый проголосовал за пару партнёра. Очень мило — или очень дипломатично.'};
+}
+function startBattle(){
+  const x = battleInfo(); if (!x || x.same) return;
+  ui.mode = 'battle'; show('scr-duel');
+  ui.cur = {kind:'duel', a:x.a, b:x.b, level:3, stage:'tastes'};
+  $('#stage').textContent = 'Битва вкусов';
+  $('#counter').textContent = 'Одна дуэль · голоса откроются, когда проголосуют оба';
+  $('#barFill').style.width = '100%';
+  const p = $('#prompt'); p.className = 'prompt final'; p.textContent = 'Чья пара лучше?';
+  const sp = $('#subprompt'); sp.hidden = false; sp.textContent = `${x.A} — слева, ${x.B} — справа`;
+  setCard(0, x.a); setCard(1, x.b);
+  const ar = $('#arena'); ar.className = 'arena lv3'; void ar.offsetWidth; ar.classList.add('enter');
+  FX.setLevel(3);
+  $('#undoBtn').hidden = true; $('#bracketBtn').hidden = true; $('#partnerChip').hidden = true;
+  $('#reveal').textContent = ''; $('#reveal').className = 'reveal';
+  FX.intro(3, 'Битва вкусов', `${name(x.a)} или ${name(x.b)}`, 'Вдвоём');
+}
+function battlePick(side){
+  const x = battleInfo(); if (!x) return;
+  ui.lock = true;
+  const id = side ? x.b : x.a, cards = [$('#card0'), $('#card1')];
+  cards[side].classList.add('chosen'); cards[1 - side].classList.add('lost');
+  Sound.pick(3); FX.burst(...cardCenter(side), 3);
+  BT = {key:x.key, pick:id}; store.set(battleKey(sess.code), BT); pushState(true);
+  const r = $('#reveal'); r.className = 'reveal ok';
+  r.textContent = x.their ? 'Голос принят — смотрим итог' : `Голос принят. Ждём, что выберет ${x.pp.name}`;
+  setTimeout(() => {
+    ui.lock = false; ui.mode = 'play'; show('scr-compare'); renderCompare();
+    if (x.their){ Sound.fanfare(); FX.celebrate(); $('#cBattleSec').scrollIntoView({block:'center'}); }
+  }, 1300);
+}
+function battleHTML(){
+  const x = battleInfo(); if (!x) return '';
+  if (x.same) return '<p class="muted">У вас одна и та же пара — сражаться не с кем.</p>';
+  const faces = `<div class="bt-pair">${face(x.a)}<span>или</span>${face(x.b)}</div>`;
+  if (!x.my) return `${faces}<p class="muted">Ваши пары встречаются в одной дуэли, голосуете оба. Голоса откроются, когда проголосуют оба.</p><div class="res-actions"><button class="btn primary" type="button" id="cBattleGo">Проголосовать</button></div>`;
+  if (!x.their) return `${faces}<p class="muted">Твой голос принят: <b>${esc(name(x.my))}</b>. Ждём, что выберет ${esc(x.pp.name)}.</p>`;
+  const v = battleVerdict(x), first = sess.slot === 1;
+  const votes = [[first ? sess.name : x.pp.name, first ? x.my : x.their], [first ? x.pp.name : sess.name, first ? x.their : x.my]];
+  return `<div class="bt-verdict"><h3>${esc(v.title)}</h3><p class="muted">${esc(v.text)}</p></div>
+    <div class="list">${votes.map(([who, id]) => `<div class="lrow bet-row ${v.win === id ? 'win' : ''}">${face(id)}<div><small class="who">${esc(who)} голосует</small><b>${esc(name(id))}</b></div><small></small></div>`).join('')}</div>`;
 }
 
 /* «Угадай мой выбор» */
@@ -836,7 +905,7 @@ function bind(){
   $('#card0').addEventListener('click', () => { if (!ui.swallowClick) pick(0); });
   $('#card1').addEventListener('click', () => { if (!ui.swallowClick) pick(1); });
   $('#undoBtn').addEventListener('click', undo);
-  $('#menuBtn').addEventListener('click', () => { if (ui.mode === 'guess'){ ui.mode = 'play'; show('scr-room'); renderRoom(); return; } if (ctx === 'room' && sess){ show('scr-room'); renderRoom(); } else { show('scr-start'); refreshStart(); } });
+  $('#menuBtn').addEventListener('click', () => { if (ui.mode === 'guess' || ui.mode === 'battle'){ ui.mode = 'play'; show('scr-room'); renderRoom(); return; } if (ctx === 'room' && sess){ show('scr-room'); renderRoom(); } else { show('scr-start'); refreshStart(); } });
   $('#interGo').addEventListener('click', () => { ui.ack = true; go(); });
   $('#interBack').addEventListener('click', undo);
   $('#copyBtn').addEventListener('click', copyResult);

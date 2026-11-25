@@ -73,10 +73,11 @@ const FX = (() => {
   }
 
   /* вступление стадии: возвращает промис, по тапу пропускается */
-  function intro(l, title, sub){
+  function intro(l, title, sub, eyebrow){
     return new Promise(res => {
       const el = document.getElementById('intro');
       el.className = 'intro lv' + l; el.hidden = false;
+      el.querySelector('.intro-eyebrow').textContent = eyebrow || 'Плей-офф';
       el.querySelector('.intro-title').textContent = title;
       el.querySelector('.intro-sub').textContent = sub || '';
       const dur = reduced ? 700 : [0, 1500, 2100, 3200][l];

@@ -66,6 +66,76 @@ const Share = (() => {
     return cv;
   }
 
+  /* печати краёв: цвет чернил и регистраторы (второй — на случай, если победил сам первый) */
+  const SEAL = {
+    ion:{ink:'#EE6F95', reg:['Karma','Shen']},        nox:{ink:'#E8474F', reg:['Swain','Darius']},
+    dem:{ink:'#86B3EC', reg:['JarvanIV','Garen']},    frl:{ink:'#82D6F4', reg:['Ashe','Sejuani']},
+    pil:{ink:'#DDB574', reg:['Caitlyn','Jayce']},     zau:{ink:'#A3DB4F', reg:['Renata','Singed']},
+    bil:{ink:'#F08560', reg:['MissFortune','Illaoi']}, shu:{ink:'#F2C450', reg:['Nasus','Azir']},
+    tar:{ink:'#A493F7', reg:['Soraka','Taric']},      ixt:{ink:'#44C990', reg:['Qiyana','Nidalee']},
+    sha:{ink:'#3ED3BA', reg:['Thresh','Yorick']},     void:{ink:'#C773F0', reg:['Belveth','Malzahar']},
+    rt:{ink:'#DDA772', reg:['Zilean','Ryze']}
+  };
+  const emblems = {};
+  const loadEmblem = k => emblems[k] || (emblems[k] = new Promise(res => { const im = new Image(); im.onload = () => res(im); im.onerror = () => res(null); im.src = `img/regions/${k}.png`; }));
+  const hashStr = s => { let h = 2166136261; for (const ch of s){ h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; };
+
+  /* текст по кругу, по центру сверху; возвращает занятый угол */
+  function arcText(cx, text, r, size, track){
+    cx.font = `700 ${size}px ${FU}`; cx.textAlign = 'center'; cx.textBaseline = 'middle';
+    const chars = [...text], ws = chars.map(ch => cx.measureText(ch).width);
+    const total = ws.reduce((s, w) => s + w, 0) + track * (chars.length - 1);
+    let a = -Math.PI / 2 - total / r / 2;
+    chars.forEach((ch, i) => {
+      a += ws[i] / 2 / r;
+      cx.save(); cx.rotate(a + Math.PI / 2); cx.fillText(ch, 0, -r); cx.restore();
+      a += (ws[i] / 2 + track) / r;
+    });
+    return total / r;
+  }
+
+  async function drawSeal(region, champ){
+    const seal = SEAL[region] || SEAL.rt, R = 104, D = 2 * R + 16;
+    const cv = document.createElement('canvas'); cv.width = D; cv.height = D;
+    const cx = cv.getContext('2d'); cx.translate(D / 2, D / 2);
+    cx.strokeStyle = cx.fillStyle = seal.ink;
+    const ring = (r, w) => { cx.lineWidth = w; cx.beginPath(); cx.arc(0, 0, r, 0, Math.PI * 2); cx.stroke(); };
+    ring(R - 2.5, 5); ring(R - 10, 1.6); ring(R - 37, 1.6); ring(R - 42, 1);
+    /* «Заверено официальным представительством …» — шрифт подбирается под длину названия края */
+    const text = `ЗАВЕРЕНО ОФИЦИАЛЬНЫМ ПРЕДСТАВИТЕЛЬСТВОМ ${REGIONS[region][1].toUpperCase()}`, rText = R - 23.5;
+    let size = 16;
+    for (; size > 9; size -= .5){
+      cx.font = `700 ${size}px ${FU}`;
+      const total = [...text].reduce((s, ch) => s + cx.measureText(ch).width, 0) + size * .14 * (text.length - 1);
+      if (total / rText <= Math.PI * 2 * .87) break;
+    }
+    arcText(cx, text, rText, size, size * .14);
+    cx.save(); cx.rotate(Math.PI); cx.font = `${size + 2}px ${FU}`; cx.fillText('★', 0, -rText); cx.restore();
+    /* герб края в центре, в цвет чернил */
+    const em = await loadEmblem(region);
+    if (em){
+      const s = 2 * (R - 42) - 22, t = document.createElement('canvas'); t.width = t.height = Math.ceil(s);
+      const tx = t.getContext('2d'); tx.drawImage(em, 0, 0, s, s);
+      tx.globalCompositeOperation = 'source-in'; tx.fillStyle = seal.ink; tx.fillRect(0, 0, s, s);
+      cx.drawImage(t, -s / 2, -s / 2);
+    }
+    /* потёртость оттиска: случайные проплешины, одинаковые для одного и того же победителя */
+    const rnd = mulberry32(hashStr(champ + region));
+    cx.globalCompositeOperation = 'destination-out';
+    for (let i = 0; i < 520; i++){
+      const a = rnd() * Math.PI * 2, r = Math.sqrt(rnd()) * (R + 4);
+      cx.globalAlpha = .25 + rnd() * .75;
+      cx.beginPath(); cx.arc(Math.cos(a) * r, Math.sin(a) * r, .4 + rnd() * 1.6, 0, Math.PI * 2); cx.fill();
+    }
+    for (let i = 0; i < 3; i++){
+      const a = rnd() * Math.PI * 2, r = R * (.35 + rnd() * .6);
+      cx.globalAlpha = .18 + rnd() * .2;
+      cx.beginPath(); cx.arc(Math.cos(a) * r, Math.sin(a) * r, 10 + rnd() * 18, 0, Math.PI * 2); cx.fill();
+    }
+    cx.globalAlpha = 1; cx.globalCompositeOperation = 'source-over';
+    return cv;
+  }
+
   async function certificate(m, person){
     await fontsReady();
     const W = 1080, H = 1350, champ = BY[m.champ], im = await loadImg(m.champ);
@@ -101,17 +171,19 @@ const Share = (() => {
     const wit = [m.order[1], m.order[2]].filter(Boolean).map(id => BY[id].name).join(' и ');
     cx.fillStyle = C.muted; cx.font = `22px ${FU}`;
     cx.fillText(`Свидетели: ${wit}`, W / 2, py + ph + 230);
-    /* печать */
-    const sx = W - 190, sy = H - 190;
-    cx.save(); cx.translate(sx, sy); cx.rotate(-.18);
-    cx.strokeStyle = C.rose; cx.lineWidth = 4; cx.beginPath(); cx.arc(0, 0, 78, 0, 6.28); cx.stroke();
-    cx.lineWidth = 1.5; cx.beginPath(); cx.arc(0, 0, 66, 0, 6.28); cx.stroke();
-    cx.fillStyle = C.rose; cx.font = `600 15px ${FU}`; cx.fillText('ЗАВЕРЕНО', 0, -18); cx.fillText('ПЕЧАТЬЮ', 0, 2); cx.fillText('ТАРГОНА', 0, 22);
+    /* печать и регистратор — того края, откуда родом победитель */
+    const region = (PROFILE[m.champ] || ['rt'])[0], seal = SEAL[region] || SEAL.rt;
+    const stamp = await drawSeal(region, m.champ);
+    cx.save(); cx.translate(W - 190, H - 188); cx.rotate(-.17);
+    cx.globalAlpha = .92; cx.shadowColor = seal.ink + '55'; cx.shadowBlur = 14;
+    cx.drawImage(stamp, -stamp.width / 2, -stamp.height / 2);
     cx.restore();
+    const reg = seal.reg.find(id => id !== m.champ && BY[id]) || seal.reg[0];
     cx.textAlign = 'left'; cx.fillStyle = C.muted; cx.font = `20px ${FU}`;
     const d = new Date();
     cx.fillText(`Дата: ${d.toLocaleDateString('ru-RU', {day:'numeric', month:'long', year:'numeric'})}`, 100, H - 150);
-    cx.fillText('Регистратор: Сорака, Звёздное дитя', 100, H - 118);
+    fitText(cx, `Регистратор: ${BY[reg].name}, ${BY[reg].title}`, 640, 20, FU);
+    cx.fillText(`Регистратор: ${BY[reg].name}, ${BY[reg].title}`, 100, H - 118);
     cx.font = `15px ${FU}`; cx.fillText('Фан-тест по League of Legends. Не одобрен Riot Games.', 100, H - 78);
     return cv;
   }

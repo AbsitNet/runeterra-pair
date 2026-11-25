@@ -46,6 +46,7 @@ let BT = null;                        // голос в битве вкусов: 
 let RX = null;                        // последняя отправленная реакция: {to:{seed, idx}, e, at}
 let WATCHING = false;                 // смотрю ли сейчас турнир партнёра
 let HINT = null;
+let CM = null;                        // быстрые фразы: мои последние сообщения {list:[{at, k:'p'|'s', v}]}
 let LB = null;                        // ставки в прямом эфире: {bets:[{s:seed, i:дуэль, p:сторона, k:ставка, free, r:итог, w:угадано}]}                      // подсказка партнёру из просмотра: {to:{seed, idx}, side, at}
 let SY = null;                        // общий турнир: {id, host, cfg, v:[[первый голос, переголосовка], …]}
 const ui = {screen:'scr-start', cur:null, lock:false, ack:false, toastKey:'', introKey:'', off:new Set(), bet:null, betRoster:null, betRemoved:null, mode:'play', swipeHinted:false};
@@ -873,6 +874,7 @@ function enterRoom(fresh){
   setCtx('room');
   G = store.get(guessKey(sess.code)); PB = store.get(pbetKey(sess.code)); BT = store.get(battleKey(sess.code)); SY = store.get(syKey(sess.code));
   LB = store.get(lbKey()) || {bets:[]};
+  CM = store.get(chatKey()) || {list:[]};
   if (sub) sub.close();
   sub = Room.subscribe(sess.code, sess, () => fetchRoom(), slots => { online = new Set(slots); if (ui.screen === 'scr-room') renderRoom(); renderPartnerChip(); });
   clearInterval(pollT); pollT = setInterval(() => { if (!document.hidden) fetchRoom(); }, 20000);
@@ -880,7 +882,7 @@ function enterRoom(fresh){
 }
 function leaveRoom(){
   if (sub) sub.close(); sub = null; clearInterval(pollT);
-  sstore.del('rp-session'); sess = null; roomData = null; G = null; PB = null; BT = null; RX = null; SY = null; LB = null;
+  sstore.del('rp-session'); sess = null; roomData = null; G = null; PB = null; BT = null; RX = null; SY = null; LB = null; CM = null;
   hideLive(); live.key = ''; live.shown = null;
   setCtx('solo'); show('scr-start'); refreshStart();
 }
@@ -892,6 +894,7 @@ async function fetchRoom(){
   if (ui.screen === 'scr-compare') renderCompare();
   renderPartnerChip();
   live.resolved = lbResolve();
+  checkChat();
   checkLive();
   syncOnFetch();
   if (ui.mode === 'watch') renderWatch();
@@ -912,6 +915,7 @@ function myState(){
   if (SY) st.sync = SY;
   if (WATCHING) st.watching = true;
   if (HINT) st.hint = HINT;
+  if (CM && CM.list.length) st.chat = CM.list.slice(-CHAT_KEEP);
   if (LB && LB.bets.length) st.hearts = {bal:lbBalance(), won:LB.bets.filter(b => b.w).length, n:LB.bets.filter(b => b.r != null && !b.v).length};
   const dm = dailyMine(), dk = Object.keys(dm).sort().slice(-60);
   if (dk.length){ st.daily = {}; dk.forEach(k => st.daily[k] = dm[k]); }
@@ -959,6 +963,7 @@ function renderRoom(){
     return `<div class="pcard ${me ? 'me' : ''}"><div class="who"><span class="dot ${on ? 'on' : ''}"></span>${esc(p.name)} ${me ? '<small>это ты</small>' : on ? '<small>в сети</small>' : ''}</div>${body}</div>`;
   };
   renderSyncBox();
+  renderChat();
   renderDaily($('#rDaily'), true);
   $('#rPlayers').innerHTML = players.map(card).join('') + (pp ? '' : '<div class="pcard"><div class="who"><span class="dot"></span>Ждём партнёра…</div><p class="muted">Когда партнёр войдёт по коду, он появится здесь.</p></div>');
   const mine = S.cfg ? simulate(S.cfg, S.dec) : null, their = playerState(pp);
@@ -1024,7 +1029,7 @@ function renderPartnerChip(){
   if (!pp){ chip.hidden = false; chip.innerHTML = '<span class="dot"></span>Ждём партнёра'; return; }
   const ps = playerState(pp), on = online.has(pp.slot);
   chip.hidden = false;
-  chip.innerHTML = `<span class="dot ${on ? 'on' : ''}"></span><b>${esc(pp.name)}</b> ` + (partnerWatching() ? '· смотрит твой турнир' : ps.status === 'done' ? '· уже нашёл(ла) пару' : ps.status === 'play' ? `· ${ps.m.played}/≈${ps.m.est}` : '· ещё не начал(а)');
+  chip.innerHTML = `<span class="dot ${on ? 'on' : ''}"></span><b>${esc(pp.name)}</b> ` + (partnerWatching() ? '· смотрит твой турнир' : ps.status === 'done' ? '· уже нашёл(ла) пару' : ps.status === 'play' ? `· ${ps.m.played}/≈${ps.m.est}` : '· ещё не начал(а)') + CHIP_SAY;
 }
 
 /* сравнение */
@@ -1318,6 +1323,88 @@ function renderDaily(box, inRoom){
   box.querySelectorAll('.dcard:not(:disabled)').forEach(btn => btn.addEventListener('click', () => dailyVote(+btn.dataset.side)));
 }
 
+/* ================= быстрые фразы: готовые реплики и стикеры с чемпионами, без свободного текста ================= */
+const PHRASES = ['Ты где? Жду в комнате', 'Начинаем?', 'Я уже в плей-офф!', 'Не подглядывай!', 'Посмотри мой турнир', 'Давай общий турнир',
+  'Какой сложный выбор…', 'Вот это финал!', 'Спорим, угадаю твою пару?', 'Скорее заканчивай!', 'Ха-ха, серьёзно?', 'Люблю тебя ❤'];
+const STICKERS = [['Braum', 'Я рядом'], ['Rakan', 'Скучаю'], ['Xayah', 'Ревную!'], ['Ahri', 'Подмигну'],
+  ['Jinx', 'Бум!'], ['Ivern', 'Обнимаю'], ['Seraphine', 'Пою для тебя'], ['Gragas', 'Отметим!']];
+const CHAT_KEEP = 10, CHAT_GAP = 1500;
+const CHIP_SAY = '<svg class="chip-say" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg>';
+const chatKey = () => 'rp-chat-' + (sess ? sess.code + '-' + sess.slot : '');
+const chatSeenKey = () => 'rp-chat-seen-' + (sess ? sess.code + '-' + sess.slot : '');
+const chatOk = c => c && c.at > 0 && ((c.k === 'p' && PHRASES[c.v] != null) || (c.k === 's' && STICKERS[c.v] && BY[STICKERS[c.v][0]]));
+const chatText = c => c.k === 'p' ? PHRASES[c.v] : STICKERS[c.v][1];
+const chatTheirs = () => { const pp = partner(), l = pp && pp.state && pp.state.chat; return Array.isArray(l) ? l.filter(chatOk).slice(-CHAT_KEEP) : []; };
+function chatSend(k, v){
+  if (!sess || !partner()) return toast('Сначала дождись партнёра в комнате');
+  const now = Date.now(), last = CM.list.length ? CM.list[CM.list.length - 1].at : 0;
+  if (now - last < CHAT_GAP || CM.list.filter(c => now - c.at < 60000).length >= 8) return toast('Не так быстро — подожди пару секунд');
+  CM.list.push({at:now, k, v}); CM.list = CM.list.slice(-CHAT_KEEP);
+  store.set(chatKey(), CM); Sound.pick(0); pushState(true);
+  renderChat(true);
+  return true;
+}
+/* лента и выбор фразы: в комнате и во всплывающем окне с любого экрана */
+function chatFeedHTML(){
+  const pp = partner(); if (!pp) return '';
+  const all = CM.list.map(c => ({...c, me:true})).concat(chatTheirs().map(c => ({...c, me:false}))).sort((x, y) => x.at - y.at).slice(-8);
+  if (!all.length) return '<p class="muted chat-empty">Здесь будут ваши фразы. Выбери любую ниже — партнёр увидит её на любом экране.</p>';
+  return all.map(c => {
+    const who = c.me ? 'Ты' : esc(pp.name);
+    return c.k === 's'
+      ? `<div class="msg st ${c.me ? 'me' : ''}"><img src="${img(STICKERS[c.v][0])}" alt=""><span><small>${who}</small><b>${esc(chatText(c))}</b></span></div>`
+      : `<div class="msg ${c.me ? 'me' : ''}"><small>${who}</small><b>${esc(chatText(c))}</b></div>`;
+  }).join('');
+}
+function chatPickHTML(){
+  return `<div class="chat-ph">${PHRASES.map((t, i) => `<button type="button" data-ck="p" data-cv="${i}">${esc(t)}</button>`).join('')}</div>
+    <div class="chat-st" role="group" aria-label="Стикеры">${STICKERS.map(([id, t], i) => `<button type="button" data-ck="s" data-cv="${i}" aria-label="Стикер: ${esc(name(id))}, ${esc(t)}"><img src="${img(id)}" alt="" loading="lazy"><small>${esc(t)}</small></button>`).join('')}</div>`;
+}
+function bindChatPick(root, after){
+  root.querySelectorAll('[data-ck]').forEach(b => b.addEventListener('click', () => { if (chatSend(b.dataset.ck, +b.dataset.cv) && after) after(); }));
+}
+function renderChat(sent){
+  const box = $('#rChat'); if (!box) return;
+  const pp = partner();
+  if (!pp || !CM){ box.hidden = true; return; }
+  box.hidden = false;
+  if (!box.querySelector('.chat-feed')){
+    box.innerHTML = `<h2>Быстрые фразы</h2><div class="chat-feed" id="chatFeed" aria-live="polite"></div><div class="chat-pick">${chatPickHTML()}</div>`;
+    bindChatPick(box);
+  }
+  const feed = $('#chatFeed'); feed.innerHTML = chatFeedHTML();
+  feed.scrollTop = feed.scrollHeight;
+  if (sent){ const l = feed.lastElementChild; if (l) l.classList.add('fresh'); }
+}
+function openChat(){
+  if (ctx !== 'room' || !sess) return;
+  if (!partner()) return toast('Сначала дождись партнёра в комнате');
+  openModal(`<h2>Фраза для: ${esc(partner().name)}</h2><div class="chat-feed in-modal">${chatFeedHTML()}</div><div class="chat-pick">${chatPickHTML()}</div>`);
+  const f = $('#modalBody .chat-feed'); f.scrollTop = f.scrollHeight;
+  bindChatPick($('#modalBody'), () => { closeModal(); toast('Отправлено'); });
+}
+/* новые фразы партнёра: в комнате — в ленте, на других экранах — всплывающим окошком */
+function checkChat(){
+  const pp = partner(); if (!pp || !CM) return;
+  const seen = store.get(chatSeenKey()) || 0, fresh = chatTheirs().filter(c => c.at > seen);
+  if (!fresh.length) return;
+  store.set(chatSeenKey(), Math.max(...fresh.map(c => c.at)));
+  const c = fresh[fresh.length - 1];
+  if (Date.now() - c.at > 15 * 60 * 1000) return;       // старые фразы только в ленте
+  if (ui.screen === 'scr-room'){
+    renderChat(); const l = $('#chatFeed').lastElementChild; if (l) l.classList.add('fresh');
+    Sound.pick(1); return;
+  }
+  const el = $('#reactFx');
+  el.innerHTML = c.k === 's'
+    ? `<img class="rx-st" src="${img(STICKERS[c.v][0])}" alt=""><span class="rx-t"><b>${esc(pp.name)}</b>: ${esc(chatText(c))}</span>`
+    : `<span class="rx-e" aria-hidden="true">💬</span><span class="rx-t"><b>${esc(pp.name)}</b>: ${esc(chatText(c))}</span>`;
+  el.setAttribute('aria-label', `${pp.name}: ${chatText(c)}`);
+  el.hidden = false; el.classList.remove('on'); void el.offsetWidth; el.classList.add('on');
+  Sound.pick(1);
+  clearTimeout(rxT); rxT = setTimeout(() => { el.classList.remove('on'); rxT = setTimeout(() => { el.hidden = true; }, 260); }, 5200);
+}
+
 /* ================= ставки в прямом эфире: сердечки на выбор партнёра в плей-офф ================= */
 const LB_START = 10;
 const lbKey = () => 'rp-lbets-' + (sess ? sess.code + '-' + sess.slot : '');
@@ -1422,7 +1509,7 @@ function renderWatch(){
   [0, 1].forEach(sd => { $('#vt' + sd).innerHTML = sd === hinted ? '<b class="mine">Твоя подсказка</b>' : ''; });
   $('#undoBtn').hidden = true; $('#bracketBtn').hidden = true;
   const chip = $('#partnerChip'), on = online.has(pp.slot); chip.hidden = false;
-  chip.innerHTML = `<span class="dot ${on ? 'on' : ''}"></span><b>${esc(pp.name)}</b> · ${on ? 'в сети' : 'не в сети — ждём'}`;
+  chip.innerHTML = `<span class="dot ${on ? 'on' : ''}"></span><b>${esc(pp.name)}</b> · ${on ? 'в сети' : 'не в сети — ждём'}` + CHIP_SAY;
   const wb = $('#watchBar'); wb.hidden = false;
   const wl = $('#watchLb'); wl.hidden = !inPlayoff(m); if (inPlayoff(m)) lbRender(wl, seed, dec.length, m.a, m.b);
   if (fresh || !$('#watchRe').childElementCount) $('#watchRe').innerHTML = REACTS.map(e => `<button type="button" data-r="${e}" aria-label="Реакция ${e}">${e}</button>`).join('');
@@ -1597,7 +1684,7 @@ function renderSync(){
   if (x.phase === 'wait1' || x.phase === 'wait2') ui.syPoll = setTimeout(() => { if (ui.mode === 'sync') fetchRoom(); }, 3000);
   const chip = $('#partnerChip'); chip.hidden = false;
   const done = x.phase === 'wait1' || x.phase === 'pick1' ? !!x.th : x.th[1] != null;
-  chip.innerHTML = `<span class="dot ${on ? 'on' : ''}"></span><b>${esc(pp.name)}</b> · ${done ? 'выбор сделан' : 'выбирает'}`;
+  chip.innerHTML = `<span class="dot ${on ? 'on' : ''}"></span><b>${esc(pp.name)}</b> · ${done ? 'выбор сделан' : 'выбирает'}` + CHIP_SAY;
 }
 /* предыдущая дуэль решилась — коротко показываем, как именно */
 function syncReveal(x){
@@ -1746,6 +1833,9 @@ function bind(){
   $('#soundBtn').setAttribute('aria-pressed', String(Sound.on)); $('#soundWaves').style.display = Sound.on ? '' : 'none';
   $('#bracketBtn').addEventListener('click', () => { const m = ui.cur; openModal(`<p class="eyebrow">Плей-офф</p><h2 style="font-size:32px;margin:4px 0 14px">Сетка</h2><div class="bracket-wrap">${bracketHTML(m.bracket || [], m)}</div>`); });
   $('#modalClose').addEventListener('click', closeModal);
+  const chipEl = $('#partnerChip');
+  chipEl.addEventListener('click', openChat);
+  chipEl.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); openChat(); } });
   $('#modal').addEventListener('click', e => { if (e.target.id === 'modal') closeModal(); });
   $('#roomCreate').addEventListener('click', roomCreate);
   $('#roomJoin').addEventListener('click', roomJoin);

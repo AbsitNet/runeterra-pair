@@ -4,16 +4,19 @@
    чьё место ещё не ясно, а плей-офф идёт с двойным выбыванием. */
 const ENGINE_VERSION = 3;
 function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+/* L — сколько границ тиров разыгрывается в битвах (по умолчанию все); S — какая доля состава в среднем доходит до битв */
 const MODES = {
-  quick:  {R:3, B:5,  Z:.8,  D:0, label:'Быстро'},
+  fast:   {R:3, B:1,  Z:.6,  D:0, L:1, S:.04, label:'Быстро'},
   normal: {R:4, B:7,  Z:1,   D:0, label:'Обычно'},
-  deep:   {R:5, B:10, Z:1.2, D:3, label:'Подробно'}
+  deep:   {R:5, B:10, Z:1.2, D:3, label:'Подробно'},
+  /* прежний «быстрый»: нужен, чтобы сохранённые турниры и старые ссылки воспроизводились как раньше */
+  quick:  {R:3, B:5,  Z:.8,  D:0, label:'Быстро'}
 };
 const BATTLE_SHARE = .38;   // доля состава, которая в среднем ещё дерётся в раунде битв (по замерам)
 function playoffSize(n){ let P = 4; while (P * 2 <= Math.max(4, n * .16) && P < 16) P *= 2; return Math.min(P, n); }
 function estimate(n, mode){
   const M = MODES[mode] || MODES.normal, P = playoffSize(n), R = Math.min(M.R, n - 1);
-  return R * Math.floor(n / 2) + Math.round(M.B * BATTLE_SHARE * n) + (M.D ? 24 : 0) + (2 * P - 1);
+  return R * Math.floor(n / 2) + Math.round(M.B * (M.S != null ? M.S : BATTLE_SHARE) * n) + (M.D ? 24 : 0) + (2 * P - 1);
 }
 function seedOrder(n){ let s=[0]; while (s.length < n){ const m = s.length * 2; s = s.flatMap(x => [x, m - 1 - x]); } return s; }
 
@@ -112,7 +115,7 @@ function* tournament(cfg){
   /* 2. Битвы за место: дерётся только тот, чья граница тира ещё не ясна, с ближайшим по рейтингу новым соперником */
   let order = standing();
   const tierLines = tierBounds(n, [], 0);
-  const lines = [P, ...tierLines.filter(b => b > P)].filter(k => k < n);
+  const lines = [P, ...tierLines.filter(b => b > P)].filter(k => k < n).slice(0, M.L || Infinity);
   const sig = x => 1 / (1 + Math.exp(-x));
   for (let br = 1; br <= M.B; br++){
     const info = {};

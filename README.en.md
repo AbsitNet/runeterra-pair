@@ -22,7 +22,7 @@ You can share your result as a link. It opens your tier list for anyone, no room
 
 There are 138 champions in the pool, adults only: no kids, no yordles. Rhaast and Kayn count as two different people, and so do Wolf and Lamb. Monsters like Kha'Zix and Warwick can be switched off with one toggle.
 
-A full run takes 20 to 40 minutes depending on the mode. If you don't have that long, there are mini-tournaments of 16 that take about three minutes: Ionia, Noxus, Demacia, Piltover and Zaun, villains, mages, assassins, or only the newest champions. On a phone you can swipe instead of tapping.
+A full run takes 10 to 40 minutes depending on the mode. The quick one finds your pair just as reliably; only the middle and bottom of the tier list come out rougher. If you don't have that long, there are mini-tournaments of 16 that take about three minutes: Ionia, Noxus, Demacia, Piltover and Zaun, villains, mages, assassins, or only the newest champions. On a phone you can swipe instead of tapping.
 
 If you don't feel like picking from pairs, there's the Star Matchmaker. You answer 32 questions about yourself: your temperament, what you value, your ideal evening and how you fight. The matchmaker compares your answers with every champion's personality across nine traits, names your pair, explains why, and offers to check it with a tournament of your 16 best matches.
 
@@ -66,7 +66,7 @@ Tournament:
 
 - [x] One-of-two duels, with no "can't decide" button
 - [x] Swiss rounds, placement battles and a double-elimination playoff
-- [x] Three tournament lengths: quick, normal, thorough
+- [x] Three tournament lengths: quick (about 10 minutes), normal and thorough
 - [x] Who's in: everyone, only men or only women, with or without monsters
 - [x] Remove anyone you definitely don't like before you start
 - [x] A bet before you start: who do you think will win

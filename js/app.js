@@ -208,7 +208,7 @@ function refreshStart(){
   const s = settings();
   ['all','m','f'].forEach(w => $('#cnt-' + w).textContent = pool({...s, who:w}).length);
   const n = pool(s).length;
-  ['quick','normal','deep'].forEach(m => { const t = estimate(n, m); $('#est-' + m).innerHTML = `≈ ${t} ${duelsWord(t)}<br>~${minutes(t)} мин`; });
+  ['fast','normal','deep'].forEach(m => { const t = estimate(n, m); $('#est-' + m).innerHTML = `≈ ${t} ${duelsWord(t)}<br>~${minutes(t)} мин`; });
   $('#startNote').textContent = s.pre ? 'После чистки дуэлей станет меньше.' : (S.cfg ? 'Новый турнир заменит сохранённый.' : '');
   const banner = $('#roomBanner');
   if (ctx === 'room' && sess){
@@ -526,7 +526,7 @@ function renderResult(m){
   $('#copyFallback').hidden = true;
   $('#toRoomBtn').hidden = V || !(ctx === 'room' && sess);
   $('#selfBtn').hidden = !V; $('#shareBtn').hidden = V; $('#newBtn').hidden = V; $('#refinalBtn').hidden = V;
-  $('#method').textContent = `${th ? `Мини-турнир «${th[1]}» на ${m.order.length} ${plural(m.order.length,'участника','участников','участников')}. ` : ''}Режим «${MODES[S.cfg.mode].label}», ${m.total} ${duelsWord(m.total)}: ${m.R} ${plural(m.R,'круг','круга','кругов')} отбора, битвы за место${MODES[S.cfg.mode].D ? ', спорные места' : ''} и плей-офф с двойным выбыванием на ${m.P}. Первые ${m.P} мест решены плей-офф, остальные стоят по рейтингу всех дуэлей с учётом силы соперников; если соседи по списку встречались, выше стоит победитель. ${V ? 'Результат открыт по ссылке и в этом браузере не сохраняется.' : 'Результат сохранён в этом браузере.'}`;
+  $('#method').textContent = `${th ? `Мини-турнир «${th[1]}» на ${m.order.length} ${plural(m.order.length,'участника','участников','участников')}. ` : ''}Режим «${MODES[S.cfg.mode].label}», ${m.total} ${duelsWord(m.total)}: ${m.R} ${plural(m.R,'круг','круга','кругов')} отбора, ${MODES[S.cfg.mode].L ? 'короткие битвы за выход в плей-офф' : 'битвы за место'}${MODES[S.cfg.mode].D ? ', спорные места' : ''} и плей-офф с двойным выбыванием на ${m.P}. Первые ${m.P} мест решены плей-офф, остальные стоят по рейтингу всех дуэлей с учётом силы соперников; если соседи по списку встречались, выше стоит победитель. ${V ? 'Результат открыт по ссылке и в этом браузере не сохраняется.' : 'Результат сохранён в этом браузере.'}`;
   drawCertPreview();
   renderMuCta(m);
   renderHeartMap(m);
@@ -742,7 +742,7 @@ function resultText(){
 /* ================= ссылка на результат =================
    Турнир детерминирован, поэтому в ссылку достаточно положить настройки, состав, сид, ставку и все выборы.
    Состав и выборы — битовые маски, всё вместе — base64url, около 200 символов. */
-const SHARE_FMT = 1, MODE_KEYS = ['quick','normal','deep'], WHO_KEYS = ['all','m','f'];
+const SHARE_FMT = 1, MODE_KEYS = ['quick','normal','deep','fast'], WHO_KEYS = ['all','m','f'];   // порядок не менять: индекс хранится в ссылке
 const IDX = {}; CH.forEach((c, i) => IDX[c[0]] = i);
 function rosterHash(n){ let h = 2166136261; for (let i = 0; i < n; i++) for (const ch of CH[i][0]){ h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); } return h & 0xffff; }
 const b64u = bytes => { let t = ''; bytes.forEach(b => t += String.fromCharCode(b)); return btoa(t).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); };
@@ -1230,7 +1230,7 @@ function syncCreate(k){
   for (let i = ids.length - 1; i > 0; i--){ const j = Math.floor(Math.random() * (i + 1)); [ids[i], ids[j]] = [ids[j], ids[i]]; }
   const roster = ids.slice(0, SYNC_N).sort((a, b) => IDX[a] - IDX[b]);
   const id = (crypto.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2)).slice(0, 12);
-  SY = {id, host:sess.slot, at:Date.now(), cfg:{v:ENGINE_VERSION, who:'all', extra:true, mode:'quick', seed:(Math.random() * 4294967296) >>> 0, roster, removed:[], bet:null}, v:[]};
+  SY = {id, host:sess.slot, at:Date.now(), cfg:{v:ENGINE_VERSION, who:'all', extra:true, mode:'fast', seed:(Math.random() * 4294967296) >>> 0, roster, removed:[], bet:null}, v:[]};
   if (k) SY.cfg.theme = k;
   store.set(syKey(sess.code), SY); pushState(true); closeModal(); preloadAll(roster);
   show('scr-room'); renderRoom();

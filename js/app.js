@@ -402,6 +402,7 @@ function pick(side){
   if (ui.mode === 'battle') return battlePick(side);
   if (ui.mode === 'sync') return syncPick(side);
   if (ui.mode === 'watch') return watchHint(side);
+  if (ui.mode === 'draft') return draftPick(side);
   ui.lock = true; hideSwipeHint();
   const m = ui.cur, cards = [$('#card0'), $('#card1')];
   cards.forEach(c => c.style.transform = '');
@@ -879,6 +880,7 @@ function enterRoom(fresh){
   G = store.get(guessKey(sess.code)); PB = store.get(pbetKey(sess.code)); BT = store.get(battleKey(sess.code)); SY = store.get(syKey(sess.code));
   LB = store.get(lbKey()) || {bets:[]};
   CM = store.get(chatKey()) || {list:[]};
+  DR = store.get(drKey());
   if (sub) sub.close();
   sub = Room.subscribe(sess.code, sess, () => fetchRoom(), slots => { online = new Set(slots); if (ui.screen === 'scr-room') renderRoom(); renderPartnerChip(); });
   clearInterval(pollT); pollT = setInterval(() => { if (!document.hidden) fetchRoom(); }, 20000);
@@ -886,7 +888,7 @@ function enterRoom(fresh){
 }
 function leaveRoom(){
   if (sub) sub.close(); sub = null; clearInterval(pollT);
-  sstore.del('rp-session'); sess = null; roomData = null; G = null; PB = null; BT = null; RX = null; SY = null; LB = null; CM = null;
+  sstore.del('rp-session'); sess = null; roomData = null; G = null; PB = null; BT = null; RX = null; SY = null; LB = null; CM = null; DR = null;
   hideLive(); live.key = ''; live.shown = null;
   setCtx('solo'); show('scr-start'); refreshStart();
 }
@@ -901,6 +903,7 @@ async function fetchRoom(){
   checkChat();
   checkLive();
   syncOnFetch();
+  draftOnFetch();
   if (ui.mode === 'watch') renderWatch();
   else applyHint();
 }
@@ -917,6 +920,7 @@ function myState(){
   if (BT) st.battle = BT;
   if (RX) st.react = RX;
   if (SY) st.sync = SY;
+  if (DR) st.draft = DR;
   if (WATCHING) st.watching = true;
   if (HINT) st.hint = HINT;
   if (CM && CM.list.length) st.chat = CM.list.slice(-CHAT_KEEP);
@@ -967,6 +971,7 @@ function renderRoom(){
     return `<div class="pcard ${me ? 'me' : ''}"><div class="who"><span class="dot ${on ? 'on' : ''}"></span>${esc(p.name)} ${me ? '<small>это ты</small>' : on ? '<small>в сети</small>' : ''}</div>${body}</div>`;
   };
   renderSyncBox();
+  renderDraftBox();
   renderChat();
   renderDaily($('#rDaily'), true);
   $('#rPlayers').innerHTML = players.map(card).join('') + (pp ? '' : '<div class="pcard"><div class="who"><span class="dot"></span>Ждём партнёра…</div><p class="muted">Когда партнёр войдёт по коду, он появится здесь.</p></div>');
@@ -983,6 +988,7 @@ function renderRoom(){
   if (pp && their.status === 'play') acts.push(`<button class="btn" type="button" data-act="watch">Смотреть турнир: ${esc(pp.name)}</button>`);
   if (pp && (their.status === 'idle' || (their.status === 'play' && !inPlayoff(their.m) && store.get(watchedKey()) !== their.s.cfg.seed))) acts.push(`<button class="btn" type="button" data-act="pbet">${PB ? 'Изменить ставку на пару партнёра' : 'Поставить на пару партнёра'}</button>`);
   if (pp && syncStatus().state === 'none') acts.push(`<button class="btn" type="button" data-act="sync-new">Общий турнир</button>`);
+  if (pp && draftStatus().state === 'none') acts.push(`<button class="btn" type="button" data-act="draft-new">Драфт пары</button>`);
   if (mine && mine.kind === 'done' && their.status === 'done') acts.push(`<button class="btn" type="button" data-act="compare">Сравнить результаты</button>`);
   else if (pp) acts.push(`<button class="btn ghost" type="button" disabled>Сравнение откроется, когда оба закончат</button>`);
   $('#rActions').innerHTML = acts.join('');
@@ -1024,6 +1030,11 @@ function roomAction(a){
   if (a === 'sync-join') syncJoin();
   if (a === 'sync-go') startSync();
   if (a === 'sync-res') renderSyncResult();
+  if (a === 'draft-new') draftSetup();
+  if (a === 'draft-join') draftJoin();
+  if (a === 'draft-no') draftDecline();
+  if (a === 'draft-cancel') draftCancel();
+  if (a === 'draft-open') openDraft();
   if (a === 'sync-cancel'){ SY = null; store.del(syKey(sess.code)); pushState(true); renderRoom(); }
 }
 function renderPartnerChip(){
@@ -1815,7 +1826,7 @@ function bind(){
   $('#card0').addEventListener('click', () => { if (!ui.swallowClick) pick(0); });
   $('#card1').addEventListener('click', () => { if (!ui.swallowClick) pick(1); });
   $('#undoBtn').addEventListener('click', undo);
-  $('#menuBtn').addEventListener('click', () => { if (ui.mode === 'watch') stopWatch(); if (ui.mode === 'guess' || ui.mode === 'battle' || ui.mode === 'sync' || ui.mode === 'watch'){ ui.mode = 'play'; clearVtags(); show('scr-room'); renderRoom(); return; } if (ctx === 'room' && sess){ show('scr-room'); renderRoom(); } else { show('scr-start'); refreshStart(); } });
+  $('#menuBtn').addEventListener('click', () => { if (ui.mode === 'draft'){ ui.mode = 'play'; openDraft(); return; } if (ui.mode === 'watch') stopWatch(); if (ui.mode === 'guess' || ui.mode === 'battle' || ui.mode === 'sync' || ui.mode === 'watch'){ ui.mode = 'play'; clearVtags(); show('scr-room'); renderRoom(); return; } if (ctx === 'room' && sess){ show('scr-room'); renderRoom(); } else { show('scr-start'); refreshStart(); } });
   $('#interGo').addEventListener('click', () => { ui.ack = true; go(); });
   $('#interBack').addEventListener('click', undo);
   $('#copyBtn').addEventListener('click', copyResult);
@@ -1841,6 +1852,12 @@ function bind(){
   $('#soundBtn').setAttribute('aria-pressed', String(Sound.on)); $('#soundWaves').style.display = Sound.on ? '' : 'none';
   $('#bracketBtn').addEventListener('click', () => { const m = ui.cur; openModal(`<p class="eyebrow">Плей-офф</p><h2 style="font-size:32px;margin:4px 0 14px">Сетка</h2><div class="bracket-wrap">${bracketHTML(m.bracket || [], m)}</div>`); });
   $('#modalClose').addEventListener('click', closeModal);
+  $('#drGo').addEventListener('click', () => draftAct(ui.drSel));
+  $('#drBack').addEventListener('click', () => { clearInterval(ui.drTick); show('scr-room'); renderRoom(); });
+  $('#drSearch').addEventListener('input', () => {
+    const q = $('#drSearch').value.trim().toLowerCase().replace(/ё/g, 'е');
+    $('#drGrid').querySelectorAll('.dr-c').forEach(b => { b.hidden = !!q && !b.dataset.q.includes(q); });
+  });
   const openColl = () => { ui.collFrom = ui.screen; renderCollection(); };
   $('#collOpen').addEventListener('click', openColl);
   $('#collFromRes').addEventListener('click', openColl);

@@ -360,6 +360,7 @@
     <p class="muted" id="rHint"></p>
     <div class="players" id="rPlayers"></div>
     <div class="sy-box" id="rSync" hidden></div>
+    <div class="sy-box" id="rDraft" hidden></div>
     <div class="room-actions" id="rActions"></div>
     <p class="err" id="rErr" role="alert"></p>
     <div class="chat" id="rChat" hidden></div>
@@ -369,6 +370,32 @@
       <b>Новости из плей-офф партнёра</b>
       <small>Когда партнёр дойдёт до плей-офф, ты увидишь, между кем он выбирает, и сможешь ответить реакцией и поставить сердечки на его выбор. Выключи, если не любишь спойлеры.</small>
     </label>
+  </div>
+</section>
+
+<!-- ДРАФТ ПАРЫ -->
+<section id="scr-draft" class="screen" hidden>
+  <div class="dr">
+    <div class="dr-head">
+      <div class="dr-h">
+        <p class="eyebrow">Драфт пары</p>
+        <h1 id="drTitle"></h1>
+        <p class="muted" id="drSub"></p>
+      </div>
+      <div class="dr-timer" id="drTimer" aria-live="off"><b></b><i></i></div>
+    </div>
+    <div class="dr-board">
+      <div class="dr-team" id="drMine"></div>
+      <div class="dr-team them" id="drTheirs"></div>
+      <div class="dr-bans" id="drBans"></div>
+    </div>
+    <div class="dr-pick" id="drPick">
+      <input class="input" id="drSearch" type="search" placeholder="Найти чемпиона" aria-label="Найти чемпиона" autocomplete="off">
+      <div class="dr-grid" id="drGrid"></div>
+      <div class="dr-go"><button class="btn primary" type="button" id="drGo" disabled></button></div>
+    </div>
+    <div class="dr-after" id="drAfter" hidden></div>
+    <div class="res-actions"><button class="btn ghost" type="button" id="drBack">В комнату</button></div>
   </div>
 </section>
 
@@ -501,6 +528,7 @@
 <script src="js/room.js"></script>
 <script src="js/svaha.js"></script>
 <script src="js/collection.js"></script>
+<script src="js/draft.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>

@@ -50,7 +50,8 @@ self.addEventListener('fetch', e => {
   e.respondWith((async () => {
     const c = await caches.open(CACHE);
     try {
-      const r = await fetch(req);
+      /* обычный запрос перепроверяем у сервера (ответ 304 почти ничего не весит), чтобы после публикации сразу открывалась новая версия */
+      const r = await fetch(req.cache === 'default' ? new Request(req, {cache:'no-cache'}) : req);
       if (r.ok) c.put(req.mode === 'navigate' ? 'index.html' : req, r.clone());
       return r;
     } catch(err){

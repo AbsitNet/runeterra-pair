@@ -103,6 +103,12 @@ const minutes = n => Math.max(1, Math.round(n * 2.5 / 60));
 function listNames(ids){ const a = ids.map(name); return a.length > 1 ? a.slice(0, -1).join(', ') + ' и ' + a[a.length - 1] : a.join(''); }
 const num = v => Number.isFinite(+v) ? Math.round(+v) : 0;   // числа из чужого состояния — только как числа
 const duelsOf = n => n % 10 === 1 && n % 100 !== 11 ? 'дуэли' : 'дуэлей';   // «из 21 дуэли», «из 674 дуэлей»
+/* порядок в сетках выбора: люди (сначала женщины, потом мужчины), затем нелюди, внутри — по алфавиту.
+   Сам состав CH дополняется только в конец, поэтому для показа сортируем отдельно */
+const SHOW_RANK = {};
+CH.slice().sort((a, b) => (a[4] === 'core' ? 0 : 1) - (b[4] === 'core' ? 0 : 1) || (a[4] === 'core' ? (a[3] === 'f' ? 0 : 1) - (b[3] === 'f' ? 0 : 1) : 0) || a[1].localeCompare(b[1], 'ru'))
+  .forEach((c, i) => { SHOW_RANK[c[0]] = i; });
+const showOrder = ids => ids.slice().sort((a, b) => SHOW_RANK[a] - SHOW_RANK[b]);
 const face = (id, cls = '') => `<img class="${cls}" loading="lazy" alt="" src="${img(id)}">`;
 
 /* ================= главный экран: живое превью дуэли ================= */
@@ -166,6 +172,68 @@ function registerSW(){
   if (location.protocol !== 'https:' && !/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) return;
   const go = () => navigator.serviceWorker.register('sw.js').catch(() => {});
   document.readyState === 'complete' ? go() : window.addEventListener('load', go);
+}
+
+/* ================= уведомление об обновлении сайта =================
+   Раз в несколько минут и при возвращении на вкладку лёгкими HEAD-запросами проверяем, не поменялись ли файлы сайта.
+   Если метка файла сменилась, скачиваем его и сравниваем содержимое с тем, что сейчас открыто:
+   так новая публикация, в которой код не менялся (например, только README), не поднимает ложной тревоги. */
+const UPD = {base:{}, tags:{}, last:0, ready:false, busy:false, seen:''};
+const UPD_EVERY = 5 * 60 * 1000;
+const updFiles = () => ['index.html']
+  .concat([...document.querySelectorAll('link[rel=stylesheet]')].map(l => l.getAttribute('href')).filter(h => h && !/^https?:/.test(h)))
+  .concat([...document.scripts].map(s => s.getAttribute('src')).filter(h => h && !/^https?:/.test(h)));
+const updTag = r => [r.headers.get('etag'), r.headers.get('last-modified'), r.headers.get('content-length')].join('|');
+async function updHash(r){
+  const b = new Uint8Array(await r.arrayBuffer());
+  let h1 = 2166136261, h2 = 5381;
+  for (let i = 0; i < b.length; i++){ h1 ^= b[i]; h1 = Math.imul(h1, 16777619); h2 = (Math.imul(h2, 33) + b[i]) | 0; }
+  return (h1 >>> 0).toString(16) + (h2 >>> 0).toString(16) + ':' + b.length;
+}
+async function updInit(){
+  if (location.protocol === 'file:' || !window.fetch) return;
+  const files = updFiles();
+  /* что открыто сейчас: берём из кэша браузера, без лишней загрузки */
+  await Promise.all(files.map(async f => {
+    try { const r = await fetch(f, {cache:'force-cache'}); if (r.ok) UPD.base[f] = await updHash(r); } catch(e){}
+    try { const h = await fetch(f, {method:'HEAD', cache:'no-store'}); if (h.ok) UPD.tags[f] = updTag(h); } catch(e){}
+  }));
+  UPD.ready = true; UPD.last = Date.now();
+  setInterval(() => { if (!document.hidden) updCheck(); }, UPD_EVERY);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && Date.now() - UPD.last > 60000) updCheck(); });
+  window.addEventListener('online', () => updCheck());
+}
+async function updCheck(){
+  if (!UPD.ready || UPD.busy || !navigator.onLine) return;
+  UPD.busy = true; UPD.last = Date.now();
+  try {
+    const changed = [];
+    await Promise.all(Object.keys(UPD.base).map(async f => {
+      try {
+        const h = await fetch(f, {method:'HEAD', cache:'no-store'}); if (!h.ok) return;
+        const t = updTag(h);
+        if (t === UPD.tags[f]) return;
+        UPD.tags[f] = t;
+        const r = await fetch(f, {cache:'no-store'}); if (!r.ok) return;
+        if (await updHash(r) !== UPD.base[f]) changed.push(f);
+      } catch(e){}
+    }));
+    if (changed.length) updShow(changed.sort().join());
+  } finally { UPD.busy = false; }
+}
+function updShow(sig){
+  if (UPD.seen === sig && UPD.dismissed) return;
+  UPD.seen = sig; UPD.dismissed = false;
+  const el = $('#updBar'); if (!el.hidden) return;
+  el.hidden = false; void el.offsetWidth; el.classList.add('on');
+}
+/* перед перезагрузкой обновляем файлы в кэше, иначе браузер может снова открыть старую версию */
+async function updApply(){
+  const b = $('#updGo'); b.disabled = true; b.textContent = 'Обновляем…';
+  try { if (saveT) await pushState(true); } catch(e){}
+  await Promise.all(updFiles().map(f => fetch(f, {cache:'reload'}).catch(() => null)));
+  try { const reg = navigator.serviceWorker && await navigator.serviceWorker.getRegistration(); if (reg) await reg.update(); } catch(e){}
+  location.reload();
 }
 
 /* ================= мини-турниры по темам ================= */
@@ -250,7 +318,7 @@ function openFilter(){
   const ids = pool(settings());
   ui.off = new Set();
   const g = $('#fgrid'); g.innerHTML = '';
-  ids.forEach(id => {
+  showOrder(ids).forEach(id => {
     const b = document.createElement('button');
     b.type = 'button'; b.className = 'gcard'; b.setAttribute('aria-pressed', 'false');
     b.innerHTML = `${face(id)}<span>${esc(BY[id].name)}</span>`;
@@ -286,7 +354,7 @@ function openBet(roster, removed, forPartner, theme){
   if (ui.betTheme) $('#betEyebrow').textContent = `Мини-турнир «${themeOf(ui.betTheme)[1]}»`;
   ui.betRoster = roster; ui.betRemoved = removed; ui.bet = null;
   const g = $('#bgrid'); g.innerHTML = '';
-  roster.forEach(id => {
+  showOrder(roster).forEach(id => {
     const b = document.createElement('button');
     b.type = 'button'; b.className = 'gcard'; b.dataset.id = id; b.dataset.q = BY[id].name.toLowerCase();
     b.innerHTML = `${face(id)}<span>${esc(BY[id].name)}</span>`;
@@ -1301,9 +1369,11 @@ function showReaction(who, e, about){
 const DAILY_KEY = 'rp-daily';
 const dailyDay = (shift = 0) => new Date(Date.now() + 3 * 3600e3 + shift * 864e5).toISOString().slice(0, 10);   // сутки — по Москве
 const dailyDate = d => new Intl.DateTimeFormat('ru-RU', {day:'numeric', month:'long', timeZone:'UTC'}).format(new Date(d + 'T00:00:00Z'));
+/* новые участники попадают в дуэль дня со следующего дня после добавления — иначе пара текущего дня сменилась бы на ходу */
+const DAILY_FROM = {Ekko:'2026-11-27', Omika:'2026-11-27'};
 function dailyPair(day){
   let h = 2166136261; for (const ch of 'rp-daily:' + day){ h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); }
-  const r = mulberry32(h >>> 0), ids = CH.filter(c => c[4] === 'core').map(c => c[0]);
+  const r = mulberry32(h >>> 0), ids = CH.filter(c => c[4] === 'core' && !(DAILY_FROM[c[0]] > day)).map(c => c[0]);
   const a = ids[Math.floor(r() * ids.length)]; let b = a;
   while (b === a) b = ids[Math.floor(r() * ids.length)];
   return [a, b];
@@ -1954,12 +2024,15 @@ function bind(){
   document.querySelectorAll('.pick img').forEach(im => im.addEventListener('error', () => im.classList.add('broken')));
   bindSwipe();
   bindTilt();
+  $('#updGo').addEventListener('click', updApply);
+  $('#updX').addEventListener('click', () => { UPD.dismissed = true; const el = $('#updBar'); el.classList.remove('on'); setTimeout(() => { el.hidden = true; }, 260); });
 }
 
 function start(){
   document.body.dataset.screen = ui.screen;
   bind();
   registerSW();
+  (document.readyState === 'complete' ? Promise.resolve() : new Promise(r => window.addEventListener('load', r))).then(() => setTimeout(updInit, 1500));
   heroInit();
   const rCode = new URLSearchParams(location.search).get('r');
   if (rCode && startView(rCode)) return;

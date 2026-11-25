@@ -26,7 +26,7 @@ Achievements don't disappear with the tournament: they build up in a collection 
 
 The duel of the day is one pair a day, the same for every player. You vote and see how many people picked the same. A new pair appears at midnight Moscow time.
 
-There are 138 champions in the pool, adults only: no kids, no yordles. Rhaast and Kayn count as two different people, and so do Wolf and Lamb. Monsters like Kha'Zix and Warwick can be switched off with one toggle.
+There are 144 characters in the pool, adults only: no kids, no yordles. Rhaast and Kayn count as two different people, and so do Wolf and Lamb. Ekko is in as his Arcane season 2 self, when he's about twenty. And Sett's mother, Omika, is in too: she isn't a champion, but she's earned her spot. Monsters like Kha'Zix, Cho'Gath and Warwick can be switched off with one toggle.
 
 A full run takes 10 to 40 minutes depending on the mode. The quick one finds your pair just as reliably; only the middle and bottom of the tier list come out rougher. If you don't have that long, there are mini-tournaments of 16 that take about three minutes: Ionia, Noxus, Demacia, Piltover and Zaun, villains, mages, assassins, or only the newest champions. On a phone you can swipe instead of tapping.
 
@@ -44,7 +44,7 @@ You can message each other with ready-made phrases and champion stickers; there'
 
 There's a pair draft, like champ select in League. First each of you bans three champions that nobody gets. Then you take turns handing each other champions in a 1-2-2-2-2-1 order until each of you has five. You can ask to be given only men or only women. Each turn has 30 seconds; if time runs out, the pick is random. At the end each of you plays ten duels among your five and sees which gift the other liked most, and where your gifts sit in their big tournament.
 
-The couple also shares a deck of champion cards. A pack of five cards comes with every tournament you finish in the room and with every shared tournament, and one card each for the duel of the day and the draft. The cards you each bring add up, and every pack includes cards the deck doesn't have yet: the goal is to collect all 138. Golden cards drop when you match: the same vote in the duel of the day, shared favourites in your top 10, the same pair, or the pair from a shared tournament.
+The couple also shares a deck of champion cards. A pack of five cards comes with every tournament you finish in the room and with every shared tournament, and one card each for the duel of the day and the draft. The cards you each bring add up, and every pack includes cards the deck doesn't have yet: the goal is to collect all 144. Golden cards drop when you match: the same vote in the duel of the day, shared favourites in your top 10, the same pair, or the pair from a shared tournament.
 
 Once you're both done you get a comparison: how close your tastes are and whose bet paid off.
 
@@ -128,6 +128,7 @@ Everywhere:
 
 - [x] Works on phones, tablets and desktops, with a separate layout for portrait phones
 - [x] Installs like an app, solo mode works offline
+- [x] When a new version of the site is out, a notice with a Reload button appears; progress is kept
 - [x] Duel of the day: one pair a day for everyone, a vote count across all players, and a streak of matches for couples
 
 ### Planned
@@ -144,4 +145,4 @@ Everywhere:
 
 Runeterra Pair isn't endorsed by Riot Games and doesn't reflect the views or opinions of Riot Games or anyone officially involved in producing or managing Riot Games properties. Riot Games, and all associated properties are trademarks or registered trademarks of Riot Games, Inc.
 
-Champion names, titles and art come from Riot's Data Dragon. The Rhaast, Wolf and Lamb portraits are cropped from the official Kayn and Kindred splash art. The quotes come from the champion bios on [universe.leagueoflegends.com](https://universe.leagueoflegends.com/). The region emblems on the certificate seals are Runeterra region icons from Teamfight Tactics (vector versions from the [world-runes](https://github.com/choicallum/world-runes) project), plus the Runeterra emblem from the Legends of Runeterra Data Dragon.
+Champion names, titles and art come from Riot's Data Dragon. The Rhaast, Wolf and Lamb portraits are cropped from the official Kayn and Kindred splash art. Ekko's portrait comes from his Arcane Last Stand skin. Omika's portrait is cropped from the Radiant Serpent Sett splash art, and her name was first revealed in 2XKO. The quotes come from the champion bios on [universe.leagueoflegends.com](https://universe.leagueoflegends.com/). The region emblems on the certificate seals are Runeterra region icons from Teamfight Tactics (vector versions from the [world-runes](https://github.com/choicallum/world-runes) project), plus the Runeterra emblem from the Legends of Runeterra Data Dragon.

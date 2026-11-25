@@ -53,7 +53,8 @@ const SV_TAGS = {
   Hecarim:'E+ A+ T-', DrMundo:'E++ H- S+', Xerath:'A++ T-- D+', Ivern:'T++ S+ E+ P-', Khazix:'A+ P+ S-', Karthus:'H+ S+ D+',
   Mordekaiser:'D++ A+ T-', Naafiri:'S++ T+ E+', Nasus:'P- A- T+', Nocturne:'D++ S-- H-', KindredLamb:'T+ D+ E-', Ornn:'S-- P- T+',
   Rengar:'R+ A+ S-', Renekton:'E++ H+ D+', Sion:'E+ D+ H-', TahmKench:'S+ A+ H-', Twitch:'D+ S- T-', Trundle:'A+ D+ S+',
-  Thresh:'D++ S+ H-', Urgot:'D+ A+ H-', Fiddlesticks:'D++ S-- H-', Shaco:'D+ S+ E+ H-'
+  Thresh:'D++ S+ H-', Urgot:'D+ A+ H-', Fiddlesticks:'D++ S-- H-', Shaco:'D+ S+ E+ H-',
+  Ekko:'E+ R+ P++ T+', Omika:'T++ H+ E- D-', Chogath:'D++ T- E+', Velkoz:'P++ H-- S- D+', RekSai:'R+ E+ S- T-', Galio:'S++ H+ T+ E+'
 };
 
 /* вопросы: ответ — текст и вклад в черты («E+1 R+.5»), ключ края даёт тяготение к нему */

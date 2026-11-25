@@ -6,6 +6,8 @@ const DD = 'https://ddragon.leagueoflegends.com';
 /* у Рааста своих образов нет — они общие с Каином; Волк и Овечка делят образы Киндред */
 const DD_ID = {KindredWolf:'Kindred', KindredLamb:'Kindred', Rhaast:'Kayn'};
 const ddId = id => DD_ID[id] || id;
+/* Омика — не чемпион, своих образов у неё нет */
+const DD_NONE = new Set(['Omika']);
 const skinArt = (id, n) => `${DD}/cdn/img/champion/loading/${ddId(id)}_${n}.jpg`;
 const SK_TTL = 3 * 864e5;
 let ddVer = null;
@@ -24,6 +26,7 @@ async function ddVersion(){
 }
 /* образы чемпиона без цветовых вариаций: у вариаций нет своего арта */
 async function skinsOf(id){
+  if (DD_NONE.has(id)) return [];
   if (skMem[id]) return skMem[id];
   const all = store.get('rp-skins') || {}, c = all[id];
   if (c && Array.isArray(c.list) && Date.now() - c.at < SK_TTL) return skMem[id] = c.list;

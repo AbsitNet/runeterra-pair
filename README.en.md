@@ -24,6 +24,8 @@ There are 138 champions in the pool, adults only: no kids, no yordles. Rhaast an
 
 A full run takes 20 to 40 minutes depending on the mode. If you don't have that long, there are mini-tournaments of 16 that take about three minutes: Ionia, Noxus, Demacia, Piltover and Zaun, villains, mages, assassins, or only the newest champions. On a phone you can swipe instead of tapping.
 
+If you don't feel like picking from pairs, there's the Star Matchmaker. You answer 32 questions about yourself: your temperament, what you value, your ideal evening and how you fight. The matchmaker compares your answers with every champion's personality across nine traits, names your pair, explains why, and offers to check it with a tournament of your 16 best matches.
+
 You can install it on your phone like an app: "Install" in Chrome, or Share → "Add to Home Screen" on an iPhone. After the first launch, solo mode works offline too.
 
 ## Playing together
@@ -73,6 +75,7 @@ Tournament:
 - [x] Progress is saved in the browser, so you can come back and continue
 - [x] Swipes on a phone
 - [x] Mini-tournaments of 16: Ionia, Noxus, Demacia, Piltover and Zaun, villains, mages, assassins, newest champions
+- [x] The Star Matchmaker: 32 questions about yourself instead of duels, a pair matched by personality with an explanation, and a tournament of your 16 best matches
 
 Results:
 
@@ -111,7 +114,6 @@ Everywhere:
 |---|---|---|
 | English, German and French | Translating the interface, champion write-ups and quotes | long |
 | Rooms for a group | More than two people: who matches whom and a shared anti-top | long |
-| The Star Matchmaker | A separate mode with no duels: about 30 questions about yourself (temperament, what you value, your ideal evening, how you behave in a fight), and the matchmaker finds your ideal partner and explains why | long |
 
 ## Legal
 

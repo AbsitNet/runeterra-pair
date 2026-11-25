@@ -703,3 +703,46 @@ textarea#copyFallback{width:100%;min-height:160px;background:var(--deep);color:v
   .mu-face{display:none}
   .mu-who img{display:block}
 }
+
+/* ================= звёздная сваха ================= */
+.sv-cta{margin-top:26px;display:grid;grid-template-columns:150px minmax(0,1fr);gap:clamp(14px,3vw,28px);align-items:center;padding:clamp(16px,3vw,24px);border:1px solid var(--gold-lo);background:radial-gradient(120% 140% at 0% 50%,color-mix(in srgb,var(--rose) 10%,transparent),transparent 60%),var(--deep)}
+.sv-cta-txt{display:grid;gap:10px;justify-items:start;min-width:0}
+.sv-cta h2{font-size:clamp(28px,3.4vw,36px)}
+.sv-cta p{color:var(--text);max-width:40em}
+.sv-last{font-size:14px;color:var(--muted)!important}
+.sv-last b{color:var(--gold-hi)}
+.linkish{background:none;border:0;padding:0;font:inherit;color:var(--gold);text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.sv-sky{display:block;width:100%;height:auto;overflow:visible}
+.sv-sky .dust{fill:color-mix(in srgb,var(--gold-hi) 35%,transparent)}
+.sv-sky .st{fill:var(--line-hi);transition:fill .3s}
+.sv-sky .st.on{fill:var(--gold-hi);filter:drop-shadow(0 0 4px color-mix(in srgb,var(--gold) 80%,transparent))}
+.sv-sky .st.new{transform-box:fill-box;transform-origin:center;animation:svStar .6s cubic-bezier(.2,1.6,.4,1)}
+.sv-sky line{stroke:color-mix(in srgb,var(--gold) 55%,transparent);stroke-width:1}
+.sv-sky.done{animation:svBeat 1.1s ease-in-out 1}
+.sv-sky.done line{stroke:var(--rose)}
+@keyframes svStar{0%{transform:scale(3);opacity:0}100%{transform:scale(1);opacity:1}}
+@keyframes svBeat{0%,100%{transform:scale(1)}40%{transform:scale(1.06)}}
+.sv{display:grid;grid-template-columns:minmax(0,280px) minmax(0,1fr);gap:clamp(20px,4vw,56px);align-items:center;max-width:1000px;margin:0 auto;padding-top:clamp(8px,2vw,20px)}
+.sv-body{display:grid;gap:16px;min-width:0}
+.sv-count{display:grid;gap:8px}
+.sv-count span{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.sv-count .bar{margin:0}
+.sv-pct{font-size:15px;color:var(--muted)}
+.sv-pct b{font-family:var(--f-display);font-weight:400;font-size:clamp(40px,5vw,56px);line-height:1;color:var(--gold-hi);margin-right:6px;vertical-align:-4px}
+.sv-why{list-style:none;padding:0;margin:0;display:grid;gap:10px;max-width:46em}
+.sv-why li{position:relative;padding-left:26px;color:var(--text)}
+.sv-why li::before{content:"✦";position:absolute;left:0;top:0;color:var(--gold)}
+.sv-traits{display:flex;flex-wrap:wrap;gap:8px}
+.sv-traits span{padding:8px 14px;border:1px solid var(--gold-lo);font-family:var(--f-display);font-size:20px;color:var(--gold-hi);background:var(--deep)}
+.sv-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,280px),1fr));gap:10px}
+.sv-card{display:grid;grid-template-columns:56px minmax(0,1fr);gap:12px;align-items:center;padding:8px 12px 8px 8px;border:1px solid var(--line);background:var(--deep);color:var(--text);font:inherit;text-align:left;cursor:pointer;transition:border-color .2s}
+.sv-card img{width:56px;height:68px;object-fit:cover;object-position:50% 16%}
+.sv-card b{display:block;font-family:var(--f-display);font-weight:400;font-size:21px;color:var(--gold-hi)}
+.sv-card small{display:block;font-size:13px;color:var(--muted);line-height:1.35}
+@media (hover:hover){.sv-card:hover{border-color:var(--gold)}}
+@media (max-width:600px){
+  .sv{grid-template-columns:minmax(0,1fr)}
+  .sv .sv-sky{width:120px;margin:0 auto -6px}
+  .sv-cta{grid-template-columns:minmax(0,1fr)}
+  .sv-cta .sv-sky{width:110px}
+}

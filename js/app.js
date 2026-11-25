@@ -226,6 +226,7 @@ function refreshStart(){
   refreshRoomBox();
   refreshInstall();
   renderMinis();
+  svRenderCta();
 }
 function startFlow(){
   ui.betTheme = null;
@@ -1476,6 +1477,7 @@ function bind(){
   $('#liveToggle').checked = liveOn();
   $('#syImg').addEventListener('click', async () => { const x = syncCalc(); if (x && x.phase === 'done') saveImage(await Share.tierList(x.m, [], `${sess.name} и ${x.pp.name}`), 'para-iz-runterry-obshchiy-tir-list.png', 'Общий тир-лист сохранён'); });
   $('#syAgain').addEventListener('click', syncSetup);
+  $('#svGo').addEventListener('click', startSvaha);
   $('#mapBtn').addEventListener('click', async () => { const m = ui.cur; if (m && m.kind === 'done') saveImage(await Share.heartMap(m, VIEW && VIEW.name ? VIEW.name : ''), 'para-iz-runterry-karta-serdca.png', 'Карта сердца сохранена'); });
   $('#syRoom').addEventListener('click', () => { show('scr-room'); renderRoom(); });
   $('#liveToggle').addEventListener('change', e => setLive(e.target.checked));
@@ -1489,6 +1491,7 @@ function bind(){
     if (e.key === 'Escape' && !$('#modal').hidden) return closeModal();
     if (e.altKey || e.ctrlKey || e.metaKey || !$('#modal').hidden || !$('#intro').hidden) return;
     if (ui.screen === 'scr-mutual' && /^[1-4]$/.test(e.key)){ e.preventDefault(); muAnswer(+e.key - 1); }
+    if (ui.screen === 'scr-svaha' && /^[1-4]$/.test(e.key) && !$('#svWrap').hidden){ e.preventDefault(); svAnswer(+e.key - 1); }
     if (ui.screen === 'scr-duel'){
       if (e.key === 'ArrowLeft' || e.key === '1'){ e.preventDefault(); pick(0); }
       else if (e.key === 'ArrowRight' || e.key === '2'){ e.preventDefault(); pick(1); }

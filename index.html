@@ -111,6 +111,16 @@
     </div>
   </div>
 
+  <section class="sv-cta" aria-labelledby="svH">
+    <svg class="sv-sky" id="svCtaSky" viewBox="0 0 300 300" aria-hidden="true"></svg>
+    <div class="sv-cta-txt">
+      <h2 id="svH">Звёздная сваха</h2>
+      <p>Не хочется выбирать из пар? Ответь на 32 вопроса о себе: о характере, о том, что ценишь, об идеальном вечере и о ссорах. Сваха подберёт пару по характеру и объяснит, почему именно её.</p>
+      <p class="sv-last" id="svLast" hidden></p>
+      <div><button class="btn primary" type="button" id="svGo">Спросить сваху</button></div>
+    </div>
+  </section>
+
   <section class="minis" aria-labelledby="minisH">
     <h2 id="minisH">Мини-турниры</h2>
     <p class="sec-sub">16 случайных чемпионов на одну тему — на несколько минут. Настройки выше тоже действуют: кто участвует, нелюди и длина турнира.</p>
@@ -344,6 +354,15 @@
   </div>
 </section>
 
+<!-- ЗВЁЗДНАЯ СВАХА -->
+<section id="scr-svaha" class="screen" hidden>
+  <div class="sv" id="svWrap">
+    <svg class="sv-sky" id="svSky" viewBox="0 0 300 300" aria-hidden="true"></svg>
+    <div class="sv-body" id="svBody" aria-live="polite"></div>
+  </div>
+  <div class="res" id="svRes" hidden></div>
+</section>
+
 <!-- ВЗАИМНОСТЬ -->
 <section id="scr-mutual" class="screen" hidden>
   <div class="mu">
@@ -437,6 +456,7 @@
 <script src="js/fx.js"></script>
 <script src="js/share.js"></script>
 <script src="js/room.js"></script>
+<script src="js/svaha.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>

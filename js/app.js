@@ -27,6 +27,7 @@ const roomKey = code => 'rp-room-' + code + '-' + (sess ? sess.slot : 0);
 const guessKey = code => 'rp-guess-' + code + '-' + (sess ? sess.slot : 0);
 const pbetKey = code => 'rp-pbet-' + code + '-' + (sess ? sess.slot : 0);
 const battleKey = code => 'rp-battle-' + code + '-' + (sess ? sess.slot : 0);
+const syKey = code => 'rp-sync-' + code + '-' + (sess ? sess.slot : 0);
 /* сессия комнаты: в локальном режиме проверки — своя у каждой вкладки */
 const sstore = Room.localMode ? {
   get(k){ try { return JSON.parse(sessionStorage.getItem(k) || 'null'); } catch(e){ return null; } },
@@ -43,6 +44,7 @@ let G = null;                         // «Угадай мой выбор»: {ta
 let PB = null;                        // ставка на партнёра: {id, on: слот партнёра}
 let BT = null;                        // голос в битве вкусов: {key: «пара1|пара2», pick}
 let RX = null;                        // последняя отправленная реакция: {to:{seed, idx}, e, at}
+let SY = null;                        // общий турнир: {id, host, cfg, v:[[первый голос, переголосовка], …]}
 const ui = {screen:'scr-start', cur:null, lock:false, ack:false, toastKey:'', introKey:'', off:new Set(), bet:null, betRoster:null, betRemoved:null, mode:'play', swipeHinted:false};
 
 function validTournament(v){
@@ -386,6 +388,7 @@ function pick(side){
   if (ui.lock || ui.screen !== 'scr-duel' || !ui.cur || ui.cur.kind !== 'duel') return;
   if (ui.mode === 'guess') return guessPick(side);
   if (ui.mode === 'battle') return battlePick(side);
+  if (ui.mode === 'sync') return syncPick(side);
   ui.lock = true; hideSwipeHint();
   const m = ui.cur, cards = [$('#card0'), $('#card1')];
   cards.forEach(c => c.style.transform = '');
@@ -397,7 +400,7 @@ function pick(side){
   setTimeout(() => { S.dec.push(side); saveLocal(); ui.lock = false; go(); }, reduced ? 80 : final ? 1100 : m.level ? 520 : 340);
 }
 function undo(){
-  if (ui.lock || ui.mode === 'guess' || !S.dec.length) return;
+  if (ui.lock || ui.mode !== 'play' || !S.dec.length) return;
   S.dec.pop(); saveLocal();
   const m = simulate(S.cfg, S.dec);
   if (m.kind === 'duel' && ['swiss','battle','dispute'].includes(m.stage)) ui.ack = false;
@@ -640,7 +643,7 @@ function refreshRoomBox(){
     $('#roomIntro').textContent = (window.RP_CONFIG && RP_CONFIG.roomNote) || 'Совместный режим ещё не подключён: в файле js/config.js нужно указать адрес и ключ Supabase.';
     return;
   }
-  $('#roomIntro').textContent = 'Каждый проходит свой турнир на своём телефоне, а вы видите прогресс друг друга. В конце — сравнение вкусов и игра «Угадай мой выбор».';
+  $('#roomIntro').textContent = 'Каждый проходит свой турнир на своём телефоне, а вы видите прогресс друг друга. В конце — сравнение вкусов и игра «Угадай мой выбор». А можно сыграть общий турнир: одна и та же пара у обоих одновременно.';
   const inRoom = !!sess;
   $('#roomForms').hidden = inRoom; $('#roomCurrent').hidden = !inRoom;
   if (inRoom) $('#roomCurrentText').innerHTML = `Ты в комнате <b>${esc(sess.code)}</b> как ${esc(sess.name)}.`;
@@ -660,7 +663,7 @@ async function roomJoin(){
 }
 function enterRoom(fresh){
   setCtx('room');
-  G = store.get(guessKey(sess.code)); PB = store.get(pbetKey(sess.code)); BT = store.get(battleKey(sess.code));
+  G = store.get(guessKey(sess.code)); PB = store.get(pbetKey(sess.code)); BT = store.get(battleKey(sess.code)); SY = store.get(syKey(sess.code));
   if (sub) sub.close();
   sub = Room.subscribe(sess.code, sess, () => fetchRoom(), slots => { online = new Set(slots); if (ui.screen === 'scr-room') renderRoom(); renderPartnerChip(); });
   clearInterval(pollT); pollT = setInterval(() => { if (!document.hidden) fetchRoom(); }, 20000);
@@ -668,7 +671,7 @@ function enterRoom(fresh){
 }
 function leaveRoom(){
   if (sub) sub.close(); sub = null; clearInterval(pollT);
-  sstore.del('rp-session'); sess = null; roomData = null; G = null; PB = null; BT = null; RX = null;
+  sstore.del('rp-session'); sess = null; roomData = null; G = null; PB = null; BT = null; RX = null; SY = null;
   hideLive(); live.key = ''; live.shown = null;
   setCtx('solo'); show('scr-start'); refreshStart();
 }
@@ -680,6 +683,7 @@ async function fetchRoom(){
   if (ui.screen === 'scr-compare') renderCompare();
   renderPartnerChip();
   checkLive();
+  syncOnFetch();
 }
 const partner = () => roomData && sess && roomData.players.find(p => p.slot !== sess.slot);
 const meRemote = () => roomData && sess && roomData.players.find(p => p.slot === sess.slot);
@@ -693,6 +697,7 @@ function myState(){
   if (PB) st.pbet = PB.id;
   if (BT) st.battle = BT;
   if (RX) st.react = RX;
+  if (SY) st.sync = SY;
   return st;
 }
 function queueSync(){ if (!sess) return; clearTimeout(saveT); saveT = setTimeout(() => pushState(), 1200); }
@@ -732,6 +737,7 @@ function renderRoom(){
     }
     return `<div class="pcard ${me ? 'me' : ''}"><div class="who"><span class="dot ${on ? 'on' : ''}"></span>${esc(p.name)} ${me ? '<small>это ты</small>' : on ? '<small>в сети</small>' : ''}</div>${body}</div>`;
   };
+  renderSyncBox();
   $('#rPlayers').innerHTML = players.map(card).join('') + (pp ? '' : '<div class="pcard"><div class="who"><span class="dot"></span>Ждём партнёра…</div><p class="muted">Когда партнёр войдёт по коду, он появится здесь.</p></div>');
   const mine = S.cfg ? simulate(S.cfg, S.dec) : null, their = playerState(pp);
   const acts = [];
@@ -744,6 +750,7 @@ function renderRoom(){
   const bx = battleInfo();
   if (bx && !bx.same && !bx.my) acts.push(`<button class="btn" type="button" data-act="battle">Битва вкусов</button>`);
   if (pp && (their.status === 'idle' || (their.status === 'play' && !inPlayoff(their.m)))) acts.push(`<button class="btn" type="button" data-act="pbet">${PB ? 'Изменить ставку на пару партнёра' : 'Поставить на пару партнёра'}</button>`);
+  if (pp && syncStatus().state === 'none') acts.push(`<button class="btn" type="button" data-act="sync-new">Общий турнир</button>`);
   if (mine && mine.kind === 'done' && their.status === 'done') acts.push(`<button class="btn" type="button" data-act="compare">Сравнить результаты</button>`);
   else if (pp) acts.push(`<button class="btn ghost" type="button" disabled>Сравнение откроется, когда оба закончат</button>`);
   $('#rActions').innerHTML = acts.join('');
@@ -779,6 +786,11 @@ function roomAction(a){
   if (a === 'pbet') openPartnerBet();
   if (a === 'battle') startBattle();
   if (a === 'compare'){ show('scr-compare'); renderCompare(); }
+  if (a === 'sync-new') syncSetup();
+  if (a === 'sync-join') syncJoin();
+  if (a === 'sync-go') startSync();
+  if (a === 'sync-res') renderSyncResult();
+  if (a === 'sync-cancel'){ SY = null; store.del(syKey(sess.code)); pushState(true); renderRoom(); }
 }
 function renderPartnerChip(){
   const chip = $('#partnerChip');
@@ -993,6 +1005,207 @@ function showReaction(who, e, about){
   }
 }
 
+/* ================= общий турнир: одна и та же пара у обоих, выбор втайне, ответы открываются разом ================= */
+const SYNC_N = 16;
+const syncOf = p => { const y = p && p.state && p.state.sync; return y && y.id && y.cfg && Array.isArray(y.cfg.roster) && validTournament({cfg:y.cfg, dec:[]}) ? y : null; };
+function syncStatus(){
+  const pp = partner(), th = syncOf(pp);
+  if (!pp) return {state:'none'};
+  if (SY && th && th.id === SY.id) return {state:'on', pp, th};
+  if (th && th.host === pp.slot && (!SY || SY.id !== th.id)) return {state:'invited', pp, th};
+  if (SY && SY.host === sess.slot) return {state:'waiting', pp};
+  return {state:'none', pp};
+}
+const syncTitle = cfg => cfg.theme && themeOf(cfg.theme) ? `«${themeOf(cfg.theme)[1]}»` : 'на 16 случайных чемпионов';
+/* кто за что голосовал и чем решилась каждая дуэль; одинаково считается у обоих */
+function syncCalc(){
+  const st = syncStatus(); if (st.state !== 'on') return null;
+  const first = sess.slot === 1, mine = SY.v || [], theirs = st.th.v || [];
+  const va = first ? mine : theirs, vb = first ? theirs : mine, dec = [], log = [];
+  const g = tournament(SY.cfg); let r = g.next();
+  for (let i = 0; !r.done; i++){
+    const a = va[i], b = vb[i]; let d, how;
+    if (!a || !b) break;
+    if (a[0] === b[0]){ d = a[0]; how = 'agree'; }
+    else if (a[1] == null || b[1] == null) break;
+    else if (a[1] === b[1]){ d = a[1]; how = 'revote'; }
+    else { d = mulberry32((SY.cfg.seed ^ Math.imul(i + 1, 2654435761)) >>> 0)() < .5 ? 0 : 1; how = 'coin'; }   // жребий
+    d = d ? 1 : 0; dec.push(d); log.push({how, a, b}); r = g.next(d);
+  }
+  const m = Object.assign({kind: r.done ? 'done' : 'duel'}, r.value), i = dec.length, my = mine[i] || null, th = theirs[i] || null;
+  const phase = m.kind === 'done' ? 'done' : !my ? 'pick1' : !th ? 'wait1' : my[1] == null ? 'pick2' : 'wait2';
+  return {pp:st.pp, m, dec, log, i, my, th, phase, first};
+}
+function syncSetup(){
+  const pp = partner(); if (!pp) return toast('Сначала дождись партнёра в комнате');
+  const all = CH.map(c => c[0]);
+  openModal(`<p class="eyebrow">Вдвоём</p><h2>Общий турнир</h2>
+    <p style="margin-top:12px">Одна и та же пара у вас обоих одновременно. Каждый выбирает втайне, ответы открываются разом. Если разошлись, можно один раз переголосовать, а дальше решает жребий. В конце — общий тир-лист пары и процент согласия.</p>
+    <p class="muted" style="margin-top:8px">16 участников, около 60 дуэлей, минут на пять. Играйте, когда оба в сети.</p>
+    <div class="sy-pick">
+      <button type="button" class="mini" data-k=""><span class="mini-faces" aria-hidden="true">${['Ahri','Garen','Jinx'].map(id => face(id)).join('')}</span><b>Случайные</b><small>16 чемпионов наугад</small></button>
+      ${THEMES.map(([k, t, d, f, pics]) => `<button type="button" class="mini" data-k="${k}"><span class="mini-faces" aria-hidden="true">${pics.map(id => face(id)).join('')}</span><b>${esc(t)}</b><small>${esc(d)}</small></button>`).join('')}
+    </div>`);
+  $('#modalBody').querySelectorAll('[data-k]').forEach(b => b.addEventListener('click', () => syncCreate(b.dataset.k || null)));
+}
+function syncCreate(k){
+  const t = k && themeOf(k), ids = CH.map(c => c[0]).filter(id => !t || t[3](id));
+  for (let i = ids.length - 1; i > 0; i--){ const j = Math.floor(Math.random() * (i + 1)); [ids[i], ids[j]] = [ids[j], ids[i]]; }
+  const roster = ids.slice(0, SYNC_N).sort((a, b) => IDX[a] - IDX[b]);
+  const id = (crypto.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2)).slice(0, 12);
+  SY = {id, host:sess.slot, at:Date.now(), cfg:{v:ENGINE_VERSION, who:'all', extra:true, mode:'quick', seed:(Math.random() * 4294967296) >>> 0, roster, removed:[], bet:null}, v:[]};
+  if (k) SY.cfg.theme = k;
+  store.set(syKey(sess.code), SY); pushState(true); closeModal(); preloadAll(roster);
+  show('scr-room'); renderRoom();
+  toast('Приглашение отправлено. Турнир начнётся, когда партнёр присоединится');
+}
+function syncJoin(){
+  const st = syncStatus(); if (st.state !== 'invited') return;
+  SY = {id:st.th.id, host:st.th.host, at:Date.now(), cfg:st.th.cfg, v:[]};
+  store.set(syKey(sess.code), SY); pushState(true); startSync();
+}
+function startSync(){
+  if (syncStatus().state !== 'on') return;
+  ui.mode = 'sync'; ui.sy = null; ui.syAnim = false; ui.lock = false;
+  show('scr-duel'); preloadAll(SY.cfg.roster); renderSync();
+}
+function syncPick(side){
+  const x = syncCalc(); if (!x || ui.syAnim) return;
+  const v = SY.v || (SY.v = []);
+  if (x.phase === 'pick1') v[x.i] = [side, null];
+  else if (x.phase === 'pick2') v[x.i] = [v[x.i][0], side];
+  else return;
+  store.set(syKey(sess.code), SY); pushState(true);
+  Sound.pick(x.m.level || 0);
+  renderSync();
+}
+function syncOnFetch(){
+  const st = syncStatus();
+  if (st.state === 'invited' && ui.syInvite !== st.th.id){
+    ui.syInvite = st.th.id;
+    if (ui.screen !== 'scr-room') toast(`${st.pp.name} зовёт в общий турнир — загляни в комнату`, 5000);
+  }
+  /* партнёр принял приглашение: если ждём в комнате, начинаем сразу */
+  if (st.state === 'on' && SY.host === sess.slot && !(SY.v || []).length && ui.syStarted !== SY.id){
+    ui.syStarted = SY.id;
+    if (ui.screen === 'scr-room'){ toast(`${st.pp.name} в игре — начинаем!`); startSync(); return; }
+  }
+  if (ui.mode === 'sync' && ui.screen === 'scr-duel') renderSync();
+}
+function clearVtags(){ $('#vt0').innerHTML = ''; $('#vt1').innerHTML = ''; }
+/* ярлыки с именами на картах: кто за кого */
+function putVtags(myS, thS, pp){
+  const tag = (who, me) => `<b class="${me ? 'me' : ''}">${esc(who)}</b>`;
+  [0, 1].forEach(sd => { $('#vt' + sd).innerHTML = (myS === sd ? tag('Ты', true) : '') + (thS === sd ? tag(pp.name) : ''); });
+}
+function renderSync(){
+  if (ui.syAnim) return;
+  const x = syncCalc();
+  if (!x){ ui.mode = 'play'; clearVtags(); show('scr-room'); renderRoom(); return; }
+  if (ui.sy && ui.sy.i === x.i - 1 && x.log[x.i - 1] && ui.screen === 'scr-duel') return syncReveal(x);
+  if (x.phase === 'done'){ ui.mode = 'play'; clearVtags(); return renderSyncResult(); }
+  const m = x.m, pp = x.pp, fresh = !ui.sy || ui.sy.i !== x.i;
+  if (ui.screen !== 'scr-duel') show('scr-duel');
+  ui.cur = {kind:'duel', a:m.a, b:m.b, level:m.level, stage:'sync'};
+  if (fresh){
+    setCard(0, m.a); setCard(1, m.b);
+    const ar = $('#arena'); ar.className = 'arena' + (m.level ? ' lv' + m.level : ''); void ar.offsetWidth; ar.classList.add('enter');
+    FX.setLevel(m.level || 0);
+    if (x.i === 0) FX.intro(1, 'Общий турнир', syncTitle(SY.cfg), 'Вдвоём');
+    else if (m.stage === 'final') FX.intro(3, 'Гранд-финал', `${name(m.a)} или ${name(m.b)}`, 'Вдвоём');
+    [0, 1].forEach(i => { const n = simulate(SY.cfg, x.dec.concat(i)); if (n.kind === 'duel'){ new Image().src = img(n.a); new Image().src = img(n.b); } });
+  }
+  ui.sy = {i:x.i, a:m.a, b:m.b};
+  const agree = x.log.filter(l => l.how === 'agree').length, on = online.has(pp.slot);
+  $('#stage').textContent = 'Общий турнир · ' + stageLabel(m);
+  $('#counter').textContent = `Дуэль ${x.i + 1} из ≈${m.est}` + (x.i ? ` · совпали ${agree} из ${x.i}` : '');
+  $('#barFill').style.width = Math.min(99.5, 100 * x.i / m.est).toFixed(2) + '%';
+  const p = $('#prompt'), sp = $('#subprompt'), egg = EGG[m.a + '|' + m.b];
+  p.classList.toggle('final', m.stage === 'final'); p.classList.toggle('egg', !!egg && m.stage !== 'final');
+  const cards = [$('#card0'), $('#card1')];
+  cards.forEach(c => { c.classList.remove('chosen', 'lost'); c.style.transform = ''; });
+  const r = $('#reveal'); r.className = 'reveal';
+  if (x.phase === 'pick1' || x.phase === 'wait1'){
+    p.textContent = m.stage === 'final' ? 'Гранд-финал. Какой будет ваша общая пара?' : egg || PROMPTS[x.i % PROMPTS.length];
+    sp.hidden = true; clearVtags();
+    if (x.phase === 'wait1'){ cards[x.my[0]].classList.add('chosen'); cards[1 - x.my[0]].classList.add('lost'); }
+    r.textContent = x.phase === 'pick1' ? (x.th ? `${pp.name} уже выбрал(а) — твой ход` : '') : on ? `Ждём, что выберет ${pp.name}…` : `${pp.name} сейчас не в сети. Продолжите, когда оба будете здесь`;
+  } else {
+    p.textContent = 'Вы разошлись. Переголосуете?'; p.classList.remove('egg');
+    sp.hidden = false; sp.textContent = 'Можно остаться при своём или уступить. Если снова разойдётесь, решит жребий.';
+    putVtags(x.my[0], x.th[0], pp);
+    if (x.phase === 'wait2'){ cards[x.my[1]].classList.add('chosen'); cards[1 - x.my[1]].classList.add('lost'); }
+    r.textContent = x.phase === 'pick2' ? `${pp.name}: ${name(x.th[0] ? m.b : m.a)}, ты: ${name(x.my[0] ? m.b : m.a)}` : on ? `Ждём, что решит ${pp.name}…` : `${pp.name} сейчас не в сети`;
+  }
+  $('#undoBtn').hidden = true; $('#bracketBtn').hidden = true;
+  /* пока ждём партнёра, подстрахуемся частым опросом на случай, если живое обновление потерялось */
+  clearTimeout(ui.syPoll);
+  if (x.phase === 'wait1' || x.phase === 'wait2') ui.syPoll = setTimeout(() => { if (ui.mode === 'sync') fetchRoom(); }, 3000);
+  const chip = $('#partnerChip'); chip.hidden = false;
+  const done = x.phase === 'wait1' || x.phase === 'pick1' ? !!x.th : x.th[1] != null;
+  chip.innerHTML = `<span class="dot ${on ? 'on' : ''}"></span><b>${esc(pp.name)}</b> · ${done ? 'выбор сделан' : 'выбирает'}`;
+}
+/* предыдущая дуэль решилась — коротко показываем, как именно */
+function syncReveal(x){
+  const L = x.log[x.i - 1], d = x.dec[x.i - 1], prev = ui.sy, cards = [$('#card0'), $('#card1')];
+  ui.syAnim = true; ui.lock = true; ui.sy = null;
+  cards.forEach(c => c.classList.remove('chosen', 'lost'));
+  cards[d].classList.add('chosen'); cards[1 - d].classList.add('lost');
+  const mine = x.first ? L.a : L.b, theirs = x.first ? L.b : L.a, k = L.how === 'agree' ? 0 : 1;
+  putVtags(mine[k], theirs[k], x.pp);
+  const who = name(d ? prev.b : prev.a), r = $('#reveal');
+  r.className = 'reveal ' + (L.how === 'coin' ? 'no' : 'ok');
+  r.textContent = L.how === 'agree' ? 'Совпали!' : L.how === 'revote' ? `Договорились: ${who}` : `Не договорились. Жребий: ${who}`;
+  $('#subprompt').hidden = true;
+  Sound.pick(L.how === 'agree' ? 2 : 0);
+  if (L.how === 'agree') FX.burst(...cardCenter(d), 1);
+  const end = x.m.kind === 'done';
+  if (end){ Sound.fanfare(); FX.celebrate(); }
+  setTimeout(() => { ui.syAnim = false; ui.lock = false; clearVtags(); renderSync(); }, end ? 1900 : L.how === 'agree' ? 1100 : 1700);
+}
+function renderSyncBox(){
+  const box = $('#rSync'), st = syncStatus(); let h = '';
+  if (st.state === 'invited') h = `<h3>${esc(st.pp.name)} зовёт в общий турнир ${esc(syncTitle(st.th.cfg))}</h3>
+      <p>Одна и та же пара у обоих, выбор втайне, ответы открываются разом. Около 60 дуэлей.</p>
+      <div class="res-actions"><button class="btn primary" type="button" data-act="sync-join">Присоединиться</button></div>`;
+  if (st.state === 'waiting') h = `<h3>Общий турнир ${esc(syncTitle(SY.cfg))}</h3>
+      <p>Приглашение отправлено. Турнир начнётся, когда ${esc(st.pp.name)} присоединится.</p>
+      <div class="res-actions"><button class="btn ghost" type="button" data-act="sync-cancel">Отменить</button></div>`;
+  if (st.state === 'on'){
+    const x = syncCalc();
+    h = x.phase === 'done'
+      ? `<h3>Общий турнир: ваша пара — ${esc(name(x.m.champ))}</h3><p>Совпали с первого раза в ${x.log.filter(l => l.how === 'agree').length} из ${x.log.length} дуэлей.</p>
+         <div class="res-actions"><button class="btn primary" type="button" data-act="sync-res">Итог общего турнира</button><button class="btn" type="button" data-act="sync-new">Ещё один</button></div>`
+      : `<h3>Общий турнир ${esc(syncTitle(SY.cfg))}</h3><p>Позади ${x.i} из ≈${x.m.est} дуэлей.</p>
+         <div class="res-actions"><button class="btn primary" type="button" data-act="sync-go">${x.i ? 'Продолжить' : 'Начать'}</button></div>`;
+  }
+  box.hidden = !h; box.innerHTML = h;
+  box.querySelectorAll('[data-act]').forEach(b => b.addEventListener('click', () => roomAction(b.dataset.act)));
+}
+function renderSyncResult(){
+  const x = syncCalc(); if (!x || x.phase !== 'done') return;
+  ui.cur = null; show('scr-sync'); FX.setLevel(0);
+  const it = $('#intro'); if (!it.hidden && it.onclick) it.onclick();
+  const m = x.m, w = BY[m.champ], pp = x.pp, n = x.log.length;
+  const agree = x.log.filter(l => l.how === 'agree').length, re = x.log.filter(l => l.how === 'revote').length, coin = n - agree - re;
+  $('#syHead').innerHTML = `<div class="wimg"><img src="${img(w.id)}" alt="${esc(w.name)}"></div>
+    <div class="wtext"><p class="eyebrow">Общий турнир ${esc(syncTitle(SY.cfg))}</p><h1>${esc(w.name)}</h1><p class="ttl">${esc(w.title)}</p>
+      <p class="path">Общая пара: ${esc(sess.name)} и ${esc(pp.name)}. ${PROFILE[m.champ] ? esc(PROFILE[m.champ][3]) : ''}</p></div>`;
+  $('#syStats').innerHTML = [[Math.round(100 * agree / Math.max(1, n)) + '%', `согласие: совпали с первого раза в ${agree} из ${n} дуэлей`], [re, `${plural(re,'раз','раза','раз')} договорились после переголосовки`], [coin, `${plural(coin,'раз','раза','раз')} решал жребий`]]
+    .map(([b, t]) => `<div class="sy-stat"><b>${b}</b><small>${t}</small></div>`).join('');
+  const t = $('#syTiers'); t.innerHTML = '<h2>Общий тир-лист</h2>';
+  const sizes = tierSizesOf(m); let pos = 0;
+  TIERS.forEach(([L, label, tok], ti) => { t.appendChild(tierRow(L, label, tok, m.order.slice(pos, pos + sizes[ti]), pos)); pos += sizes[ti]; });
+  const dl = duelLog(SY.cfg, x.dec), fights = [];
+  x.log.forEach((l, i) => { if (l.how !== 'agree') fights.push({i, l, a:dl[i].a, b:dl[i].b, d:x.dec[i]}); });
+  $('#syFightsSec').hidden = !fights.length;
+  const nm = (v, f) => name(v ? f.b : f.a);
+  $('#syFights').innerHTML = fights.slice(-8).reverse().map(f => {
+    const mine = x.first ? f.l.a : f.l.b, theirs = x.first ? f.l.b : f.l.a;
+    return `<div class="lrow sy-f">${face(f.d ? f.b : f.a)}<div><b>${esc(name(f.a))} или ${esc(name(f.b))}</b><small>${esc(sess.name)}: ${esc(nm(mine[0], f))}, ${esc(pp.name)}: ${esc(nm(theirs[0], f))}. ${f.l.how === 'coin' ? 'Решил жребий' : 'Договорились'}: ${esc(nm(f.d, f))}</small></div></div>`;
+  }).join('');
+}
+
 /* «Угадай мой выбор» */
 function startGuess(){
   const pp = partner(), ps = playerState(pp);
@@ -1053,7 +1266,7 @@ function bind(){
   $('#card0').addEventListener('click', () => { if (!ui.swallowClick) pick(0); });
   $('#card1').addEventListener('click', () => { if (!ui.swallowClick) pick(1); });
   $('#undoBtn').addEventListener('click', undo);
-  $('#menuBtn').addEventListener('click', () => { if (ui.mode === 'guess' || ui.mode === 'battle'){ ui.mode = 'play'; show('scr-room'); renderRoom(); return; } if (ctx === 'room' && sess){ show('scr-room'); renderRoom(); } else { show('scr-start'); refreshStart(); } });
+  $('#menuBtn').addEventListener('click', () => { if (ui.mode === 'guess' || ui.mode === 'battle' || ui.mode === 'sync'){ ui.mode = 'play'; clearVtags(); show('scr-room'); renderRoom(); return; } if (ctx === 'room' && sess){ show('scr-room'); renderRoom(); } else { show('scr-start'); refreshStart(); } });
   $('#interGo').addEventListener('click', () => { ui.ack = true; go(); });
   $('#interBack').addEventListener('click', undo);
   $('#copyBtn').addEventListener('click', copyResult);
@@ -1085,6 +1298,9 @@ function bind(){
   $('#roomOpen').addEventListener('click', () => enterRoom(false));
   $('#rLeave').addEventListener('click', leaveRoom);
   $('#liveToggle').checked = liveOn();
+  $('#syImg').addEventListener('click', async () => { const x = syncCalc(); if (x && x.phase === 'done') saveImage(await Share.tierList(x.m, [], `${sess.name} и ${x.pp.name}`), 'para-iz-runterry-obshchiy-tir-list.png', 'Общий тир-лист сохранён'); });
+  $('#syAgain').addEventListener('click', syncSetup);
+  $('#syRoom').addEventListener('click', () => { show('scr-room'); renderRoom(); });
   $('#liveToggle').addEventListener('change', e => setLive(e.target.checked));
   $('#rCopy').addEventListener('click', () => {
     const link = location.origin + location.pathname + '?room=' + sess.code;

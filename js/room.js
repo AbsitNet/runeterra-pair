@@ -55,8 +55,15 @@ const Room = (() => {
       if (r.players.length >= 2) throw new Error(errText('room_full'));
       const token = uid(); r.players.push({slot:2, name, token, state:{}, updated_at:new Date().toISOString()}); lset(all); return {code, slot:2, token};
     },
-    async get(code){ const r = lget()[code]; if (!r) throw new Error(errText('room_not_found')); return {code, players:r.players.map(({token, ...p}) => p)}; },
-    async save(code, token, state){ const all = lget(), r = all[code]; const p = r && r.players.find(x => x.token === token); if (!p) throw new Error(errText('bad_token')); p.state = state; p.updated_at = new Date().toISOString(); lset(all); return p.updated_at; },
+    /* состояние каждого игрока лежит под своим ключом, чтобы две вкладки не затирали друг друга */
+    async get(code){
+      const r = lget()[code]; if (!r) throw new Error(errText('room_not_found'));
+      return {code, players:r.players.map(({token, ...p}) => { let own = null; try { own = JSON.parse(localStorage.getItem(`${LK}:${code}:${p.slot}`) || 'null'); } catch(e){} return own ? Object.assign(p, own) : p; })};
+    },
+    async save(code, token, state){
+      const r = lget()[code], p = r && r.players.find(x => x.token === token); if (!p) throw new Error(errText('bad_token'));
+      const at = new Date().toISOString(); localStorage.setItem(`${LK}:${code}:${p.slot}`, JSON.stringify({state, updated_at:at})); return at;
+    },
     subscribe(code, me, onUpdate, onPresence){
       const bc = new BroadcastChannel('pair:' + code), seen = {};
       seen[me.slot] = Date.now();

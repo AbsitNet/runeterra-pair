@@ -197,8 +197,8 @@
   <h2 class="prompt" id="prompt"></h2>
   <p class="subprompt" id="subprompt" hidden></p>
   <div class="arena" id="arena">
-    <button class="pick" id="card0" type="button"><img alt="" id="img0"><span class="cap"><span class="nm" id="nm0"></span><span class="tt" id="tt0"></span><span class="ds" id="ds0"></span></span><svg class="heart" viewBox="0 0 24 22" aria-hidden="true"><path fill="currentColor" d="M12 21.4 10.6 20C5.4 15.4 2 12.3 2 8.5 2 5.4 4.4 3 7.5 3c1.7 0 3.4.8 4.5 2.1C13.1 3.8 14.8 3 16.5 3 19.6 3 22 5.4 22 8.5c0 3.8-3.4 6.9-8.6 11.5L12 21.4Z"/></svg></button>
-    <button class="pick" id="card1" type="button"><img alt="" id="img1"><span class="cap"><span class="nm" id="nm1"></span><span class="tt" id="tt1"></span><span class="ds" id="ds1"></span></span><svg class="heart" viewBox="0 0 24 22" aria-hidden="true"><path fill="currentColor" d="M12 21.4 10.6 20C5.4 15.4 2 12.3 2 8.5 2 5.4 4.4 3 7.5 3c1.7 0 3.4.8 4.5 2.1C13.1 3.8 14.8 3 16.5 3 19.6 3 22 5.4 22 8.5c0 3.8-3.4 6.9-8.6 11.5L12 21.4Z"/></svg></button>
+    <button class="pick" id="card0" type="button"><img alt="" id="img0"><span class="cap"><span class="nm" id="nm0"></span><span class="tt" id="tt0"></span><span class="ds" id="ds0"></span></span><span class="vtags" id="vt0" aria-hidden="true"></span><svg class="heart" viewBox="0 0 24 22" aria-hidden="true"><path fill="currentColor" d="M12 21.4 10.6 20C5.4 15.4 2 12.3 2 8.5 2 5.4 4.4 3 7.5 3c1.7 0 3.4.8 4.5 2.1C13.1 3.8 14.8 3 16.5 3 19.6 3 22 5.4 22 8.5c0 3.8-3.4 6.9-8.6 11.5L12 21.4Z"/></svg></button>
+    <button class="pick" id="card1" type="button"><img alt="" id="img1"><span class="cap"><span class="nm" id="nm1"></span><span class="tt" id="tt1"></span><span class="ds" id="ds1"></span></span><span class="vtags" id="vt1" aria-hidden="true"></span><svg class="heart" viewBox="0 0 24 22" aria-hidden="true"><path fill="currentColor" d="M12 21.4 10.6 20C5.4 15.4 2 12.3 2 8.5 2 5.4 4.4 3 7.5 3c1.7 0 3.4.8 4.5 2.1C13.1 3.8 14.8 3 16.5 3 19.6 3 22 5.4 22 8.5c0 3.8-3.4 6.9-8.6 11.5L12 21.4Z"/></svg></button>
     <div class="vs" aria-hidden="true"><span>или</span></div>
     <div class="swipe-hint" id="swipeHint" hidden aria-hidden="true"><i>←</i> можно свайпнуть <i>→</i></div>
   </div>
@@ -315,6 +315,7 @@
     </div>
     <p class="muted" id="rHint"></p>
     <div class="players" id="rPlayers"></div>
+    <div class="sy-box" id="rSync" hidden></div>
     <label class="check live-opt" for="liveToggle">
       <input type="checkbox" id="liveToggle" checked>
       <b>Новости из плей-офф партнёра</b>
@@ -322,6 +323,25 @@
     </label>
     <div class="room-actions" id="rActions"></div>
     <p class="err" id="rErr" role="alert"></p>
+  </div>
+</section>
+
+<!-- ОБЩИЙ ТУРНИР -->
+<section id="scr-sync" class="screen" hidden>
+  <div class="res">
+    <div class="winner" id="syHead"></div>
+    <div class="sy-stats" id="syStats"></div>
+    <div class="tiers" id="syTiers"></div>
+    <div class="sec" id="syFightsSec">
+      <h2>Где разошлись</h2>
+      <p class="sec-sub">Дуэли, в которых вы с первого раза выбрали разных.</p>
+      <div class="list" id="syFights"></div>
+    </div>
+    <div class="res-actions">
+      <button class="btn primary" type="button" id="syImg">Сохранить тир-лист картинкой</button>
+      <button class="btn" type="button" id="syAgain">Ещё один общий турнир</button>
+      <button class="btn ghost" type="button" id="syRoom">В комнату</button>
+    </div>
   </div>
 </section>
 

@@ -157,6 +157,40 @@ function registerSW(){
   document.readyState === 'complete' ? go() : window.addEventListener('load', go);
 }
 
+/* ================= мини-турниры по темам ================= */
+const NEW_SINCE_2019 = ['Qiyana','Senna','Aphelios','Sett','Yone','Samira','Seraphine','Rell','Viego','Gwen','Akshan','Zeri','Renata','Belveth','Nilah','KSante','Naafiri','Briar','Hwei','Aurora','Ambessa','Mel','Yunara','Zaahen','Locke'];
+/* порядок не менять: номер темы хранится в ссылке на результат; новые темы — только в конец */
+const THEMES = [
+  ['ion',  'Иония',           'Чемпионы из Ионии',                      id => PROFILE[id][0] === 'ion',  ['Ahri','Yasuo','Irelia']],
+  ['nox',  'Ноксус',          'Чемпионы из Ноксуса',                    id => PROFILE[id][0] === 'nox',  ['Katarina','Darius','Swain']],
+  ['dem',  'Демасия',         'Чемпионы из Демасии',                    id => PROFILE[id][0] === 'dem',  ['Lux','Garen','Fiora']],
+  ['pz',   'Пилтовер и Заун', 'Город прогресса и его нижний город',     id => ['pil','zau'].includes(PROFILE[id][0]), ['Jinx','Jayce','Caitlyn']],
+  ['dark', 'Злодеи',          'Опасные, порочные и загадочные',         id => PROFILE[id][2] === 'dark', ['Evelynn','Thresh','Leblanc']],
+  ['mg',   'Маги',            'Все, кто колдует',                       id => PROFILE[id][1] === 'mg',   ['Syndra','Xerath','Seraphine']],
+  ['as',   'Убийцы',          'Быстрые, тихие и смертельно обаятельные', id => PROFILE[id][1] === 'as', ['Akali','Zed','Qiyana']],
+  ['new',  'Новые чемпионы',  'Вышли в 2019 году и позже',              id => NEW_SINCE_2019.includes(id), ['Aurora','Viego','Mel']]
+];
+const MINI_N = 16;
+const themeOf = k => THEMES.find(t => t[0] === k);
+function themePool(k){ const t = themeOf(k); return t ? pool(settings()).filter(t[3]) : []; }
+function renderMinis(){
+  const mode = settings().mode;
+  $('#miniGrid').innerHTML = THEMES.map(([k, t, d, , pics]) => {
+    const ids = themePool(k), n = Math.min(MINI_N, ids.length), ok = n >= MIN_N;
+    const faces = pics.filter(id => ids.includes(id)).concat(ids.filter(id => !pics.includes(id))).slice(0, 3);
+    return `<button type="button" class="mini" data-k="${k}" ${ok ? '' : 'disabled'}>
+      <span class="mini-faces" aria-hidden="true">${faces.map(id => face(id)).join('')}</span>
+      <b>${esc(t)}</b><small>${esc(d)}</small>
+      <small class="mini-n">${ok ? `${n} ${plural(n,'участник','участника','участников')} · ~${minutes(estimate(n, mode))} мин` : 'Мало участников при этих настройках'}</small></button>`;
+  }).join('');
+}
+function startMini(k){
+  const ids = themePool(k); if (ids.length < MIN_N) return;
+  for (let i = ids.length - 1; i > 0; i--){ const j = Math.floor(Math.random() * (i + 1)); [ids[i], ids[j]] = [ids[j], ids[i]]; }
+  const roster = ids.slice(0, MINI_N).sort((a, b) => IDX[a] - IDX[b]);   // порядок как в составе — так его однозначно восстановит ссылка
+  openBet(roster, [], false, k);
+}
+
 /* ================= старт ================= */
 function settings(){
   return {
@@ -188,8 +222,10 @@ function refreshStart(){
   } else r.hidden = true;
   refreshRoomBox();
   refreshInstall();
+  renderMinis();
 }
 function startFlow(){
+  ui.betTheme = null;
   const s = settings();
   if (s.pre) return openFilter();
   openBet(pool(s), []);
@@ -230,8 +266,10 @@ function betTexts(forPartner){
   $('#bskip').textContent = forPartner ? 'Отмена' : 'Без ставки';
   $('#bstart').textContent = forPartner ? 'Поставить' : 'Начать турнир';
 }
-function openBet(roster, removed, forPartner){
+function openBet(roster, removed, forPartner, theme){
   betTexts(forPartner);
+  ui.betTheme = forPartner ? null : theme || null;
+  if (ui.betTheme) $('#betEyebrow').textContent = `Мини-турнир «${themeOf(ui.betTheme)[1]}»`;
   ui.betRoster = roster; ui.betRemoved = removed; ui.bet = null;
   const g = $('#bgrid'); g.innerHTML = '';
   roster.forEach(id => {
@@ -254,6 +292,7 @@ function openBet(roster, removed, forPartner){
 function newTournament(roster, removed, bet){
   const s = settings();
   S = {cfg:{v:ENGINE_VERSION, who:s.who, extra:s.extra, mode:s.mode, seed:(Math.random() * 4294967296) >>> 0, roster, removed, bet:bet || null}, dec:[]};
+  if (ui.betTheme) S.cfg.theme = ui.betTheme;
   ui.ack = false; ui.toastKey = ''; ui.introKey = ''; ui.mode = 'play';
   saveLocal(); preloadAll(roster); go();
 }
@@ -430,7 +469,8 @@ function openProfile(id){
 function renderResult(m){
   show('scr-result'); FX.setLevel(0);
   const w = BY[m.champ], pr = PROFILE[m.champ], V = !!VIEW;
-  $('#wEyebrow').textContent = V ? (VIEW.name ? `Выбор ${VIEW.name}` : 'Результат по ссылке') : 'Твоя пара в Рунтерре';
+  const th = S.cfg.theme && themeOf(S.cfg.theme);
+  $('#wEyebrow').textContent = (V ? (VIEW.name ? `Выбор ${VIEW.name}` : 'Результат по ссылке') : th ? 'Твоя пара' : 'Твоя пара в Рунтерре') + (th ? ` · мини-турнир «${th[1]}»` : '');
   $('#typajH').textContent = V ? 'Типаж' : 'Твой типаж';
   if (V && VIEW.name) $('#certName').value = VIEW.name;
   $('#wImg').src = img(w.id); $('#wImg').alt = w.name;
@@ -475,7 +515,7 @@ function renderResult(m){
   $('#copyFallback').hidden = true;
   $('#toRoomBtn').hidden = V || !(ctx === 'room' && sess);
   $('#selfBtn').hidden = !V; $('#shareBtn').hidden = V; $('#newBtn').hidden = V; $('#refinalBtn').hidden = V;
-  $('#method').textContent = `Режим «${MODES[S.cfg.mode].label}», ${m.total} ${duelsWord(m.total)}: ${m.R} ${plural(m.R,'круг','круга','кругов')} отбора, битвы за место${MODES[S.cfg.mode].D ? ', спорные места' : ''} и плей-офф с двойным выбыванием на ${m.P}. Первые ${m.P} мест решены плей-офф, остальные стоят по рейтингу всех дуэлей с учётом силы соперников; если соседи по списку встречались, выше стоит победитель. ${V ? 'Результат открыт по ссылке и в этом браузере не сохраняется.' : 'Результат сохранён в этом браузере.'}`;
+  $('#method').textContent = `${th ? `Мини-турнир «${th[1]}» на ${m.order.length} ${plural(m.order.length,'участника','участников','участников')}. ` : ''}Режим «${MODES[S.cfg.mode].label}», ${m.total} ${duelsWord(m.total)}: ${m.R} ${plural(m.R,'круг','круга','кругов')} отбора, битвы за место${MODES[S.cfg.mode].D ? ', спорные места' : ''} и плей-офф с двойным выбыванием на ${m.P}. Первые ${m.P} мест решены плей-офф, остальные стоят по рейтингу всех дуэлей с учётом силы соперников; если соседи по списку встречались, выше стоит победитель. ${V ? 'Результат открыт по ссылке и в этом браузере не сохраняется.' : 'Результат сохранён в этом браузере.'}`;
   drawCertPreview();
 }
 let certT = 0;
@@ -530,7 +570,7 @@ function packResult(cfg, dec, who){
   dv.setUint8(2, Math.max(0, MODE_KEYS.indexOf(cfg.mode)) | (Math.max(0, WHO_KEYS.indexOf(cfg.who)) << 2) | ((cfg.extra ? 1 : 0) << 4));
   dv.setUint16(3, N); dv.setUint16(5, rosterHash(N)); dv.setUint32(7, cfg.seed >>> 0);
   dv.setUint16(11, cfg.bet && IDX[cfg.bet] != null ? IDX[cfg.bet] + 1 : 0); dv.setUint16(13, dec.length);
-  dv.setUint8(15, 0);   // зарезервировано
+  dv.setUint8(15, cfg.theme ? THEMES.findIndex(t => t[0] === cfg.theme) + 1 : 0);   // тема мини-турнира
   const parts = [head, mask(cfg.roster), mask(cfg.removed || []), d, nm], out = new Uint8Array(parts.reduce((n, x) => n + x.length, 0));
   let o = 0; parts.forEach(x => { out.set(x, o); o += x.length; });
   return b64u(out);
@@ -549,6 +589,7 @@ function unpackResult(t){
   const dec = []; for (let i = 0; i < nd; i++) dec.push(db[i >> 3] & (1 << (i & 7)) ? 1 : 0);
   const who = o < b.length ? new TextDecoder().decode(b.subarray(o)).slice(0, 40) : '';
   const cfg = {v, who:WHO_KEYS[(fl >> 2) & 3] || 'all', extra:!!(fl & 16), mode:MODE_KEYS[fl & 3] || 'normal', seed:dv.getUint32(7), roster, removed, bet:betI && CH[betI - 1] ? CH[betI - 1][0] : null};
+  const th = dv.getUint8(15); if (th && THEMES[th - 1]) cfg.theme = THEMES[th - 1][0];
   return {cfg, dec, who};
 }
 function resultLink(){
@@ -910,6 +951,7 @@ function bind(){
   $('#interBack').addEventListener('click', undo);
   $('#copyBtn').addEventListener('click', copyResult);
   $('#shareBtn').addEventListener('click', shareResult);
+  $('#miniGrid').addEventListener('click', e => { const b = e.target.closest('.mini'); if (b && !b.disabled) startMini(b.dataset.k); });
   $('#installBtn').addEventListener('click', async () => { if (!installEvt) return; const e = installEvt; installEvt = null; e.prompt(); try { await e.userChoice; } catch(err){} refreshInstall(); });
   $('#selfBtn').addEventListener('click', () => { location.href = location.pathname; });
   $('#newBtn').addEventListener('click', () => { show('scr-start'); refreshStart(); });

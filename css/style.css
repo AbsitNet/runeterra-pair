@@ -83,6 +83,21 @@ button{font:inherit;color:inherit}
 .roombox #roomForms .row .input{flex:1 1 auto;width:auto;min-width:0}
 .roombox #roomForms .row .btn{flex:none}
 .roombox .err:empty{display:none}
+/* мини-турниры: плитки тем под панелью настроек */
+.minis{margin-top:26px;display:grid;gap:10px}
+.minis h2{font-size:26px}
+.mini-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin-top:4px}
+.mini{display:grid;gap:4px;align-content:start;justify-items:start;text-align:left;padding:14px;border:1px solid var(--line);background:var(--deep);color:var(--text);font:inherit;cursor:pointer;transition:border-color .2s,background .2s;min-width:0}
+@media (hover:hover){.mini:hover:not(:disabled){border-color:var(--gold-lo);background:color-mix(in srgb,var(--gold) 5%,var(--deep))}}
+.mini:disabled{opacity:.45;cursor:not-allowed}
+.mini-faces{display:flex;margin-bottom:8px}
+.mini-faces img{width:40px;height:52px;object-fit:cover;object-position:50% 16%;border:1px solid var(--gold-lo);background:var(--panel)}
+.mini-faces img+img{margin-left:-10px}
+.mini b{font:400 22px/1.15 var(--f-display);color:var(--gold-hi)}
+.mini small{font-size:13px;line-height:1.4;color:var(--muted)}
+.mini .mini-n{margin-top:4px;color:var(--text);font-size:12.5px;font-variant-numeric:tabular-nums}
+@media (max-width:600px){.mini-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.mini{padding:12px}.mini b{font-size:19px}}
+
 /* подсказка об установке как приложения: тихая строка под панелью */
 .install{display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px;margin-top:14px;padding:12px 16px;border:1px solid var(--line);background:color-mix(in srgb,var(--deep) 80%,transparent)}
 .install p{flex:1 1 280px;min-width:0;font-size:13.5px;line-height:1.5;color:var(--muted)}

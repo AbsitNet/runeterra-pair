@@ -42,6 +42,7 @@ let roomData = null, online = new Set(), sub = null, pollT = 0, saveT = 0;
 let G = null;                         // «Угадай мой выбор»: {target, list, picks:[], done}
 let PB = null;                        // ставка на партнёра: {id, on: слот партнёра}
 let BT = null;                        // голос в битве вкусов: {key: «пара1|пара2», pick}
+let RX = null;                        // последняя отправленная реакция: {to:{seed, idx}, e, at}
 const ui = {screen:'scr-start', cur:null, lock:false, ack:false, toastKey:'', introKey:'', off:new Set(), bet:null, betRoster:null, betRemoved:null, mode:'play', swipeHinted:false};
 
 function validTournament(v){
@@ -262,7 +263,7 @@ function betTexts(forPartner){
   ui.betFor = forPartner ? 'partner' : null;
   $('#betEyebrow').textContent = forPartner ? 'Ставка на партнёра' : 'Ставка на старте';
   $('#betTitle').innerHTML = forPartner ? 'Кто станет парой партнёра?' : 'Кто, <span class="nowrap">по-твоему,</span> победит?';
-  $('#betText').textContent = forPartner ? 'Выбери, кто, по-твоему, окажется на первом месте у партнёра. Партнёр увидит ставку только после своего финала, а итог будет на экране сравнения.' : 'Выбери того, кого сердце называет заранее. В конце узнаешь, сработала ли интуиция.';
+  $('#betText').textContent = forPartner ? 'Выбери, кто, по-твоему, окажется на первом месте у партнёра. Ставки принимаются, пока партнёр не вышел в плей-офф. Партнёр увидит ставку только после своего финала, а итог будет на экране сравнения.' : 'Выбери того, кого сердце называет заранее. В конце узнаешь, сработала ли интуиция.';
   $('#bskip').textContent = forPartner ? 'Отмена' : 'Без ставки';
   $('#bstart').textContent = forPartner ? 'Поставить' : 'Начать турнир';
 }
@@ -667,7 +668,8 @@ function enterRoom(fresh){
 }
 function leaveRoom(){
   if (sub) sub.close(); sub = null; clearInterval(pollT);
-  sstore.del('rp-session'); sess = null; roomData = null; G = null; PB = null; BT = null;
+  sstore.del('rp-session'); sess = null; roomData = null; G = null; PB = null; BT = null; RX = null;
+  hideLive(); live.key = ''; live.shown = null;
   setCtx('solo'); show('scr-start'); refreshStart();
 }
 async function fetchRoom(){
@@ -677,6 +679,7 @@ async function fetchRoom(){
   if (ui.screen === 'scr-room') renderRoom();
   if (ui.screen === 'scr-compare') renderCompare();
   renderPartnerChip();
+  checkLive();
 }
 const partner = () => roomData && sess && roomData.players.find(p => p.slot !== sess.slot);
 const meRemote = () => roomData && sess && roomData.players.find(p => p.slot === sess.slot);
@@ -689,6 +692,7 @@ function myState(){
   if (G) st.guess = {target:G.target, total:G.list.length, correct:G.picks.filter(p => p.ok).length, answered:G.picks.length, done:!!G.done};
   if (PB) st.pbet = PB.id;
   if (BT) st.battle = BT;
+  if (RX) st.react = RX;
   return st;
 }
 function queueSync(){ if (!sess) return; clearTimeout(saveT); saveT = setTimeout(() => pushState(), 1200); }
@@ -739,7 +743,7 @@ function renderRoom(){
   }
   const bx = battleInfo();
   if (bx && !bx.same && !bx.my) acts.push(`<button class="btn" type="button" data-act="battle">Битва вкусов</button>`);
-  if (pp && their.status !== 'done') acts.push(`<button class="btn" type="button" data-act="pbet">${PB ? 'Изменить ставку на пару партнёра' : 'Поставить на пару партнёра'}</button>`);
+  if (pp && (their.status === 'idle' || (their.status === 'play' && !inPlayoff(their.m)))) acts.push(`<button class="btn" type="button" data-act="pbet">${PB ? 'Изменить ставку на пару партнёра' : 'Поставить на пару партнёра'}</button>`);
   if (mine && mine.kind === 'done' && their.status === 'done') acts.push(`<button class="btn" type="button" data-act="compare">Сравнить результаты</button>`);
   else if (pp) acts.push(`<button class="btn ghost" type="button" disabled>Сравнение откроется, когда оба закончат</button>`);
   $('#rActions').innerHTML = acts.join('');
@@ -750,6 +754,7 @@ function openPartnerBet(){
   const pp = partner(), ps = playerState(pp);
   if (!pp) return toast('Сначала дождись партнёра в комнате');
   if (ps.status === 'done') return toast('Партнёр уже закончил — ставки закрыты');
+  if (inPlayoff(ps.m)) return toast('Партнёр уже в плей-офф — ставки закрыты');
   const roster = ps.status === 'play' ? ps.s.cfg.roster.slice() : CH.map(c => c[0]);
   openBet(roster, [], true);
 }
@@ -892,6 +897,102 @@ function battleHTML(){
     <div class="list">${votes.map(([who, id]) => `<div class="lrow bet-row ${v.win === id ? 'win' : ''}">${face(id)}<div><small class="who">${esc(who)} голосует</small><b>${esc(name(id))}</b></div><small></small></div>`).join('')}</div>`;
 }
 
+/* ================= новости из плей-офф партнёра и реакции на них ================= */
+const REACTS = ['❤️', '😍', '😱', '🙄'];
+const live = {key:'', shown:null, t:0};
+const liveOn = () => store.get('rp-live') !== false;
+const inPlayoff = m => !!m && m.kind === 'duel' && ['ub','lb','final'].includes(m.stage);
+const reactSeenKey = () => 'rp-react-seen-' + sess.code + '-' + sess.slot;
+function liveWhere(m){
+  if (m.stage === 'final') return 'в гранд-финале';
+  if (m.stage === 'lb') return m.last ? 'в финале сетки второго шанса' : 'в сетке второго шанса';
+  if (/1\/8/.test(m.label)) return 'в 1/8 финала';
+  if (/четвертьфинал/.test(m.label)) return 'в четвертьфинале';
+  if (/полуфинал/.test(m.label)) return 'в полуфинале';
+  return 'в финале сетки победителей';
+}
+function checkLive(){
+  if (!sess || ctx !== 'room' || TOOLS) return;
+  const pp = partner(); if (!pp) return;
+  checkReaction(pp);
+  const ps = playerState(pp);
+  if (ps.status === 'idle'){ live.key = ''; live.shown = null; return; }
+  const dec = ps.s.dec || [], seed = ps.s.cfg.seed, key = seed + ':' + dec.length;
+  if (key === live.key) return;
+  const prev = live.shown; live.key = key;
+  /* что партнёр выбрал в дуэли, которую мы только что показывали */
+  const chose = prev && prev.seed === seed && dec.length === prev.idx + 1 ? (dec[prev.idx] ? prev.b : prev.a) : null;
+  if (ps.status === 'done'){
+    live.shown = null;
+    if (chose && liveOn()) showLive({pp, done:true, champ:ps.m.champ, to:{seed, idx:dec.length}});
+    return;
+  }
+  if (!inPlayoff(ps.m)){ live.shown = null; return; }
+  live.shown = {seed, idx:dec.length, a:ps.m.a, b:ps.m.b};
+  if (liveOn()) showLive({pp, m:ps.m, chose, to:{seed, idx:dec.length}});
+}
+function showLive(o){
+  const el = $('#live');
+  const faces = o.done ? face(o.champ) : face(o.m.a) + face(o.m.b);
+  const top = o.done ? `${esc(o.pp.name)} нашёл(ла) пару` : `${esc(o.pp.name)} ${liveWhere(o.m)}`;
+  const main = o.done ? esc(name(o.champ)) : `${esc(name(o.m.a))} или ${esc(name(o.m.b))}?`;
+  const was = o.chose && !o.done ? `<small class="live-was">Выбор: ${esc(name(o.chose))}</small>` : '';
+  el.innerHTML = `<div class="live-faces">${faces}</div>
+    <div class="live-txt">${was}<small>${top}</small><b>${main}</b>
+      <div class="live-re">${REACTS.map(r => `<button type="button" data-r="${r}" aria-label="Ответить реакцией ${r}">${r}</button>`).join('')}</div>
+      <button class="live-off" type="button">Выключить эти новости</button>
+    </div>
+    <button class="live-x" type="button" aria-label="Скрыть">×</button>`;
+  el.querySelectorAll('[data-r]').forEach(b => b.addEventListener('click', () => sendReaction(o, b.dataset.r)));
+  el.querySelector('.live-x').addEventListener('click', hideLive);
+  el.querySelector('.live-off').addEventListener('click', () => { setLive(false); toast('Новости из плей-офф выключены. Включить можно в комнате'); });
+  el.hidden = false; void el.offsetWidth; el.classList.add('on');
+  clearTimeout(live.t); live.t = setTimeout(hideLive, o.done ? 16000 : 14000);
+}
+function hideLive(){
+  const el = $('#live'); clearTimeout(live.t);
+  if (el.hidden) return;
+  el.classList.remove('on'); live.t = setTimeout(() => { el.hidden = true; }, 260);
+}
+function setLive(on){
+  store.set('rp-live', !!on); $('#liveToggle').checked = !!on;
+  if (!on) hideLive(); else { live.key = ''; checkLive(); }
+}
+function sendReaction(o, e){
+  RX = {to:o.to, e, at:Date.now()}; pushState(true);
+  const re = $('#live .live-re'); if (re) re.innerHTML = `<span class="sent">${e} отправлено</span>`;
+  clearTimeout(live.t); live.t = setTimeout(hideLive, 2200);
+}
+function checkReaction(pp){
+  const r = pp.state && pp.state.react;
+  if (!r || !r.at || !r.to || !S.cfg || r.to.seed !== S.cfg.seed || !REACTS.includes(r.e)) return;
+  if (r.at <= (store.get(reactSeenKey()) || 0)) return;
+  store.set(reactSeenKey(), r.at);
+  if (Date.now() - r.at > 15 * 60 * 1000) return;      // старые реакции не показываем
+  const m = simulate(S.cfg, S.dec.slice(0, Math.max(0, +r.to.idx || 0)));
+  const about = m.kind === 'duel' ? `на «${name(m.a)} или ${name(m.b)}»` : `на твою пару: ${name(m.champ)}`;
+  showReaction(pp.name, r.e, about);
+}
+let rxT = 0;
+function showReaction(who, e, about){
+  const el = $('#reactFx');
+  el.innerHTML = `<span class="rx-e" aria-hidden="true">${e}</span><span class="rx-t"><b>${esc(who)}</b> отвечает ${esc(about)}</span>`;
+  el.setAttribute('aria-label', `${who} отвечает ${about}: ${e}`);
+  el.hidden = false; el.classList.remove('on'); void el.offsetWidth; el.classList.add('on');
+  Sound.pick(1);
+  clearTimeout(rxT); rxT = setTimeout(() => { el.classList.remove('on'); rxT = setTimeout(() => { el.hidden = true; }, 260); }, 4600);
+  if (reduced) return;
+  const r = el.getBoundingClientRect();
+  for (let i = 0; i < 5; i++){
+    const f = document.createElement('span');
+    f.className = 'rx-float'; f.textContent = e; f.setAttribute('aria-hidden', 'true');
+    f.style.left = (r.left + 10 + Math.random() * Math.max(40, r.width - 40)) + 'px';
+    f.style.top = (r.top + (r.top > innerHeight / 2 ? -10 : r.height + 140)) + 'px';
+    f.style.animationDelay = (i * 120) + 'ms';
+    document.body.appendChild(f); setTimeout(() => f.remove(), 2800 + i * 120);
+  }
+}
+
 /* «Угадай мой выбор» */
 function startGuess(){
   const pp = partner(), ps = playerState(pp);
@@ -983,6 +1084,8 @@ function bind(){
   $('#roomJoin').addEventListener('click', roomJoin);
   $('#roomOpen').addEventListener('click', () => enterRoom(false));
   $('#rLeave').addEventListener('click', leaveRoom);
+  $('#liveToggle').checked = liveOn();
+  $('#liveToggle').addEventListener('change', e => setLive(e.target.checked));
   $('#rCopy').addEventListener('click', () => {
     const link = location.origin + location.pathname + '?room=' + sess.code;
     const text = `Заходи в нашу комнату «Пара из Рунтерры»: ${link} (код ${sess.code})`;

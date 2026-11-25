@@ -315,6 +315,11 @@
     </div>
     <p class="muted" id="rHint"></p>
     <div class="players" id="rPlayers"></div>
+    <label class="check live-opt" for="liveToggle">
+      <input type="checkbox" id="liveToggle" checked>
+      <b>Новости из плей-офф партнёра</b>
+      <small>Когда партнёр дойдёт до плей-офф, ты увидишь, между кем он выбирает, и сможешь ответить реакцией. Выключи, если не любишь спойлеры.</small>
+    </label>
     <div class="room-actions" id="rActions"></div>
     <p class="err" id="rErr" role="alert"></p>
   </div>
@@ -370,6 +375,8 @@
   </div>
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
+<aside class="live" id="live" hidden role="status" aria-live="polite"></aside>
+<div class="rx" id="reactFx" hidden role="status" aria-live="polite"></div>
 
 <footer class="app foot">
   <p>«Пара из Рунтерры» — некоммерческий фан-проект. Он не одобрен Riot Games и не отражает взгляды или мнения Riot Games или кого-либо, официально участвующего в создании или управлении собственностью Riot Games. Riot Games и все связанные с ней объекты являются товарными знаками или зарегистрированными товарными знаками Riot Games, Inc. Арты чемпионов взяты из Data Dragon.</p>

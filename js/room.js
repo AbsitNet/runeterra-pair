@@ -60,7 +60,7 @@ const Room = (() => {
     subscribe(code, me, onUpdate, onPresence){
       const bc = new BroadcastChannel('pair:' + code), seen = {};
       seen[me.slot] = Date.now();
-      bc.onmessage = e => { const m = e.data || {}; if (m.slot === me.slot) return; seen[m.slot] = Date.now(); if (m.type === 'update') onUpdate(); onPresence(Object.keys(seen).filter(k => Date.now() - seen[k] < 12000).map(Number)); if (m.type === 'hello') bc.postMessage({type:'here', slot:me.slot}); };
+      bc.onmessage = e => { const m = e.data || {}; if (m.slot === me.slot) return; seen[m.slot] = Date.now(); if (m.type === 'update') setTimeout(onUpdate, 150);   /* localStorage между вкладками синхронизируется не мгновенно */ onPresence(Object.keys(seen).filter(k => Date.now() - seen[k] < 12000).map(Number)); if (m.type === 'hello') bc.postMessage({type:'here', slot:me.slot}); };
       bc.postMessage({type:'hello', slot:me.slot});
       const hb = setInterval(() => { bc.postMessage({type:'here', slot:me.slot}); seen[me.slot] = Date.now(); onPresence(Object.keys(seen).filter(k => Date.now() - seen[k] < 12000).map(Number)); }, 5000);
       return {ping: () => bc.postMessage({type:'update', slot:me.slot}), close: () => { clearInterval(hb); bc.close(); }};

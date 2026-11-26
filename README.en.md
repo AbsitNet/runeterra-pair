@@ -22,7 +22,7 @@ Or go straight on a first date. It's a short story in five scenes, set in your p
 
 Then you can find out which look you like best: Ahri, sure, but which Ahri? In the skin tournament your pair's skins face off in knockout duels, and your favourite shows up on the results screen. The skin list with Russian names and the art come from Data Dragon, so this part needs an internet connection.
 
-There are also tournaments for whole skin lines: K/DA, Pentakill, True Damage, HEARTSTEEL, Spirit Blossom, Coven, Empyrean, High Noon, Star Guardian and three dozen more universes, 40 in all. Skins from one line meet under the thorough rules: Swiss rounds, battles for placement, disputed spots and a double-elimination playoff. At the end you get the line's favourite skin and its tier list. You can take all skins, or only the men's or only the women's. Each line keeps its own tournament, so you can drop one and come back to it later.
+There are also tournaments for whole skin lines: K/DA, Pentakill, True Damage, HEARTSTEEL and all four bands together, Spirit Blossom, Coven, Empyrean, High Noon, Star Guardian and three dozen more universes, 41 in all. Skins from one line meet under the thorough rules: Swiss rounds, battles for placement, disputed spots and a double-elimination playoff. At the end you get the line's favourite skin and its tier list. You can take all skins, or only the men's or only the women's. Each line keeps its own tournament, so you can drop one and come back to it later.
 
 You can share your result as a link. It opens your tier list for anyone, no room needed.
 
@@ -99,7 +99,7 @@ Tournament:
 - [x] Progress is saved in the browser, so you can come back and continue
 - [x] Swipes on a phone
 - [x] Mini-tournaments of 16: Ionia, Noxus, Demacia, Piltover and Zaun, villains, mages, assassins, newest champions
-- [x] Skin line tournaments: 40 lines from K/DA and Pentakill to Spirit Blossom, Coven, Empyrean and High Noon, under the thorough rules
+- [x] Skin line tournaments: 41 lines from K/DA, Pentakill and all the bands at once to Spirit Blossom, Coven, Empyrean and High Noon, under the thorough rules
 - [x] The Star Matchmaker: 32 questions about yourself instead of duels, a pair matched by personality with an explanation, and a tournament of your 16 best matches
 
 Results:

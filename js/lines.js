@@ -6,7 +6,7 @@ const LN_KEY = 'rp-lines';
 const LN_OUR = {Kindred:['KindredWolf', 'KindredLamb']};   // у Волка и Овечки образы общие — это образы Киндред
 const lnOur = dd => LN_OUR[dd] || [dd];
 const LN_SKIN = {};
-LINES.forEach(([k, , , list]) => list.forEach(([dd, n, nm]) => { LN_SKIN[dd + '_' + n] = {dd, n, name:nm, line:k}; }));
+LINES.forEach(([, , , list]) => list.forEach(([dd, n, nm]) => { LN_SKIN[dd + '_' + n] = {dd, n, name:nm}; }));
 const lnLine = k => LINES.find(l => l[0] === k);
 const lnArt = id => `${DD}/cdn/img/champion/loading/${id}.jpg`;
 const lnName = id => LN_SKIN[id] ? LN_SKIN[id].name : id;
@@ -16,7 +16,7 @@ const LN_F = {face:lnFace, name:lnName};
 const LN_TIERS = [['S','Любимые','--tS'], ['A','Очень нравятся','--tA'], ['B','Нравятся','--tB'], ['C','Так себе','--tC'], ['D','Не моё','--tD']];
 const LN_PROMPTS = ['Какой образ тебе ближе?', 'Какой образ красивее?', 'В каком образе — на свидание?', 'Какой образ взять в игру?', 'Какой арт сильнее?', 'Какой образ лучше?'];
 /* сколько дуэлей в среднем уходит на линейку такого размера в режиме «Подробно» (по прогонам движка) */
-const LN_EST = [[8, 32], [10, 44], [13, 68], [15, 86], [20, 128], [25, 166], [31, 213], [37, 255]];
+const LN_EST = [[8, 32], [10, 44], [13, 68], [15, 86], [20, 128], [25, 166], [31, 213], [37, 255], [45, 314], [55, 376], [66, 456], [75, 520]];
 function lnEstimate(n){
   let i = 1; while (i < LN_EST.length - 1 && LN_EST[i][0] < n) i++;
   const [a, x] = LN_EST[i - 1], [b, y] = LN_EST[i];
@@ -88,9 +88,11 @@ function renderLines(){
   $('#lnList').innerHTML = LINE_GROUPS.map(([g, gt]) => {
     const cards = LINES.filter(l => l[2] === g).map(([k, t]) => {
       const st = lnStatus(k), r = st && lnRun(k), ids = r ? r.cfg.roster : lnPool(k), n = ids.length, ok = !!r || n >= MIN_N, base = n ? ids : lnAll(k);
-      const show = (st && st.done ? [st.fav] : []).concat(base.filter(id => !st || id !== st.fav)), faces = [], used = new Set();
+      /* на обложку — образы из начала, середины и конца линейки: так в общей линейке видны разные группы */
+      const L3 = base.length, spread = [L3 / 6, L3 / 2, L3 * 5 / 6].map(i => base[Math.floor(i)]);
+      const show = (st && st.done ? [st.fav] : []).concat(spread, base), faces = [], used = new Set();
       for (const id of show){ const dd = LN_SKIN[id].dd; if (!used.has(dd)){ used.add(dd); faces.push(id); } if (faces.length === 3) break; }
-      const est = lnEstimate(n);
+      const est = Math.min(estimate(n, 'deep'), lnEstimate(n));
       const meta = !ok ? (n ? `Только ${n} ${plural(n, 'образ', 'образа', 'образов')} — мало для турнира` : 'Здесь таких образов нет') : `${n} ${plural(n, 'образ', 'образа', 'образов')} · ≈${est} ${duelsWord(est)} · ~${minutes(est)} мин`;
       const state = !st ? '' : st.done ? `<span class="ln-st done">Любимый: ${esc(lnName(st.fav))}</span>` : `<span class="ln-st">Позади ${st.played} из ≈${st.est} ${duelsOf(st.est)}</span>`;
       return `<button type="button" class="ln-card${st && st.done ? ' is-done' : ''}" data-k="${k}" ${ok ? '' : 'disabled'}>

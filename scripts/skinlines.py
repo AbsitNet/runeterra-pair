@@ -11,7 +11,9 @@ import json, re, sys, urllib.request, pathlib
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 
 # ключ (не менять: по нему хранится прогресс), название, группа, как узнать образ по английскому названию
+# или список линеек, которые нужно объединить в одну
 LINES = [
+  ('bands',  'Все музыкальные группы',      'music', ['kda', 'penta', 'td', 'hs']),
   ('kda',    'K/DA',                        'music', r'K/DA'),
   ('penta',  'Pentakill',                   'music', r'Pentakill'),
   ('td',     'True Damage',                 'music', r'True Damage'),
@@ -71,8 +73,9 @@ def main():
   en, ru = load(sys.argv[1] if len(sys.argv) > 1 else None)
   roster = set(re.findall(r'^\s*\["([A-Za-z]+)"', (ROOT / 'js/roster.js').read_text(encoding='utf-8'), re.M))
   ok = lambda cid: cid in roster or cid == 'Kindred'
-  out, used = [], set()
+  out, used, built = [], set(), {}
   for key, title, group, pat in LINES:
+    if isinstance(pat, list): continue
     rx, rows = re.compile(pat), []
     for cid in sorted(en['data']):
       if not ok(cid): continue
@@ -85,6 +88,10 @@ def main():
     dup = [r for r in rows if (r[0], r[1]) in used]
     if dup: print('образ сразу в двух линейках:', key, dup)
     used.update((r[0], r[1]) for r in rows)
+    built[key] = rows
+  for key, title, group, pat in LINES:
+    rows = [r for k in pat for r in built.get(k, [])] if isinstance(pat, list) else built.get(key)
+    if not rows: continue
     out.append([key, title, group, rows])
     print(f'{key:7} {len(rows):3}  {title}')
   body = ',\n'.join('  ' + json.dumps(l, ensure_ascii=False, separators=(',', ':')) for l in out)

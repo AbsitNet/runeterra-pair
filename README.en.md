@@ -84,7 +84,7 @@ Tournament:
 - [x] Who's in: everyone, only men or only women, with or without monsters
 - [x] Remove anyone you definitely don't like before you start
 - [x] A bet before you start: who do you think will win
-- [x] Over 70 lore pairs with special questions: Kayn and Rhaast, Vi and Jinx, Thresh and Karthus, every Darkin with every other Darkin, and more. They also take turns on the main screen
+- [x] Over 80 lore pairs with special questions: Kayn and Rhaast, Vi and Jinx, Thresh and Karthus, every Darkin with every other Darkin, and more. They also take turns on the main screen
 - [x] Undo the last pick and replay the final
 - [x] Progress is saved in the browser, so you can come back and continue
 - [x] Swipes on a phone

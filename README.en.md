@@ -22,9 +22,11 @@ Or go straight on a first date. It's a short story in five scenes, set in your p
 
 Then you can find out which look you like best: Ahri, sure, but which Ahri? In the skin tournament your pair's skins face off in knockout duels, and your favourite shows up on the results screen. The skin list with Russian names and the art come from Data Dragon, so this part needs an internet connection.
 
+There are also tournaments for whole skin lines: K/DA, Pentakill, True Damage, HEARTSTEEL, Spirit Blossom, Coven, Empyrean, High Noon, Star Guardian and three dozen more universes, 40 in all. Skins from one line meet under the thorough rules: Swiss rounds, battles for placement, disputed spots and a double-elimination playoff. At the end you get the line's favourite skin and its tier list. You can take all skins, or only the men's or only the women's. Each line keeps its own tournament, so you can drop one and come back to it later.
+
 You can share your result as a link. It opens your tier list for anyone, no room needed.
 
-Achievements don't disappear with the tournament: they build up in a collection on your device. There are 18 tournament badges (the same ones as on the results screen) and 14 rare ones, for things like the same pair three tournaments in a row, every mini-tournament, the thorough mode, a shared tournament, a perfect first date or a week of votes in the duel of the day.
+Achievements don't disappear with the tournament: they build up in a collection. There are 18 tournament badges (the same ones as on the results screen) and 14 rare ones, for things like the same pair three tournaments in a row, every mini-tournament, the thorough mode, a shared tournament, a perfect first date or a week of votes in the duel of the day.
 
 The duel of the day is one pair a day, the same for every player. You vote and see how many people picked the same. A new pair appears at midnight Moscow time.
 
@@ -33,6 +35,8 @@ There are 144 characters in the pool, adults only: no kids, no yordles. Rhaast a
 A full run takes 10 to 40 minutes depending on the mode. The quick one finds your pair just as reliably; only the middle and bottom of the tier list come out rougher. If you don't have that long, there are mini-tournaments of 16 that take about three minutes: Ionia, Noxus, Demacia, Piltover and Zaun, villains, mages, assassins, or only the newest champions. On a phone you can swipe instead of tapping.
 
 If you don't feel like picking from pairs, there's the Star Matchmaker. You answer 32 questions about yourself: your temperament, what you value, your ideal evening and how you fight. The matchmaker compares your answers with every champion's personality across nine traits, names your pair, explains why, and offers to check it with a tournament of your 16 best matches or to go straight on a first date with your pair.
+
+You can play from several devices. Get a code on one, enter it on the other, and tournaments, results, the collection, the room and skin lines become shared: start on your phone, carry on at your computer. Changes go out within a couple of seconds and come in when you open the site or switch back to its tab. If both devices already have progress of their own, the site asks which to keep, and collection badges simply add up.
 
 You can install it on your phone like an app: "Install" in Chrome, or Share → "Add to Home Screen" on an iPhone. After the first launch, solo mode works offline too.
 
@@ -68,13 +72,13 @@ python3 -m http.server 8000
 
 then open http://localhost:8000.
 
-The two-player room and the anonymous stats run on Supabase. Apply the migrations from `supabase/migrations/` and put your project URL and publishable key into `js/config.js`. Keeping the publishable key in the repo is fine: the tables are locked down with RLS, and the browser only reaches the database through a few `pair_*`, `stats_*` and `daily_*` functions. Rooms nobody has opened for 90 days are deleted automatically.
+The two-player room and the anonymous stats run on Supabase. Apply the migrations from `supabase/migrations/` and put your project URL and publishable key into `js/config.js`. Keeping the publishable key in the repo is fine: the tables are locked down with RLS, and the browser only reaches the database through a few `pair_*`, `stats_*`, `daily_*` and `link_*` functions. Rooms nobody has opened for 90 days are deleted automatically, and device link codes after 180 days without a sync.
 
 No Supabase handy? Open two tabs with `?room-backend=local` and the room will work inside your browser.
 
 For GitHub Pages: Settings → Pages → Deploy from a branch → `main`, `/ (root)`.
 
-The tournament logic is in `js/engine.js`, the champion write-ups in `js/profiles.js`, and the interface in `js/app.js`.
+The tournament logic is in `js/engine.js`, the champion write-ups in `js/profiles.js`, and the interface in `js/app.js`. Skin lines are built from Data Dragon by `scripts/skinlines.py` into `js/lines-data.js`.
 
 ## Feature tracker
 
@@ -95,6 +99,7 @@ Tournament:
 - [x] Progress is saved in the browser, so you can come back and continue
 - [x] Swipes on a phone
 - [x] Mini-tournaments of 16: Ionia, Noxus, Demacia, Piltover and Zaun, villains, mages, assassins, newest champions
+- [x] Skin line tournaments: 40 lines from K/DA and Pentakill to Spirit Blossom, Coven, Empyrean and High Noon, under the thorough rules
 - [x] The Star Matchmaker: 32 questions about yourself instead of duels, a pair matched by personality with an explanation, and a tournament of your 16 best matches
 
 Results:
@@ -137,6 +142,7 @@ Everywhere:
 
 - [x] Works on phones, tablets and desktops, with a separate layout for portrait phones
 - [x] Installs like an app, solo mode works offline
+- [x] One game on phone and computer: devices link with a code, and progress, results, the collection and the room are shared
 - [x] When a new version of the site is out, a notice with a Reload button appears; progress is kept
 - [x] Duel of the day: one pair a day for everyone, a vote count across all players, and a streak of matches for couples
 
@@ -151,4 +157,4 @@ Everywhere:
 
 Runeterra Pair isn't endorsed by Riot Games and doesn't reflect the views or opinions of Riot Games or anyone officially involved in producing or managing Riot Games properties. Riot Games, and all associated properties are trademarks or registered trademarks of Riot Games, Inc.
 
-Champion names, titles and art come from Riot's Data Dragon. The Rhaast, Wolf and Lamb portraits are cropped from the official Kayn and Kindred splash art. Ekko's portrait comes from his Arcane Last Stand skin. Omika's portrait is cropped from the Radiant Serpent Sett splash art, and her name was first revealed in 2XKO. The quotes come from the champion bios on [universe.leagueoflegends.com](https://universe.leagueoflegends.com/). The region emblems on the certificate seals are Runeterra region icons from Teamfight Tactics (vector versions from the [world-runes](https://github.com/choicallum/world-runes) project), plus the Runeterra emblem from the Legends of Runeterra Data Dragon.
+Champion names, titles and art, as well as skin names and art, come from Riot's Data Dragon. The Rhaast, Wolf and Lamb portraits are cropped from the official Kayn and Kindred splash art. Ekko's portrait comes from his Arcane Last Stand skin. Omika's portrait is cropped from the Radiant Serpent Sett splash art, and her name was first revealed in 2XKO. The quotes come from the champion bios on [universe.leagueoflegends.com](https://universe.leagueoflegends.com/). The region emblems on the certificate seals are Runeterra region icons from Teamfight Tactics (vector versions from the [world-runes](https://github.com/choicallum/world-runes) project), plus the Runeterra emblem from the Legends of Runeterra Data Dragon.

@@ -307,6 +307,7 @@ function refreshStart(){
   svRenderCta();
   renderDaily($('#dailyBox'), false);
   collRenderCta();
+  lnRenderCta();
 }
 function startFlow(){
   ui.betTheme = null;
@@ -478,6 +479,7 @@ function pick(side){
   if (ui.mode === 'watch') return watchHint(side);
   if (ui.mode === 'draft') return draftPick(side);
   if (ui.mode === 'skins') return skinPick(side);
+  if (ui.mode === 'line') return linePick(side);
   ui.lock = true; hideSwipeHint();
   const m = ui.cur, cards = [$('#card0'), $('#card1')];
   cards.forEach(c => c.style.transform = '');
@@ -491,6 +493,7 @@ function pick(side){
 }
 function undo(){
   if (ui.mode === 'skins') return skinUndo();
+  if (ui.mode === 'line') return lineUndo();
   if (ui.mode !== 'play') return;
   /* «Назад» сразу после нажатия: выбор ещё не записан — просто отменяем его и остаёмся на этой же паре */
   if (ui.pickT){ clearTimeout(ui.pickT); ui.pickT = 0; ui.lock = false; go(); return; }
@@ -554,10 +557,11 @@ function renderInter(m){
 }
 
 /* ================= сетка плей-офф ================= */
-function bracketHTML(list, current){
+/* F — как показывать участника: по умолчанию чемпион, для турнира линейки — образ */
+function bracketHTML(list, current, F = {face, name}){
   const by = side => { const r = {}; list.filter(x => x.side === side).forEach(x => (r[x.round] = r[x.round] || []).push(x)); return r; };
-  const box = (x, extra = '') => `<div class="bm ${extra}">` + [x.a, x.b].map(id => `<div class="${x.w === id ? 'w' : ''}">${face(id)}<span>${esc(name(id))}</span></div>`).join('') + '</div>';
-  const now = current && ['ub','lb','final'].includes(current.stage) ? `<div class="bm now">${[current.a, current.b].map(id => `<div>${face(id)}<span>${esc(name(id))}</span></div>`).join('')}</div>` : '';
+  const box = (x, extra = '') => `<div class="bm ${extra}">` + [x.a, x.b].map(id => `<div class="${x.w === id ? 'w' : ''}">${F.face(id)}<span>${esc(F.name(id))}</span></div>`).join('') + '</div>';
+  const now = current && ['ub','lb','final'].includes(current.stage) ? `<div class="bm now">${[current.a, current.b].map(id => `<div>${F.face(id)}<span>${esc(F.name(id))}</span></div>`).join('')}</div>` : '';
   const side = (key, title) => {
     const rounds = by(key), keys = Object.keys(rounds).map(Number).sort((a,b) => a - b);
     const curHere = current && ((key === 'ub' && current.stage === 'ub') || (key === 'lb' && current.stage === 'lb') || (key === 'gf' && current.stage === 'final'));
@@ -2045,7 +2049,7 @@ function bind(){
   $('#card0').addEventListener('click', () => { if (!ui.swallowClick) pick(0); });
   $('#card1').addEventListener('click', () => { if (!ui.swallowClick) pick(1); });
   $('#undoBtn').addEventListener('click', undo);
-  $('#menuBtn').addEventListener('click', () => { if (ui.mode === 'skins'){ clearTimeout(ui.skT); ui.lock = false; ui.mode = 'play'; go(); return; } if (ui.mode === 'draft'){ ui.mode = 'play'; openDraft(); return; } if (ui.mode === 'watch') stopWatch(); if (ui.mode === 'guess' || ui.mode === 'battle' || ui.mode === 'sync' || ui.mode === 'watch'){ ui.mode = 'play'; clearVtags(); show('scr-room'); renderRoom(); return; } if (ctx === 'room' && sess){ show('scr-room'); renderRoom(); } else { show('scr-start'); refreshStart(); } });
+  $('#menuBtn').addEventListener('click', () => { if (ui.mode === 'line') return lnLeave(); if (ui.mode === 'skins'){ clearTimeout(ui.skT); ui.lock = false; ui.mode = 'play'; go(); return; } if (ui.mode === 'draft'){ ui.mode = 'play'; openDraft(); return; } if (ui.mode === 'watch') stopWatch(); if (ui.mode === 'guess' || ui.mode === 'battle' || ui.mode === 'sync' || ui.mode === 'watch'){ ui.mode = 'play'; clearVtags(); show('scr-room'); renderRoom(); return; } if (ctx === 'room' && sess){ show('scr-room'); renderRoom(); } else { show('scr-start'); refreshStart(); } });
   $('#interGo').addEventListener('click', () => { ui.ack = true; go(); });
   $('#interBack').addEventListener('click', undo);
   $('#copyBtn').addEventListener('click', copyResult);
@@ -2069,7 +2073,7 @@ function bind(){
   $('#tierImgBtn').addEventListener('click', async () => { const m = ui.cur; if (m && m.kind === 'done') saveImage(await Share.tierList(m, (S.cfg.removed || []).filter(id => BY[id]), $('#certName').value.trim()), 'para-iz-runterry-tir-list.png', 'Тир-лист сохранён'); });
   $('#soundBtn').addEventListener('click', () => { const on = Sound.toggle(); $('#soundBtn').setAttribute('aria-pressed', String(on)); $('#soundWaves').style.display = on ? '' : 'none'; });
   $('#soundBtn').setAttribute('aria-pressed', String(Sound.on)); $('#soundWaves').style.display = Sound.on ? '' : 'none';
-  $('#bracketBtn').addEventListener('click', () => { const m = ui.cur; openModal(`<p class="eyebrow">Плей-офф</p><h2 style="font-size:32px;margin:4px 0 14px">Сетка</h2><div class="bracket-wrap">${bracketHTML(m.bracket || [], m)}</div>`); });
+  $('#bracketBtn').addEventListener('click', () => { const m = ui.cur; openModal(`<p class="eyebrow">Плей-офф</p><h2 style="font-size:32px;margin:4px 0 14px">Сетка</h2><div class="bracket-wrap">${bracketHTML(m.bracket || [], m, ui.mode === 'line' ? LN_F : undefined)}</div>`); });
   $('#modalClose').addEventListener('click', closeModal);
   $('#drGo').addEventListener('click', () => draftAct(ui.drSel));
   $('#dkBack').addEventListener('click', () => { show('scr-room'); renderRoom(); });
@@ -2097,6 +2101,13 @@ function bind(){
   $('#syImg').addEventListener('click', async () => { const x = syncCalc(); if (x && x.phase === 'done') saveImage(await Share.tierList(x.m, [], `${sess.name} и ${x.pp.name}`), 'para-iz-runterry-obshchiy-tir-list.png', 'Общий тир-лист сохранён'); });
   $('#syAgain').addEventListener('click', syncSetup);
   $('#svGo').addEventListener('click', startSvaha);
+  $('#lnGo').addEventListener('click', lnCtaGo);
+  $('#lnList').addEventListener('click', e => { const b = e.target.closest('.ln-card'); if (b && !b.disabled) startLine(b.dataset.k); });
+  document.querySelectorAll('input[name=lnWho]').forEach(x => x.addEventListener('change', () => { if (x.checked) lnSetWho(x.value); }));
+  $('#lnBack').addEventListener('click', () => { show('scr-start'); refreshStart(); });
+  $('#lnAgain').addEventListener('click', () => { if (LN) startLine(LN.k, true); });
+  $('#lnAll').addEventListener('click', openLines);
+  $('#lnHome').addEventListener('click', () => { show('scr-start'); refreshStart(); });
   $('#mapBtn').addEventListener('click', async () => { const m = ui.cur; if (m && m.kind === 'done') saveImage(await Share.heartMap(m, VIEW && VIEW.name ? VIEW.name : ''), 'para-iz-runterry-karta-serdca.png', 'Карта сердца сохранена'); });
   $('#syRoom').addEventListener('click', () => { show('scr-room'); renderRoom(); });
   $('#liveToggle').addEventListener('change', e => setLive(e.target.checked));
@@ -2152,4 +2163,5 @@ function startNormal(){
   refreshStart(); show('scr-start');
   if (inv){ $('#roomBox').scrollIntoView({block:'center'}); $('#roomName').focus(); }
 }
-start();
+/* сначала подтягиваем прогресс со связанных устройств, потом запускаемся */
+linkBoot().then(() => { start(); linkAfterStart(); });

@@ -291,6 +291,11 @@ function refreshStart(){
     banner.hidden = false;
     banner.innerHTML = `Турнир пойдёт в зачёт комнаты <b>${esc(sess.code)}</b>. <button class="btn ghost" type="button" id="soloBtn" style="margin-left:8px">Играть без комнаты</button>`;
     $('#soloBtn').onclick = () => { setCtx('solo'); refreshStart(); };
+  } else if (sess && !VIEW && !TOOLS){
+    /* играем без комнаты, но комната никуда не делась — вернуться можно одной кнопкой */
+    banner.hidden = false;
+    banner.innerHTML = `Сейчас игра без комнаты. Комната <b>${esc(sess.code)}</b> ждёт. <button class="btn ghost" type="button" id="backRoomBtn" style="margin-left:8px">Вернуться в комнату</button>`;
+    $('#backRoomBtn').onclick = () => enterRoom(false);
   } else banner.hidden = true;
   const r = $('#resume');
   if (S.cfg){
@@ -447,6 +452,7 @@ function renderDuel(m, silent){
   $('#reveal').textContent = ''; $('#reveal').className = 'reveal';
   renderPartnerChip();
   applyHint();
+  betWaitStart();
   if (!silent){
     const tk = m.stage + ':' + (m.round || m.label);
     if (m.k === 0 && ui.toastKey !== tk){
@@ -468,6 +474,7 @@ function preloadAll(ids){ ids.forEach((id, i) => setTimeout(() => { new Image().
 function cardCenter(i){ const r = $('#card' + i).getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height * .42]; }
 function pick(side){
   if (ui.lock || ui.screen !== 'scr-duel' || !ui.cur || ui.cur.kind !== 'duel') return;
+  if (ui.mode === 'play' && betWaiting()){ betWaitNudge(); return; }
   if (ui.mode === 'guess') return guessPick(side);
   if (ui.mode === 'battle') return battlePick(side);
   if (ui.mode === 'sync') return syncPick(side);
@@ -996,6 +1003,7 @@ async function fetchRoom(){
   if (ui.screen === 'scr-compare') renderCompare();
   renderPartnerChip();
   live.resolved = lbResolve();
+  betWaitCheck();
   checkChat();
   checkLive();
   syncOnFetch();
@@ -1029,13 +1037,16 @@ function myState(){
   if (HINT) st.hint = HINT;
   if (CM && CM.list.length) st.chat = CM.list.slice(-CHAT_KEEP);
   if (LB && LB.bets.length) st.hearts = lbSummary();
+  if (liveOn()) st.news = true;   // партнёр видит новости из плей-офф — значит, может ставить
+  const lastBet = LB && LB.bets.length ? LB.bets[LB.bets.length - 1] : null;
+  if (lastBet && lastBet.r == null) st.lbet = {s:lastBet.s, i:lastBet.i};   // только сам факт ставки, без выбора
   const dm = dailyMine(), dk = Object.keys(dm).sort().slice(-60);
   if (dk.length){ st.daily = {}; dk.forEach(k => st.daily[k] = dm[k]); }
   return st;
 }
 /* если партнёр смотрит мой турнир, выбор уходит почти сразу, иначе — пачкой раз в секунду с небольшим */
 const partnerWatching = () => { const pp = partner(); return !!(pp && pp.state && pp.state.watching && online.has(pp.slot)); };
-function queueSync(){ if (!sess) return; clearTimeout(saveT); saveT = setTimeout(() => pushState(), partnerWatching() ? 120 : 1200); }
+function queueSync(){ if (!sess) return; clearTimeout(saveT); saveT = setTimeout(() => pushState(), partnerWatching() || ui.betWait ? 120 : 1200); }
 async function pushState(quiet){
   if (!sess) return; clearTimeout(saveT);
   try { await Room.save(sess.code, sess.token, myState()); if (sub) sub.ping(); if (!quiet) fetchRoom(); }
@@ -1457,6 +1468,60 @@ function renderDaily(box, inRoom){
   box.querySelectorAll('.dcard:not(:disabled)').forEach(btn => btn.addEventListener('click', () => dailyVote(+btn.dataset.side)));
 }
 
+/* ================= окно для ставок: в плей-офф партнёр успевает поставить сердечки до твоего выбора =================
+   Ждём, только если партнёр в сети и следит за плей-офф (новости включены или он смотрит твой турнир).
+   Ожидание заканчивается, как только партнёр поставил, или по таймеру. Его окно чуть короче — с запасом на задержку сети. */
+const BET_WAIT = 12000, BET_WINDOW = 10000;
+const betWaitDone = new Set();
+const betKey = () => S.cfg ? S.cfg.seed + ':' + S.dec.length : '';
+function partnerBetFor(key){
+  const pp = partner(), b = pp && pp.state && pp.state.lbet;
+  return !!(b && S.cfg && b.s === S.cfg.seed && b.i === S.dec.length && key === betKey());
+}
+function betWaitStart(){
+  const m = ui.cur;
+  if (ui.betWait && ui.betWait.key === betKey()) return;   // та же дуэль после перерисовки
+  betWaitEnd(true);
+  if (!(ctx === 'room' && sess && ui.mode === 'play' && m && m.kind === 'duel' && inPlayoff(m))) return;
+  const pp = partner(), st = pp && pp.state || {};
+  if (!pp || !online.has(pp.slot) || !(st.watching || st.news === true)) return;
+  const key = betKey();
+  if (betWaitDone.has(key) || partnerBetFor(key)) return;
+  ui.betWait = {key, until:Date.now() + BET_WAIT, name:pp.name};
+  $('#arena').classList.add('betwait');
+  pushState(true);   // новая пара должна дойти до партнёра сразу, а не через секунду
+  betWaitTick(); ui.betWaitT = setInterval(betWaitTick, 250);
+}
+const betWaiting = () => !!(ui.betWait && ui.betWait.key === betKey() && Date.now() < ui.betWait.until);
+function betWaitTick(){
+  const w = ui.betWait; if (!w) return;
+  if (ui.screen !== 'scr-duel' || ui.mode !== 'play' || w.key !== betKey()) return betWaitEnd(true);
+  const left = Math.ceil((w.until - Date.now()) / 1000);
+  if (left <= 0) return betWaitEnd();
+  const r = $('#reveal'); r.className = 'reveal wait';
+  r.textContent = `${w.name} ставит сердечки на твой выбор · 0:${String(left).padStart(2, '0')}`;
+}
+function betWaitEnd(silent, text){
+  clearInterval(ui.betWaitT);
+  const w = ui.betWait; ui.betWait = null;
+  $('#arena').classList.remove('betwait');
+  if (!w) return;
+  betWaitDone.add(w.key);
+  if (silent || ui.screen !== 'scr-duel' || w.key !== betKey()) return;
+  const r = $('#reveal'); r.className = 'reveal ok'; r.textContent = text || 'Можно выбирать';
+  setTimeout(() => { if (r.textContent === (text || 'Можно выбирать')){ r.textContent = ''; r.className = 'reveal'; } }, 1800);
+}
+/* партнёр поставил или ушёл из сети — дальше не ждём */
+function betWaitCheck(){
+  const w = ui.betWait; if (!w) return;
+  const pp = partner();
+  if (partnerBetFor(w.key)) betWaitEnd(false, `${w.name} поставил(а) — выбирай!`);
+  else if (!pp || !online.has(pp.slot)) betWaitEnd(false);
+}
+function betWaitNudge(){
+  const r = $('#reveal'); r.classList.remove('nudge'); void r.offsetWidth; r.classList.add('nudge');
+}
+
 /* ================= быстрые фразы: готовые реплики и стикеры с чемпионами, без свободного текста ================= */
 const PHRASES = ['Ты где? Жду в комнате', 'Начинаем?', 'Я уже в плей-офф!', 'Не подглядывай!', 'Посмотри мой турнир', 'Давай общий турнир',
   'Какой сложный выбор…', 'Вот это финал!', 'Спорим, угадаю твою пару?', 'Скорее заканчивай!', 'Ха-ха, серьёзно?', 'Люблю тебя ❤'];
@@ -1569,15 +1634,29 @@ function lbText(){
 const lbLine = () => lbText() ? ' · ' + lbText().toLowerCase() : '';
 function lbRender(box, seed, idx, a, bId){
   if (!box || !LB) return;
-  const bet = lbFind(seed, idx), bal = lbAvail();
+  const bet = lbFind(seed, idx), bal = lbAvail(), key = seed + ':' + idx;
+  ui.lbSeen = ui.lbSeen || {};
+  if (!ui.lbSeen[key]) ui.lbSeen[key] = Date.now();
+  const leftMs = BET_WINDOW - (Date.now() - ui.lbSeen[key]);
+  clearInterval(box.lbT);
+  if (!bet && leftMs <= 0){ box.innerHTML = '<span class="lb-h lb-closed">Ставки на эту дуэль закрыты — жди следующую</span>'; return; }
+  if (!bet){
+    box.lbT = setInterval(() => {
+      const ms = BET_WINDOW - (Date.now() - ui.lbSeen[key]), t = box.querySelector('.lb-t');
+      if (!box.isConnected || lbFind(seed, idx)) return clearInterval(box.lbT);
+      if (ms <= 0){ clearInterval(box.lbT); return lbRender(box, seed, idx, a, bId); }
+      if (t) t.textContent = `0:${String(Math.ceil(ms / 1000)).padStart(2, '0')}`;
+    }, 250);
+  }
   if (bet){ box.innerHTML = `<span class="lb-h">Ставка: ${bet.k} ❤ — ${esc(name(bet.p ? bId : a))}${bet.free ? ' (бесплатная)' : ''} · свободно ${Math.max(0, bal)} ❤</span>`; return; }
   const k = Math.max(1, Math.min(ui.lbK || 1, bal || 1));
-  box.innerHTML = `<span class="lb-h">${bal > 0 ? `Поставь сердечки на выбор · у тебя ${bal} ❤` : 'Сердечки кончились, но одна ставка — бесплатно'}</span>
+  box.innerHTML = `<span class="lb-h">${bal > 0 ? `Поставь сердечки на выбор · у тебя ${bal} ❤` : 'Сердечки кончились, но одна ставка — бесплатно'} · <b class="lb-t">0:${String(Math.ceil(leftMs / 1000)).padStart(2, '0')}</b></span>
     <span class="lb-k" role="group" aria-label="Сколько сердечек" ${bal > 0 ? '' : 'hidden'}>${[1, 2, 3].map(n => `<button type="button" data-k="${n}" class="${n === k ? 'on' : ''}" ${n > Math.max(1, bal) ? 'disabled' : ''}>${n}</button>`).join('')}</span>
     <span class="lb-p"><button type="button" data-p="0">❤ ${esc(name(a))}</button><button type="button" data-p="1">❤ ${esc(name(bId))}</button></span>`;
   box.querySelectorAll('[data-k]').forEach(btn => btn.addEventListener('click', () => { ui.lbK = +btn.dataset.k; lbRender(box, seed, idx, a, bId); }));
   box.querySelectorAll('[data-p]').forEach(btn => btn.addEventListener('click', () => {
     if (lbFind(seed, idx)) return;
+    if (BET_WINDOW - (Date.now() - ui.lbSeen[key]) <= 0) return lbRender(box, seed, idx, a, bId);
     const cur = lbAvail(), free = cur <= 0;
     LB.bets.push({s:seed, i:idx, p:+btn.dataset.p, k:free ? 1 : Math.min(k, cur), free});
     store.set(lbKey(), LB); Sound.pick(0); pushState(true);
@@ -1996,6 +2075,7 @@ function bind(){
   $('#roomJoin').addEventListener('click', roomJoin);
   $('#roomOpen').addEventListener('click', () => enterRoom(false));
   $('#rLeave').addEventListener('click', confirmLeave);
+  $('#rHome').addEventListener('click', () => { setCtx('solo'); show('scr-start'); refreshStart(); });
   $('#liveToggle').checked = liveOn();
   $('#syImg').addEventListener('click', async () => { const x = syncCalc(); if (x && x.phase === 'done') saveImage(await Share.tierList(x.m, [], `${sess.name} и ${x.pp.name}`), 'para-iz-runterry-obshchiy-tir-list.png', 'Общий тир-лист сохранён'); });
   $('#syAgain').addEventListener('click', syncSetup);

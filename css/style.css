@@ -1141,3 +1141,13 @@ b.hearts{color:var(--rose);font-weight:600}
 .upd-x{flex:0 0 auto;width:36px;height:36px}
 @media (max-width:520px){.upd{flex-wrap:wrap;padding:10px 12px}.upd-t{flex:1 1 calc(100% - 48px)}.upd .btn{order:3;flex:1 1 100%}.upd-x{order:2}}
 @media (prefers-reduced-motion:reduce){.upd{transition:opacity .2s}}
+
+/* ================= ожидание ставки партнёра ================= */
+.arena.betwait .pick{cursor:progress}
+.arena.betwait .pick img{filter:saturate(.75) brightness(.9);transition:filter .3s}
+.reveal.wait{color:var(--gold-hi)}
+.reveal.nudge{animation:nudge .4s ease}
+@keyframes nudge{20%{transform:translateX(-6px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(3px)}}
+.lb-t{font-variant-numeric:tabular-nums;color:var(--gold-hi);font-weight:600}
+.lb-closed{color:var(--muted)}
+@media (prefers-reduced-motion:reduce){.reveal.nudge{animation:none}}

@@ -38,7 +38,7 @@ You can install it on your phone like an app: "Install" in Chrome, or Share → 
 
 Create a room, send the link, and each of you plays your own tournament on your own device. You can bet on who the other person will end up with; bets close once they reach the playoffs. You can see how far the other person has got, and once they're in the playoffs you get live updates: who they're choosing between and who they picked. You can reply with a reaction. If you hate spoilers, switch it off in the room.
 
-You can also watch your partner's tournament live: the same cards, and their pick shows up on your screen almost instantly. Tap a card to send a hint; it doesn't change their pick. In the playoffs you bet one to three hearts on who they'll pick in each duel: guess right and you gain hearts, guess wrong and you lose them. You start with ten, and if you lose them all, you get one free bet.
+You can also watch your partner's tournament live: the same cards, and their pick shows up on your screen almost instantly. Tap a card to send a hint; it doesn't change their pick. In the playoffs you bet one to three hearts on who they'll pick in each duel: guess right and you gain hearts, guess wrong and you lose them. You start with ten, and if you lose them all, you get one free bet. Each bet has a 10-second window: while you're following your partner's playoffs, they can't pick until you've bet or the time runs out.
 
 You can message each other with ready-made phrases and champion stickers; there's no free text. Your partner's phrase pops up on any screen, and the button with their name above the duel opens a reply. In the duel of the day you see whether you matched today and build a streak of matches.
 

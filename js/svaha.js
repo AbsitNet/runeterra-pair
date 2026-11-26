@@ -331,6 +331,7 @@ function svResult(){
     ${anti && anti.id !== id ? `<div class="sec"><h2>Совсем не твой человек</h2><div class="sv-cards one">${card(anti, PROFILE[anti.id][5])}</div></div>` : ''}
     <div class="res-actions">
       <button class="btn primary" type="button" id="svTour">Турнир из 16 лучших совпадений</button>
+      <button class="btn" type="button" id="svDate">Пойти на свидание</button>
       <button class="btn" type="button" id="svAgain">Пройти заново</button>
       <button class="btn ghost" type="button" id="svHome">На главную</button>
     </div>
@@ -342,6 +343,7 @@ function svResult(){
     openBet(roster, [], false, null);
     $('#betEyebrow').textContent = 'Турнир звёздной свахи';
   });
+  $('#svDate').addEventListener('click', () => startDate(id, 'svaha'));
   $('#svAgain').addEventListener('click', startSvaha);
   $('#svHome').addEventListener('click', () => { show('scr-start'); refreshStart(); });
   if (best.pct >= 90 && !reduced){ Sound.fanfare(); FX.celebrate(); }

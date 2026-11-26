@@ -644,6 +644,7 @@ function renderResult(m){
   $('#method').textContent = `${th ? `Мини-турнир «${th[1]}» на ${m.order.length} ${plural(m.order.length,'участника','участников','участников')}. ` : ''}Режим «${MODES[S.cfg.mode].label}», ${m.total} ${duelsWord(m.total)}: ${m.R} ${plural(m.R,'круг','круга','кругов')} отбора, ${MODES[S.cfg.mode].L ? 'короткие битвы за выход в плей-офф' : 'битвы за место'}${MODES[S.cfg.mode].D ? ', спорные места' : ''} и плей-офф с двойным выбыванием на ${m.P}. Первые ${m.P} мест решены плей-офф, остальные стоят по рейтингу всех дуэлей с учётом силы соперников; если соседи по списку встречались, выше стоит победитель. ${V ? 'Результат открыт по ссылке и в этом браузере не сохраняется.' : 'Результат сохранён в этом браузере.'}`;
   drawCertPreview();
   renderMuCta(m);
+  renderFdCta(m);
   renderSkCta(m);
   skWinnerImg(m);
   renderHeartMap(m);
@@ -2109,6 +2110,7 @@ function bind(){
     if (e.key === 'Escape' && !$('#modal').hidden) return closeModal();
     if (e.altKey || e.ctrlKey || e.metaKey || !$('#modal').hidden || !$('#intro').hidden) return;
     if (ui.screen === 'scr-mutual' && /^[1-4]$/.test(e.key)){ e.preventDefault(); muAnswer(+e.key - 1); }
+    if (ui.screen === 'scr-date' && /^[1-4]$/.test(e.key) && !fd.open){ e.preventDefault(); fdAnswer(+e.key - 1); }
     if (ui.screen === 'scr-svaha' && /^[1-4]$/.test(e.key) && !$('#svWrap').hidden){ e.preventDefault(); svAnswer(+e.key - 1); }
     if (ui.screen === 'scr-duel'){
       if (e.key === 'ArrowLeft' || e.key === '1'){ e.preventDefault(); pick(0); }

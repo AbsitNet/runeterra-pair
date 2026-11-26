@@ -18,11 +18,13 @@ There's also a heart map: a stylised map of Runeterra marking where your top 20 
 
 You can also check whether it's mutual. The winner asks you seven questions (about dates, fights, their dark side and where you'd live together) and works out a mutual-feelings score based on their personality.
 
+Or go straight on a first date. It's a short story in five scenes, set in your pair's home region: meeting up, a walk, an unexpected encounter, a heart-to-heart and saying goodbye. The encounter might be their jealous other half from the lore, a brother, a sister, a mum or an old acquaintance. Each scene has four options, and your pair reacts in character: Darius appreciates a proper bow, while Jinx loves sneaking in where you're not allowed. At the end, the hearts you've earned decide whether there'll be a second date.
+
 Then you can find out which look you like best: Ahri, sure, but which Ahri? In the skin tournament your pair's skins face off in knockout duels, and your favourite shows up on the results screen. The skin list with Russian names and the art come from Data Dragon, so this part needs an internet connection.
 
 You can share your result as a link. It opens your tier list for anyone, no room needed.
 
-Achievements don't disappear with the tournament: they build up in a collection on your device. There are 18 tournament badges (the same ones as on the results screen) and 13 rare ones, for things like the same pair three tournaments in a row, every mini-tournament, the thorough mode, a shared tournament or a week of votes in the duel of the day.
+Achievements don't disappear with the tournament: they build up in a collection on your device. There are 18 tournament badges (the same ones as on the results screen) and 14 rare ones, for things like the same pair three tournaments in a row, every mini-tournament, the thorough mode, a shared tournament, a perfect first date or a week of votes in the duel of the day.
 
 The duel of the day is one pair a day, the same for every player. You vote and see how many people picked the same. A new pair appears at midnight Moscow time.
 
@@ -30,7 +32,7 @@ There are 144 characters in the pool, adults only: no kids, no yordles. Rhaast a
 
 A full run takes 10 to 40 minutes depending on the mode. The quick one finds your pair just as reliably; only the middle and bottom of the tier list come out rougher. If you don't have that long, there are mini-tournaments of 16 that take about three minutes: Ionia, Noxus, Demacia, Piltover and Zaun, villains, mages, assassins, or only the newest champions. On a phone you can swipe instead of tapping.
 
-If you don't feel like picking from pairs, there's the Star Matchmaker. You answer 32 questions about yourself: your temperament, what you value, your ideal evening and how you fight. The matchmaker compares your answers with every champion's personality across nine traits, names your pair, explains why, and offers to check it with a tournament of your 16 best matches.
+If you don't feel like picking from pairs, there's the Star Matchmaker. You answer 32 questions about yourself: your temperament, what you value, your ideal evening and how you fight. The matchmaker compares your answers with every champion's personality across nine traits, names your pair, explains why, and offers to check it with a tournament of your 16 best matches or to go straight on a first date with your pair.
 
 You can install it on your phone like an app: "Install" in Chrome, or Share → "Add to Home Screen" on an iPhone. After the first launch, solo mode works offline too.
 
@@ -110,6 +112,7 @@ Results:
 - [x] Stats across all players: how rare your pick is and who gets picked the most
 - [x] Mutual feelings: the winner asks seven questions and works out a score
 - [x] Skin tournament: your pair's skins from Data Dragon face off, and your favourite look shows on the results screen
+- [x] First date: five scenes with your pair, who reacts in character, and the ending decides whether there'll be a second one
 
 Playing together:
 
@@ -141,7 +144,6 @@ Everywhere:
 
 | Feature | What it is | Difficulty |
 |---|---|---|
-| First date | A short interactive story with your winner: five scenes, in each you choose what to do and your pair reacts in character. The ending decides whether there'll be a second date | medium |
 | English, German and French | Translating the interface, champion write-ups and quotes | long |
 | Rooms for a group | More than two people: who matches whom and a shared anti-top | long |
 

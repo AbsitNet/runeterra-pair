@@ -20,7 +20,8 @@ const LINK_MERGE = {
     const uni = f => [...new Set([].concat(a[f] || [], b[f] || []))];
     const hist = new Map(); [].concat(a.hist || [], b.hist || []).forEach(h => { if (h && h.s != null && !hist.has(h.s)) hist.set(h.s, h); });
     return Object.assign(o, {got, regions:uni('regions'), themes:uni('themes'), hist:[...hist.values()].sort((x, y) => (x.at || 0) - (y.at || 0)).slice(-30),
-      duels:Math.max(a.duels || 0, b.duels || 0), hearts:Math.max(a.hearts || 0, b.hearts || 0)});
+      duels:Math.max(a.duels || 0, b.duels || 0), hearts:Math.max(a.hearts || 0, b.hearts || 0),
+      mu:Object.fromEntries([...new Set(Object.keys(a.mu || {}).concat(Object.keys(b.mu || {})))].map(k => [k, Math.max((a.mu || {})[k] || 0, (b.mu || {})[k] || 0)]))});
   },
   'rp-daily'(a, b){ return a && b && typeof a === 'object' && typeof b === 'object' ? Object.assign({}, b, a) : b || a; }
 };

@@ -788,6 +788,7 @@ function renderMutualResult(){
     <h2>${esc(title)}</h2>
     <p>${esc(text)}</p>${why}
     <div class="res-actions"><button class="btn primary" type="button" id="muDone">К итогам</button><button class="btn ghost" type="button" id="muAgain">Ответить заново</button></div>`;
+  if (!VIEW) collMutual(id, r.pct);
   if (r.pct >= 90){ Sound.fanfare(); FX.celebrate(); if (!VIEW) collEvent('mutual'); }
   $('#muDone').addEventListener('click', () => go());
   $('#muAgain').addEventListener('click', () => startMutual(id));
@@ -1998,6 +1999,8 @@ function renderSyncResult(){
   const x = syncCalc(); if (!x || x.phase !== 'done') return;
   ui.cur = null; show('scr-sync'); FX.setLevel(0);
   collEvent('sync');
+  /* «Одно сердце на двоих»: совпали с первого раза хотя бы в 90% дуэлей */
+  if (x.log.length >= 20 && x.log.filter(l => l.how === 'agree').length >= .9 * x.log.length) collEvent('soul');
   dkSync(x);
   const it = $('#intro'); if (!it.hidden && it.onclick) it.onclick();
   const m = x.m, w = BY[m.champ], pp = x.pp, n = x.log.length;

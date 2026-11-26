@@ -40,7 +40,11 @@ const COLL = [
   {k:'daily7',  g:'r', icon:'☼', t:'Каждый день — свидание', h:'Голосовать в дуэли дня семь дней подряд', of:() => 7, at:() => Math.min(7, collDailyRun())},
   {k:'night',   g:'r', icon:'☽', t:'Полуночное свидание',    h:'Закончить турнир между полуночью и пятью утра'},
   {k:'duels',   g:'r', icon:'⚔', t:'Три тысячи свиданий',    h:'Три тысячи дуэлей в пройденных турнирах', of:() => 3000, at:c => Math.min(3000, c.duels || 0)},
-  {k:'collector', g:'r', icon:'✪', t:'Коллекционер',         h:'Собрать десять разных значков турниров', of:() => 10, at:c => Math.min(10, COLL.filter(x => x.g === 't' && c.got[x.k]).length)}
+  {k:'collector', g:'r', icon:'✪', t:'Коллекционер',         h:'Собрать десять разных значков турниров', of:() => 10, at:c => Math.min(10, COLL.filter(x => x.g === 't' && c.got[x.k]).length)},
+  /* легендарные: когда сходится всё сразу */
+  {k:'destiny', g:'l', icon:'☄', t:'Предначертано',          h:'Пара основного турнира — первая у Звёздной свахи, и взаимность с ней 90% или выше'},
+  {k:'soul',    g:'l', icon:'❣', t:'Одно сердце на двоих',   h:'Пройти вдвоём «Общий турнир» и совпасть с первого раза хотя бы в 90% дуэлей'},
+  {k:'legend',  g:'l', icon:'♛', t:'Легенда Рунтерры',       h:'Собрать все обычные и редкие значки', of:() => COLL.filter(x => x.g !== 'l').length, at:c => COLL.filter(x => x.g !== 'l' && c.got[x.k]).length}
 ];
 const COLL_BY = Object.fromEntries(COLL.map(x => [x.k, x]));
 
@@ -72,6 +76,21 @@ function collMeta(c){
   if (!c.got.collector && COLL.filter(x => x.g === 't' && c.got[x.k]).length >= 10) collUnlock(c, 'collector');
   if (!c.got.duels && (c.duels || 0) >= 3000) collUnlock(c, 'duels');
   if (!c.got.minis && THEMES.every(t => (c.themes || []).includes(t[0]))) collUnlock(c, 'minis');
+  if (!c.got.destiny && collDestiny(c)) collUnlock(c, 'destiny');
+  /* последней — «Легенда»: она ждёт все остальные */
+  if (!c.got.legend && COLL.filter(x => x.g !== 'l').every(x => c.got[x.k])) collUnlock(c, 'legend');
+}
+/* «Предначертано»: пара последнего основного турнира — №1 у свахи, а взаимность с ней хоть раз была 90%+ */
+function collDestiny(c){
+  const last = c.hist.filter(x => !x.theme && !x.side).pop();
+  return !!last && collSvahaTop3()[0] === last.c && ((c.mu || {})[last.c] || 0) >= 90;
+}
+/* взаимность: запоминаем лучший процент с каждым чемпионом */
+function collMutual(id, pct){
+  if (VIEW || TOOLS) return;
+  const c = collLoad(); c.mu = c.mu || {};
+  if (pct <= (c.mu[id] || 0)) return;
+  c.mu[id] = pct; collMeta(c); collSave(c); collFlush();
 }
 
 /* пройденный турнир: один раз на турнир, переигровка финала не считается новым */
@@ -115,11 +134,11 @@ function collEvent(k){
   const c = collLoad();
   if (k === 'svaha-done'){
     const last = c.hist.filter(x => !x.theme && !x.side).pop();
-    if (!last || !collSvahaTop3().includes(last.c)) return;
-    k = 'svaha';
+    k = last && collSvahaTop3().includes(last.c) ? 'svaha' : null;
   }
-  if (c.got[k]) return;
-  collUnlock(c, k); collMeta(c); collSave(c); collFlush();
+  /* даже если значок уже есть, проверяем легендарные: свахе могли ответить заново */
+  if (k && !c.got[k]) collUnlock(c, k);
+  collMeta(c); collSave(c); collFlush();
 }
 function collHearts(won){
   if (!won || VIEW || TOOLS) return;
@@ -140,9 +159,11 @@ function collFlush(){
   if (x.fresh){
     el.innerHTML = `<span class="hex" aria-hidden="true">+${x.fresh}</span><span><small>Коллекция</small><b>${x.fresh === 1 ? 'Новый значок турнира' : `Новые значки турниров: ${x.fresh}`}</b></span>`;
   } else {
-    const a = COLL_BY[x];
-    el.innerHTML = `<span class="hex rare" aria-hidden="true">${a.icon}</span><span><small>Редкий значок</small><b>${esc(a.t)}</b></span>`;
+    const a = COLL_BY[x], leg = a.g === 'l';
+    el.classList.toggle('leg', leg);
+    el.innerHTML = `<span class="hex ${leg ? 'leg' : 'rare'}" aria-hidden="true">${a.icon}</span><span><small>${leg ? 'Легендарный значок' : 'Редкий значок'}</small><b>${esc(a.t)}</b></span>`;
     Sound.fanfare && Sound.fanfare();
+    if (leg) FX.celebrate();
   }
   el.hidden = false; el.classList.remove('on'); void el.offsetWidth; el.classList.add('on');
   collT = setTimeout(() => {
@@ -156,7 +177,7 @@ const collDate = t => new Intl.DateTimeFormat('ru-RU', {day:'numeric', month:'lo
 function collCard(x, c){
   const got = c.got[x.k], prog = x.of ? `<span class="cl-prog"><i style="width:${(100 * x.at(c) / x.of()).toFixed(1)}%"></i></span><small class="cl-n">${x.at(c)} из ${x.of()}</small>` : '';
   const meta = got ? (x.g === 't' && got.n > 1 ? `${got.n} ${plural(got.n, 'раз', 'раза', 'раз')} · впервые ${collDate(got.at)}` : collDate(got.at)) : '';
-  return `<div class="cl ${got ? 'got' : ''} ${x.g === 'r' ? 'rare' : ''}">
+  return `<div class="cl ${got ? 'got' : ''} ${x.g === 'r' ? 'rare' : x.g === 'l' ? 'leg' : ''}">
     <span class="hex" aria-hidden="true">${got ? x.icon : '?'}</span>
     <div><b>${esc(x.t)}</b><small>${esc(x.h)}</small>${got ? `<small class="cl-meta">${meta}</small>` : ''}${x.of && !(got && x.k !== 'region') ? prog : ''}</div>
   </div>`;
@@ -168,6 +189,7 @@ function renderCollection(){
   $('#clBar').style.width = (100 * n / COLL.length).toFixed(1) + '%';
   $('#clTour').innerHTML = COLL.filter(x => x.g === 't').map(x => collCard(x, c)).join('');
   $('#clRare').innerHTML = COLL.filter(x => x.g === 'r').map(x => collCard(x, c)).join('');
+  $('#clLeg').innerHTML = COLL.filter(x => x.g === 'l').map(x => collCard(x, c)).join('');
   const done = c.hist.length;
   $('#clNote').textContent = done ? `Пройдено турниров на этом устройстве: ${done}${done >= 30 ? '+' : ''}. Дуэлей всего: ${c.duels || 0}.` : 'Значки появляются после каждого пройденного турнира. Первые — уже в конце твоего.';
 }
@@ -177,7 +199,7 @@ function collRenderCta(){
   const c = collLoad(), n = collCount(c);
   const recent = COLL.filter(x => c.got[x.k]).sort((a, b) => c.got[b.k].at - c.got[a.k].at).slice(0, 6);
   $('#collHex').innerHTML = recent.length
-    ? recent.map(x => `<span class="hex ${x.g === 'r' ? 'rare' : ''}" title="${esc(x.t)}">${x.icon}</span>`).join('')
+    ? recent.map(x => `<span class="hex ${x.g === 'r' ? 'rare' : x.g === 'l' ? 'leg' : ''}" title="${esc(x.t)}">${x.icon}</span>`).join('')
     : '<span class="hex off">?</span><span class="hex off">?</span><span class="hex off">?</span>';
   $('#collTxt').innerHTML = n ? `Собрано <b>${n}</b> из ${COLL.length}` : `Всего ${COLL.length} ${plural(COLL.length, 'значок', 'значка', 'значков')}: за характер топа, ставки, турниры вдвоём и редкие случаи`;
 }

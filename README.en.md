@@ -26,7 +26,7 @@ There are also tournaments for whole skin lines: K/DA, Pentakill, True Damage, H
 
 You can share your result as a link. It opens your tier list for anyone, no room needed.
 
-Achievements don't disappear with the tournament: they build up in a collection. There are 18 tournament badges (the same ones as on the results screen) and 14 rare ones, for things like the same pair three tournaments in a row, every mini-tournament, the thorough mode, a shared tournament, a perfect first date or a week of votes in the duel of the day.
+Achievements don't disappear with the tournament: they build up in a collection. There are 18 tournament badges (the same ones as on the results screen) and 14 rare ones, for things like the same pair three tournaments in a row, every mini-tournament, the thorough mode, a shared tournament, a perfect first date or a week of votes in the duel of the day. And three legendary ones where everything has to line up at once: "Destined" (your main pair is the Star Matchmaker's first pick and the mutual score with them is 90%+), "One Heart for Two" (agree with your partner on the first try in 90% of duels in a shared tournament) and "Legend of Runeterra" (collect every regular and rare badge).
 
 The duel of the day is one pair a day, the same for every player. You vote and see how many people picked the same. A new pair appears at midnight Moscow time.
 
@@ -107,7 +107,7 @@ Results:
 - [x] A tier list you can save as a picture
 - [x] Your type, favourite region and favourite class
 - [x] Joke achievements
-- [x] Achievement collection: badges add up across tournaments, plus rare ones for special occasions
+- [x] Achievement collection: badges add up across tournaments, plus rare ones for special occasions and three legendary ones
 - [x] "Never ever": the bottom three and why
 - [x] The playoff bracket
 - [x] A compatibility certificate with the seal and registrar of the winner's home region

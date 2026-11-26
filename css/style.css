@@ -1375,3 +1375,16 @@ button.qz-o:active{transform:scale(.98)}
 .mini .mini-n:empty{display:none}
 .sk-stat{display:block;margin-top:4px;font-size:12.5px;line-height:1.4;color:var(--muted)}
 .sk-stat:empty{display:none}
+
+/* легендарные значки: радужный шестиугольник и тёплое свечение */
+.cl.leg{border-color:color-mix(in srgb,var(--gold) 45%,var(--line))}
+.cl.leg:not(.got){border-style:dashed}
+.cl.leg.got{border-color:var(--gold);background:radial-gradient(130% 160% at 0% 50%,color-mix(in srgb,var(--tB) 14%,transparent),color-mix(in srgb,var(--rose) 8%,transparent) 45%,transparent 75%),var(--deep);box-shadow:0 0 0 1px color-mix(in srgb,var(--gold) 30%,transparent),0 14px 40px -18px color-mix(in srgb,var(--gold) 60%,transparent)}
+.cl.leg .hex{width:50px;height:56px;font-size:24px}
+.cl.leg.got .hex,.coll-hex .hex.leg,.ach .hex.leg{background:conic-gradient(from 210deg,var(--gold-hi),var(--rose),var(--tB),var(--tC),var(--gold-hi));color:var(--night);text-shadow:0 1px 0 rgba(255,255,255,.35)}
+.cl.leg:not(.got) .hex{background:linear-gradient(160deg,color-mix(in srgb,var(--gold) 35%,var(--line)),var(--line));color:var(--gold-hi)}
+.cl.leg.got b{background:linear-gradient(90deg,var(--gold-hi),#FFD7E4,var(--gold-hi));-webkit-background-clip:text;background-clip:text;color:transparent}
+.cl-legs .cl-grid{grid-template-columns:repeat(auto-fill,minmax(280px,1fr))}
+.ach.leg{border-color:var(--gold-hi);box-shadow:0 0 0 1px color-mix(in srgb,var(--rose) 40%,transparent),0 14px 50px -10px color-mix(in srgb,var(--rose) 55%,transparent)}
+.ach.leg .hex{width:44px;height:50px;font-size:21px}
+@media (max-width:640px){.cl-legs .cl-grid{grid-template-columns:minmax(0,1fr)}}

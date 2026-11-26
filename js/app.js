@@ -613,6 +613,7 @@ function renderResult(m){
 
   collTournament(m);
   dkTournament(m);
+  if (ctx === 'room' && sess && !V) alSync(S);
   const badges = achievements(m, S.cfg), cf = ui.collFresh && ui.collFresh.seed === S.cfg.seed ? ui.collFresh.keys : [];
   $('#badgesSec').hidden = !badges.length && V;
   $('#badges').innerHTML = badges.map(b => `<div class="badge ${cf.includes(b.k) ? 'new' : ''}"><span class="hex" aria-hidden="true">${b.icon}</span><div><b>${esc(b.t)}</b><small>${esc(b.d)}</small>${cf.includes(b.k) ? '<em class="b-new">Новый в коллекции</em>' : ''}</div></div>`).join('')
@@ -971,6 +972,8 @@ function enterRoom(fresh){
   CM = store.get(chatKey()) || {list:[]};
   DR = store.get(drKey());
   dkLoad();
+  alLoad(); alSync(S);
+  QZ = store.get(qzKey()); if (!(QZ && typeof QZ.id === 'string' && Array.isArray(QZ.a) && alDec(QZ.o))) QZ = null;
   if (sub) sub.close();
   sub = Room.subscribe(sess.code, sess, () => fetchRoom(), slots => { online = new Set(slots); if (ui.screen === 'scr-room') renderRoom(); renderPartnerChip(); });
   clearInterval(pollT); pollT = setInterval(() => { if (!document.hidden) fetchRoom(); }, 20000);
@@ -988,7 +991,7 @@ function confirmLeave(){
 }
 function leaveRoom(){
   if (sub) sub.close(); sub = null; clearInterval(pollT);
-  sstore.del('rp-session'); sess = null; roomData = null; G = null; PB = null; BT = null; RX = null; SY = null; LB = null; CM = null; DR = null; DK = null;
+  sstore.del('rp-session'); sess = null; roomData = null; G = null; PB = null; BT = null; RX = null; SY = null; LB = null; CM = null; DR = null; DK = null; AL = null; QZ = null;
   hideLive(); live.key = ''; live.shown = null;
   setCtx('solo'); show('scr-start'); refreshStart();
 }
@@ -1006,6 +1009,8 @@ async function fetchRoom(){
   syncOnFetch();
   draftOnFetch();
   deckOnFetch();
+  quizOnFetch();
+  if (ui.screen === 'scr-album') renderAlbum();
   if (ui.mode === 'watch') renderWatch();
   else applyHint();
 }
@@ -1029,6 +1034,9 @@ function myState(){
   if (SY) st.sync = SY;
   if (DR) st.draft = DR;
   if (DK && Object.keys(DK.c).length) st.deck = {c:DK.c};
+  alSync(T);
+  if (AL && (AL.list.length || AL.q.length)) st.album = {list:AL.list, q:AL.q};
+  if (QZ) st.quiz = QZ;
   if (T.cfg && T.skins && T.skins.fav != null && st.champ === T.skins.c) st.skin = {c:T.skins.c, n:T.skins.fav, name:skName(T.skins, T.skins.fav)};
   if (WATCHING) st.watching = true;
   if (HINT) st.hint = HINT;
@@ -1090,6 +1098,7 @@ function renderRoom(){
   };
   renderSyncBox();
   renderDraftBox();
+  renderQuizBox();
   renderChat();
   renderDeckBox();
   renderDaily($('#rDaily'), true);
@@ -1108,6 +1117,8 @@ function renderRoom(){
   if (pp && (their.status === 'idle' || (their.status === 'play' && !inPlayoff(their.m) && store.get(watchedKey()) !== their.s.cfg.seed))) acts.push(`<button class="btn" type="button" data-act="pbet">${PB ? 'Изменить ставку на пару партнёра' : 'Поставить на пару партнёра'}</button>`);
   if (pp && syncStatus().state === 'none') acts.push(`<button class="btn" type="button" data-act="sync-new">Общий турнир</button>`);
   if (pp && draftStatus().state === 'none') acts.push(`<button class="btn" type="button" data-act="draft-new">Драфт пары</button>`);
+  if (pp && quizStatus().state === 'none' && quizReady()) acts.push(`<button class="btn" type="button" data-act="quiz-new">Викторина «Знаю тебя»</button>`);
+  if (alCount()) acts.push(`<button class="btn" type="button" data-act="album">Альбом пары</button>`);
   if (mine && mine.kind === 'done' && their.status === 'done') acts.push(`<button class="btn" type="button" data-act="compare">Сравнить результаты</button>`);
   else if (pp) acts.push(`<button class="btn ghost" type="button" disabled>Сравнение откроется, когда оба закончат</button>`);
   $('#rActions').innerHTML = acts.join('');
@@ -1154,6 +1165,12 @@ function roomAction(a){
   if (a === 'draft-no') draftDecline();
   if (a === 'draft-cancel') draftCancel();
   if (a === 'draft-open') openDraft();
+  if (a === 'album') openAlbum();
+  if (a === 'quiz-new') quizSetup();
+  if (a === 'quiz-join') quizJoin();
+  if (a === 'quiz-no') quizDecline();
+  if (a === 'quiz-cancel') quizCancel();
+  if (a === 'quiz-open') openQuiz();
   if (a === 'sync-cancel'){ SY = null; store.del(syKey(sess.code)); pushState(true); renderRoom(); }
 }
 function renderPartnerChip(){
@@ -2055,6 +2072,8 @@ function bind(){
   $('#modalClose').addEventListener('click', closeModal);
   $('#drGo').addEventListener('click', () => draftAct(ui.drSel));
   $('#dkBack').addEventListener('click', () => { show('scr-room'); renderRoom(); });
+  $('#alBack').addEventListener('click', () => { show('scr-room'); renderRoom(); });
+  $('#qzBack').addEventListener('click', () => { clearInterval(ui.qzTick); clearTimeout(ui.qzPoll); clearInterval(ui.qzCount); show('scr-room'); renderRoom(); });
   $('#drBack').addEventListener('click', () => { clearInterval(ui.drTick); show('scr-room'); renderRoom(); });
   $('#drSearch').addEventListener('input', () => {
     const q = $('#drSearch').value.trim().toLowerCase().replace(/ё/g, 'е');

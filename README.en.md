@@ -46,6 +46,10 @@ There's a pair draft, like champ select in League. First each of you bans three 
 
 The couple also shares a deck of champion cards. A pack of five cards comes with every tournament you finish in the room and with every shared tournament, and one card each for the duel of the day and the draft. The cards you each bring add up, and every pack includes cards the deck doesn't have yet: the goal is to collect all 144. Golden cards drop when you match: the same vote in the duel of the day, shared favourites in your top 10, the same pair, or the pair from a shared tournament.
 
+The room keeps a couple's album: every tournament either of you finishes goes into the timeline, so you can see who your pair was a month ago, how your tastes changed, who you both keep ranking high and how closely you agreed month by month.
+
+In the "I know you" quiz you answer questions about each other based on your tournaments: who your partner ranked higher, who's in their anti-top, where a particular champion landed, what their type is. You answer at the same time with 20 seconds per question, and after each one you see what your partner answered about you. Three rounds of five questions, with points doubled in the final round. At the end you find out who knows whom better and what you learned about your partner, and the champions from the questions you got right go into your couple's deck.
+
 Once you're both done you get a comparison: how close your tastes are and whose bet paid off.
 
 Then your two winners meet in one last duel, the battle of tastes, and you both vote. There's a joint certificate for the two of you, signed by your shared favourites as witnesses, and a little guessing game where you try to predict the other person's picks.
@@ -123,6 +127,8 @@ Playing together:
 - [x] Quick phrases and champion stickers
 - [x] Pair draft: alternating bans and gifts against a timer, five champions from your partner and a tournament among them
 - [x] Couple's deck: a shared card collection, packs for tournaments, golden cards for matches
+- [x] Couple's album: a timeline of both players' tournaments, how your tastes change, a shared all-time top, agreement month by month
+- [x] "I know you" quiz: questions about each other from your results, answered at the same time, three rounds with points
 
 Everywhere:
 
@@ -135,8 +141,6 @@ Everywhere:
 
 | Feature | What it is | Difficulty |
 |---|---|---|
-| Couple's album | The room remembers all your tournaments: how your tastes changed, who your pair was a month ago, your shared all-time top and how often you agree, month by month | medium |
-| "I know you" quiz | Questions about each other built from your results: "Who did Anya rank higher, Ahri or Lux?", "Who's in Sasha's anti-top?". You answer at the same time, with points and rounds | medium |
 | First date | A short interactive story with your winner: five scenes, in each you choose what to do and your pair reacts in character. The ending decides whether there'll be a second date | medium |
 | English, German and French | Translating the interface, champion write-ups and quotes | long |
 | Rooms for a group | More than two people: who matches whom and a shared anti-top | long |

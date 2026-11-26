@@ -364,6 +364,7 @@
     <div class="players" id="rPlayers"></div>
     <div class="sy-box" id="rSync" hidden></div>
     <div class="sy-box" id="rDraft" hidden></div>
+    <div class="sy-box" id="rQuiz" hidden></div>
     <div class="room-actions" id="rActions"></div>
     <p class="err" id="rErr" role="alert"></p>
     <div class="chat" id="rChat" hidden></div>
@@ -417,6 +418,56 @@
       <p class="muted">Одна колода на двоих: карты, которые приносит каждый, складываются вместе. Цель — собрать всех.</p></div>
     <div class="dk-filter" id="dkFilter" role="group" aria-label="Какие карты показать"></div>
     <div class="dk-list" id="dkList"></div>
+  </div>
+</section>
+
+<!-- АЛЬБОМ ПАРЫ -->
+<section id="scr-album" class="screen" hidden>
+  <div class="res">
+    <div class="cl-head">
+      <div>
+        <p class="eyebrow">Вдвоём</p>
+        <h1>Альбом пары</h1>
+      </div>
+      <button class="btn ghost" type="button" id="alBack">В комнату</button>
+    </div>
+    <p class="al-sum" id="alSum"></p>
+    <div class="sec" id="alTimeSec">
+      <h2>Лента пар</h2>
+      <p class="sec-sub">Все законченные турниры в комнате, от новых к старым. Твои — с золотой меткой, партнёра — с розовой.</p>
+      <div class="al-time" id="alTime"></div>
+    </div>
+    <div class="sec" id="alMatchSec" hidden>
+      <h2>Совпадение по месяцам</h2>
+      <p class="sec-sub">Каждый твой турнир за месяц сравнивается с каждым турниром партнёра за тот же месяц. 50% — вкусы никак не связаны, 100% — одинаковые.</p>
+      <div class="al-months" id="alMonths"></div>
+    </div>
+    <div class="sec" id="alTopSec" hidden>
+      <h2>Общий топ за всё время</h2>
+      <p class="sec-sub">Средние места по всем турнирам обоих: те, кого вы раз за разом ставите высоко.</p>
+      <div class="cmp-cols al-cols">
+        <div class="list" id="alTop"></div>
+        <div id="alLowWrap"><h3 class="al-h3">Общий антитоп</h3><div class="list" id="alLow"></div></div>
+      </div>
+    </div>
+    <div class="sec" id="alShiftSec" hidden>
+      <h2>Как меняются вкусы</h2>
+      <p class="sec-sub">Пары по порядку и то, кто сильнее всех сдвинулся между первым и последним турниром.</p>
+      <div class="al-shift" id="alShift"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ВИКТОРИНА «ЗНАЮ ТЕБЯ» -->
+<section id="scr-quiz" class="screen" hidden>
+  <div class="qz">
+    <div class="qz-head">
+      <p class="eyebrow" id="qzStage"></p>
+      <div class="qz-score" id="qzScore" aria-live="polite"></div>
+      <div class="dr-timer" id="qzTimer" hidden aria-live="off"><b></b><i></i></div>
+    </div>
+    <div class="qz-body" id="qzBody" aria-live="polite"></div>
+    <div class="res-actions"><button class="btn ghost" type="button" id="qzBack">В комнату</button></div>
   </div>
 </section>
 
@@ -557,6 +608,8 @@
 <script src="js/draft.js"></script>
 <script src="js/skins.js"></script>
 <script src="js/deck.js"></script>
+<script src="js/album.js"></script>
+<script src="js/quiz.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>

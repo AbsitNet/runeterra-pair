@@ -27,10 +27,10 @@ const COLL = [
   {k:'world',       g:'t', icon:'✈', t:'Роман без границ',         h:'Топ-10 из семи разных краёв'},
   {k:'fresh',       g:'t', icon:'✺', t:'Свежая кровь',             h:'Пара — один из новейших чемпионов'},
   /* редкие */
-  {k:'same3',   g:'r', icon:'∞', t:'Верность',               h:'Одна и та же пара три турнира подряд'},
+  {k:'same3',   g:'r', icon:'∞', t:'Верность',               h:'Одна и та же пара три основных турнира подряд'},
   {k:'minis',   g:'r', icon:'❖', t:'Знаток Рунтерры',        h:'Пройти все мини-турниры', of:() => THEMES.length, at:c => (c.themes || []).length},
-  {k:'deep',    g:'r', icon:'◈', t:'Без компромиссов',       h:'Пройти турнир в режиме «Подробно»'},
-  {k:'svaha',   g:'r', icon:'✶', t:'Звёзды не лгут',         h:'Пара из турнира — в тройке у Звёздной свахи'},
+  {k:'deep',    g:'r', icon:'◈', t:'Без компромиссов',       h:'Пройти основной турнир в режиме «Подробно»'},
+  {k:'svaha',   g:'r', icon:'✶', t:'Звёзды не лгут',         h:'Пара из основного турнира — в тройке у Звёздной свахи'},
   {k:'mutual',  g:'r', icon:'♡', t:'Половинки',              h:'Взаимность с парой — 90% и выше'},
   {k:'date',    g:'r', icon:'❀', t:'Идеальное свидание',     h:'Первое свидание, где каждая сцена — в точку'},
   {k:'room',    g:'r', icon:'☍', t:'Вдвоём веселее',         h:'Закончить свой турнир в комнате для двоих'},
@@ -79,7 +79,7 @@ function collTournament(m){
   if (VIEW || TOOLS || !S.cfg || m.kind !== 'done') return;
   const c = collLoad(), seed = S.cfg.seed, old = c.hist.find(h => h.s === seed);
   if (old){ if (old.c !== m.champ){ old.c = m.champ; collSave(c); } return; }
-  c.hist.push({s:seed, at:Date.now(), c:m.champ, mode:S.cfg.mode, theme:S.cfg.theme || null, room:ctx === 'room' && !!sess});
+  c.hist.push({s:seed, at:Date.now(), c:m.champ, mode:S.cfg.mode, theme:S.cfg.theme || null, side:S.cfg.side || null, room:ctx === 'room' && !!sess});
   c.hist = c.hist.slice(-30);
   c.duels = (c.duels || 0) + S.dec.length;
   if (S.cfg.theme && !c.themes.includes(S.cfg.theme)) c.themes.push(S.cfg.theme);
@@ -90,12 +90,13 @@ function collTournament(m){
     if (newRegion) c.regions.push(b.r);
     if (collUnlock(c, b.k, true) || newRegion) fresh.push(b.k);
   });
-  const h = c.hist, last3 = h.slice(-3);
-  if (last3.length === 3 && last3.every(x => x.c === m.champ)) collUnlock(c, 'same3');
-  if (S.cfg.mode === 'deep') collUnlock(c, 'deep');
+  /* «Верность», «Без компромиссов» и совпадение со свахой — только за основные турниры, побочные результаты здесь не считаются */
+  const main = !S.cfg.theme && !S.cfg.side, last3 = c.hist.filter(x => !x.theme && !x.side).slice(-3);
+  if (main && last3.length === 3 && last3.every(x => x.c === m.champ)) collUnlock(c, 'same3');
+  if (main && S.cfg.mode === 'deep') collUnlock(c, 'deep');
   if (ctx === 'room' && sess) collUnlock(c, 'room');
   const hr = new Date().getHours(); if (hr < 5) collUnlock(c, 'night');
-  if (collSvahaTop3().includes(m.champ)) collUnlock(c, 'svaha');
+  if (main && collSvahaTop3().includes(m.champ)) collUnlock(c, 'svaha');
   collMeta(c);
   collSave(c);
   ui.collFresh = {seed, keys:fresh};
@@ -113,7 +114,7 @@ function collEvent(k){
   if (VIEW || TOOLS) return;
   const c = collLoad();
   if (k === 'svaha-done'){
-    const last = c.hist[c.hist.length - 1];
+    const last = c.hist.filter(x => !x.theme && !x.side).pop();
     if (!last || !collSvahaTop3().includes(last.c)) return;
     k = 'svaha';
   }

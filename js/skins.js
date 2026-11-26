@@ -74,8 +74,9 @@ function renderSkCta(m){
   if (sk && sk.fav != null){
     box.hidden = false;
     box.innerHTML = `<img class="sk-thumb" src="${skinArt(m.champ, sk.fav)}" alt="" loading="lazy">
-      <p>Любимый образ: <b>${esc(skName(sk, sk.fav))}</b></p><button class="btn ghost" type="button" id="skGo">Переиграть</button>`;
+      <p>Любимый образ: <b>${esc(skName(sk, sk.fav))}</b><small class="sk-stat" id="skStat"></small></p><button class="btn ghost" type="button" id="skGo">Переиграть</button>`;
     $('#skGo').addEventListener('click', () => startSkins(m.champ, true));
+    skStatLine(m.champ, sk);
     return;
   }
   if (sk && sk.d.length){
@@ -175,4 +176,21 @@ function skinUndo(){
   if (!S.skins || !S.skins.d.length) return;
   clearTimeout(ui.skT); ui.lock = false;
   S.skins.d.pop(); saveLocal(); renderSkinDuel();
+}
+
+/* статистика турнира образов: у каждого чемпиона своя, с основным турниром не смешивается */
+async function skStatLine(champ, sk){
+  if (!Room.configured() || TOOLS || VIEW) return;
+  const scope = 'skins:' + champ, sid = n => ddId(champ) + '_' + n, id = sid(sk.fav);
+  try {
+    if (!sk.statId){ sk.statId = newStatId(); saveLocal(); }
+    if (ui.skSent !== sk.statId + ':' + sk.fav){
+      await Room.stats.submit({id:sk.statId, scope, champ:id, top:(sk.order || [sk.fav]).slice(0, 10).map(sid), who:'all', n:Math.max(2, sk.list.length)});
+      ui.skSent = sk.statId + ':' + sk.fav;
+    }
+    const g = await Room.stats.get(id, scope), total = +g.total || 0, mine = +g.mine || 0, el = $('#skStat');
+    if (!el) return;
+    const p = total ? Math.round(100 * mine / total) : 0;
+    el.textContent = total < 2 ? 'Турнир образов этого чемпиона пока прошли только здесь.' : `Этот образ любимый у ${p}% тех, кто проходил турнир образов этого чемпиона (${mine} из ${total}).`;
+  } catch(e){}
 }

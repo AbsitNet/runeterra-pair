@@ -31,7 +31,7 @@ const SV_REGION = {
 /* личные черты: «+» и «-» — на единицу, «++» и «--» — на две */
 const SV_TAGS = {
   Aurora:'H+ T+ S-', Akali:'E+ R+ F+ S+', Ambessa:'T+ D+ R+', Ahri:'H+ S+ D- T+', Briar:'E++ R+ H+ S+', Vi:'H+ T+ D- R+',
-  Vayne:'D+ S- H- R+ T-', Gwen:'T++ D-- H+', Jinx:'E++ R++ D+ F+ T-', Diana:'S- D+ H+', Janna:'T++ F+', Zyra:'D+ T- S-',
+  Vayne:'D+ S- H- R+ T-', Gwen:'T++ D-- H+', Jinx:'E++ R++ D+ F+ T-', Diana:'S- D+ H+', Janna:'T++ F+', Zyra:'D+ T- S-', Lillia:'S-- T++ D-- H+ E-',
   Zeri:'E+ T+ P+ R+', Illaoi:'E++ S+ R+ H+', Irelia:'T+ P-', Kaisa:'R+ S- T+ D-', Kalista:'F-- D+ H-', Camille:'D+ T- A+ F-',
   Karma:'T+ S+', Cassiopeia:'A+ H- T-', Katarina:'A+ D+ T-', Quinn:'F+ R+ T+', Kayle:'H- T- A+ F--', Caitlyn:'F- D- R- T+',
   Qiyana:'A++ T- S+', Leblanc:'H- S+ D+', Leona:'T+ E+ S+', Lissandra:'H-- S- A+ P-', Lux:'T+ D- P+ F+', MissFortune:'A+ D+ S+ H-',
@@ -341,6 +341,7 @@ function svResult(){
     const roster = m.list.slice(0, 16).map(r => r.id).sort((a, b) => IDX[a] - IDX[b]);
     if (roster.length < MIN_N) return toast('Для турнира нужно хотя бы восемь участников');
     openBet(roster, [], false, null);
+    ui.betSide = 'sv';   // побочный турнир: свой результат, основной не заменяет
     $('#betEyebrow').textContent = 'Турнир звёздной свахи';
   });
   $('#svDate').addEventListener('click', () => startDate(id, 'svaha'));

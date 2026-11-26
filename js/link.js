@@ -10,7 +10,7 @@ const LINK_META = 'rp-link-meta';  // {ключ: когда менялся на 
 const LINK_SKIP = new Set(['rp-dev', 'rp-ddv', 'rp-skins', 'rp-sound', 'rp-swipe-hint']);
 const linkable = k => typeof k === 'string' && /^rp-[A-Za-z0-9_-]{1,80}$/.test(k) && !/^rp-(link|local-)/.test(k) && !LINK_SKIP.has(k);
 /* без чего при разногласии нужно спросить, какой прогресс оставить */
-const linkMatters = k => k === SOLO_KEY || k === 'rp-svaha' || k === 'rp-lines' || k === 'rp-session' || /^rp-room-/.test(k);
+const linkMatters = k => k === SOLO_KEY || k === MINI_KEY || k === 'rp-svaha' || k === 'rp-lines' || k === 'rp-session' || /^rp-room-/.test(k);
 /* эти записи не спорят, а складываются */
 const LINK_MERGE = {
   'rp-collection'(a, b){

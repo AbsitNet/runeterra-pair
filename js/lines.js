@@ -32,7 +32,7 @@ function lnRun(k){ const r = lnLoad().runs[k]; return lnValid(r) ? r : null; }
 let LN = null;   // текущий турнир линейки: {k, cfg, dec}
 function lnSave(){
   if (!LN) return;
-  const st = lnLoad(); st.runs[LN.k] = {cfg:LN.cfg, dec:LN.dec, fin:LN.fin || null}; st.last = LN.k;
+  const st = lnLoad(); st.runs[LN.k] = {cfg:LN.cfg, dec:LN.dec, fin:LN.fin || null, statId:LN.statId || null}; st.last = LN.k;
   lnStore(st);
 }
 /* чьи образы участвуют: переключатель на экране линеек, запоминается */
@@ -110,7 +110,7 @@ async function startLine(k, fresh){
   const L = lnLine(k); if (!L) return;
   const r = lnRun(k);
   if (r && !fresh){
-    LN = {k, cfg:r.cfg, dec:r.dec.slice(), fin:r.fin || null};
+    LN = {k, cfg:r.cfg, dec:r.dec.slice(), fin:r.fin || null, statId:r.statId || null};
     const m = simulate(LN.cfg, LN.dec);
     if (m.kind === 'done') return lnResult(m);
     return lnEnter();
@@ -129,7 +129,7 @@ async function startLine(k, fresh){
   const good = ids.filter((id, i) => ok[i]);
   if (!good.length) return toast('Арты образов не загрузились — нужен интернет');
   if (good.length < MIN_N) return toast(`Загрузилось только ${good.length} ${plural(good.length, 'образ', 'образа', 'образов')} — для турнира нужно хотя бы ${MIN_N}. Проверь интернет`);
-  LN = {k, cfg:{v:ENGINE_VERSION, mode:'deep', seed:(Math.random() * 4294967296) >>> 0, roster:good}, dec:[], fin:null};
+  LN = {k, cfg:{v:ENGINE_VERSION, mode:'deep', seed:(Math.random() * 4294967296) >>> 0, roster:good, who:lnWhoSel()}, dec:[], fin:null, statId:null};
   lnSave();
   lnEnter();
 }
@@ -255,5 +255,39 @@ function lnResult(m){
   const t = $('#lnTiers'); t.innerHTML = '<h2>Тир-лист линейки</h2>';
   const sizes = tierSizesOf(m); let pos = 0;
   LN_TIERS.forEach(([T, label, tok], ti) => { t.appendChild(lnTierRow(T, label, tok, m.order.slice(pos, pos + sizes[ti]), pos)); pos += sizes[ti]; });
+  lnRenderStats(m);
   $('#lnMethod').textContent = `Турнир по правилам «Подробно», ${m.total} ${duelsWord(m.total)}: ${m.R} ${plural(m.R, 'круг', 'круга', 'кругов')} отбора, битвы за место, спорные места и плей-офф с двойным выбыванием на ${m.P}. Первые ${m.P} места решены плей-офф, остальные стоят по рейтингу всех дуэлей с учётом силы соперников.`;
+}
+
+/* ---------- статистика линейки: у каждой своя, с основным турниром не смешивается ---------- */
+async function lnRenderStats(m){
+  const sec = $('#lnStatSec'), box = $('#lnStats'), run = LN;
+  if (!Room.configured() || TOOLS || VIEW || !run){ sec.hidden = true; return; }
+  sec.hidden = false; box.innerHTML = '<p class="muted">Считаем…</p>';
+  const scope = 'line:' + run.k;
+  try {
+    if (!run.statId){ run.statId = newStatId(); lnSave(); }
+    await Room.stats.submit({id:run.statId, scope, champ:m.champ, top:m.order.slice(0, 10), who:run.cfg.who || 'all', n:run.cfg.roster.length});
+    const g = await Room.stats.get(m.champ, scope);
+    if (ui.cur !== m) return;
+    box.innerHTML = lnStatsHTML(m.champ, g);
+  } catch(e){
+    if (ui.cur === m) box.innerHTML = '<p class="muted">Статистика сейчас недоступна. Загляни позже.</p>';
+  }
+}
+function lnStatsHTML(id, g){
+  const total = +g.total || 0, mine = +g.mine || 0;
+  const pc = n => { const v = total ? 100 * n / total : 0; return v > 0 && v < 1 ? '<1' : v.toLocaleString('ru-RU', {maximumFractionDigits: v < 10 ? 1 : 0}); };
+  const note = '<p class="muted">Анонимно: только любимый образ и десятка лучших, без имён. У каждой линейки своя статистика, с основным турниром она не смешивается.</p>';
+  if (!total) return `<div class="g-verdict"><h3>Пока пусто</h3><p>Эту линейку в статистике ещё никто не проходил.</p>${note}</div>`;
+  const share = 100 * mine / total;
+  const h = mine === 1 && total >= 5 ? 'Особый вкус' : share >= 25 ? 'Любимец публики' : share >= 10 ? 'Частый выбор' : 'Редкий выбор';
+  const t = mine === 1 && total >= 5 ? `Этот образ любимый только у тебя из ${total} ${plural(total, 'игрока', 'игроков', 'игроков')}.` : `Любимый образ у ${pc(mine)}% прошедших линейку (${mine} из ${total}), ${g.rank}-е место.`;
+  const list = (g.top || []).filter(r => LN_SKIN[r.id]).map(r => ({id:r.id, n:+r.n}));
+  const max = Math.max(1, ...list.map(r => r.n));
+  const row = (r, place) => `<div class="g-row ${r.id === id ? 'me' : ''}"><i>${place}</i>${lnFace(r.id)}<b>${esc(lnName(r.id))}</b><small>${pc(r.n)}%</small><div class="g-bar"><span style="width:${(100 * r.n / max).toFixed(1)}%"></span></div></div>`;
+  let rows = list.map(r => row(r, 1 + list.filter(x => x.n > r.n).length)).join('');
+  if (mine && !list.some(r => r.id === id)) rows += row({id, n:mine}, +g.rank);
+  return `<div class="g-verdict"><h3>${h}</h3><p>${esc(t)}</p>${note}</div>
+    <div class="g-board"><p class="muted" style="font-size:13px">Чаще всего любимые</p>${rows}</div>`;
 }

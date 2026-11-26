@@ -23,6 +23,12 @@ const store = {
   del(k){ try { localStorage.removeItem(k); } catch(e){} }
 };
 const SOLO_KEY = 'rp-solo-v3';
+/* побочные турниры — мини-турниры по темам и турнир свахи — лежат отдельно, у каждого свой результат.
+   Основной турнир (свой или в комнате) они не заменяют */
+const MINI_KEY = 'rp-minis';
+const sideOf = v => v && v.cfg ? v.cfg.theme || v.cfg.side || null : null;
+const miniAll = () => { const v = store.get(MINI_KEY); return v && typeof v === 'object' && !Array.isArray(v) ? v : {}; };
+function miniRun(k){ const v = miniAll()[k]; return validTournament(v) && sideOf(v) === k ? v : null; }
 const roomKey = code => 'rp-room-' + code + '-' + (sess ? sess.slot : 0);
 const guessKey = code => 'rp-guess-' + code + '-' + (sess ? sess.slot : 0);
 const pbetKey = code => 'rp-pbet-' + code + '-' + (sess ? sess.slot : 0);
@@ -77,11 +83,24 @@ async function devAccess(){
     return store.get('rp-dev') === DEV_HASH;
   } catch(e){ return false; }
 }
-function saveLocal(){ if (TOOLS || VIEW) return; store.set(ctx === 'room' && sess ? roomKey(sess.code) : SOLO_KEY, S); if (ctx === 'room') queueSync(); }
+function saveLocal(){
+  if (TOOLS || VIEW) return;
+  const side = sideOf(S);
+  if (side){ const all = miniAll(); all[side] = S; store.set(MINI_KEY, all); return; }
+  store.set(ctx === 'room' && sess ? roomKey(sess.code) : SOLO_KEY, S); if (ctx === 'room') queueSync();
+}
+const mainKey = c => c === 'room' && sess ? roomKey(sess.code) : SOLO_KEY;
 function loadFor(c){
-  const v = store.get(c === 'room' && sess ? roomKey(sess.code) : SOLO_KEY);
+  const key = mainKey(c), v = store.get(key);
+  if (validTournament(v) && sideOf(v) && !TOOLS && !VIEW){
+    /* раньше мини-турнир занимал место основного — переносим его к остальным побочным */
+    const all = miniAll(); if (!all[sideOf(v)]){ all[sideOf(v)] = v; store.set(MINI_KEY, all); }
+    store.del(key); S = {cfg:null, dec:[]}; return;
+  }
   S = validTournament(v) ? v : {cfg:null, dec:[]};
 }
+/* основной турнир того контекста, откуда ушли в побочный */
+function mainTour(){ const v = store.get(mainKey(ui.miniFrom || 'solo')); return validTournament(v) && !sideOf(v) ? v : null; }
 function setCtx(c){ ctx = c; sstore.set('rp-ctx', c); loadFor(c); }
 
 /* ---------- мелочи ---------- */
@@ -234,7 +253,7 @@ async function updApply(){
 }
 
 /* ================= мини-турниры по темам ================= */
-const NEW_SINCE_2019 = ['Qiyana','Senna','Aphelios','Sett','Yone','Samira','Seraphine','Rell','Viego','Gwen','Akshan','Zeri','Renata','Belveth','Nilah','KSante','Naafiri','Briar','Hwei','Aurora','Ambessa','Mel','Yunara','Zaahen','Locke'];
+const NEW_SINCE_2019 = ['Qiyana','Senna','Aphelios','Sett','Yone','Lillia','Samira','Seraphine','Rell','Viego','Gwen','Akshan','Zeri','Renata','Belveth','Nilah','KSante','Naafiri','Briar','Hwei','Aurora','Ambessa','Mel','Yunara','Zaahen','Locke'];
 /* порядок не менять: номер темы хранится в ссылке на результат; новые темы — только в конец */
 const THEMES = [
   ['ion',  'Иония',           'Чемпионы из Ионии',                      id => PROFILE[id][0] === 'ion',  ['Ahri','Yasuo','Irelia']],
@@ -246,25 +265,31 @@ const THEMES = [
   ['as',   'Убийцы',          'Быстрые, тихие и смертельно обаятельные', id => PROFILE[id][1] === 'as', ['Akali','Zed','Qiyana']],
   ['new',  'Новые чемпионы',  'Вышли в 2019 году и позже',              id => NEW_SINCE_2019.includes(id), ['Aurora','Viego','Mel']]
 ];
-const MINI_N = 16;
 const themeOf = k => THEMES.find(t => t[0] === k);
+/* в мини-турнире все чемпионы темы, без случайной выборки; длина — всегда «Подробно» */
 function themePool(k){ const t = themeOf(k); return t ? pool(settings()).filter(t[3]) : []; }
+const sideEst = (m, n) => m ? lnShownEst(m, n) : Math.min(estimate(n, 'deep'), lnEstimate(n));
 function renderMinis(){
-  const mode = settings().mode;
   $('#miniGrid').innerHTML = THEMES.map(([k, t, d, , pics]) => {
-    const ids = themePool(k), n = Math.min(MINI_N, ids.length), ok = n >= MIN_N;
-    const faces = pics.filter(id => ids.includes(id)).concat(ids.filter(id => !pics.includes(id))).slice(0, 3);
-    return `<button type="button" class="mini" data-k="${k}" ${ok ? '' : 'disabled'}>
+    const r = miniRun(k), ids = r ? r.cfg.roster : themePool(k), n = ids.length, ok = !!r || n >= MIN_N;
+    const m = r ? simulate(r.cfg, r.dec) : null, done = m && m.kind === 'done';
+    const faces = [...new Set((done ? [m.champ] : []).concat(pics.filter(id => ids.includes(id)), ids))].slice(0, 3);
+    const est = sideEst(m && !done ? m : null, n);
+    const info = !ok ? 'Мало участников при этих настройках' : `${n} ${plural(n,'участник','участника','участников')} · ≈${est} ${duelsWord(est)} · ~${minutes(est)} мин`;
+    const st = done ? `<span class="ln-st done">Пара: ${esc(name(m.champ))}</span>` : m ? `<span class="ln-st">Позади ${m.played} из ≈${est} ${duelsOf(est)}</span>` : '';
+    return `<button type="button" class="mini${done ? ' is-done' : ''}" data-k="${k}" ${ok ? '' : 'disabled'}>
       <span class="mini-faces" aria-hidden="true">${faces.map(id => face(id)).join('')}</span>
       <b>${esc(t)}</b><small>${esc(d)}</small>
-      <small class="mini-n">${ok ? `${n} ${plural(n,'участник','участника','участников')} · ~${minutes(estimate(n, mode))} мин` : 'Мало участников при этих настройках'}</small></button>`;
+      <small class="mini-n">${done ? '' : info}</small>${st}</button>`;
   }).join('');
 }
-function startMini(k){
+/* побочный турнир личный: в комнату он не идёт, поэтому играем его вне комнаты */
+function sideCtx(){ ui.miniFrom = ctx; if (ctx === 'room') setCtx('solo'); }
+function startMini(k, fresh){
+  const r = !fresh && miniRun(k);
+  if (r){ sideCtx(); S = r; ui.ack = false; ui.toastKey = ''; ui.introKey = ''; ui.mode = 'play'; preloadAll(S.cfg.roster); go(); return; }
   const ids = themePool(k); if (ids.length < MIN_N) return;
-  for (let i = ids.length - 1; i > 0; i--){ const j = Math.floor(Math.random() * (i + 1)); [ids[i], ids[j]] = [ids[j], ids[i]]; }
-  const roster = ids.slice(0, MINI_N).sort((a, b) => IDX[a] - IDX[b]);   // порядок как в составе — так его однозначно восстановит ссылка
-  openBet(roster, [], false, k);
+  openBet(ids.sort((a, b) => IDX[a] - IDX[b]), [], false, k);   // порядок как в составе — так его однозначно восстановит ссылка
 }
 
 /* ================= старт ================= */
@@ -278,6 +303,7 @@ function settings(){
 }
 function pool(s){ return CH.filter(c => (s.extra || c[4] === 'core') && (s.who === 'all' || c[3] === s.who)).map(c => c[0]); }
 function refreshStart(){
+  if (sideOf(S) && !VIEW && !TOOLS) loadFor(ctx);   // на главном экране — всегда основной турнир
   const s = settings();
   ['all','m','f'].forEach(w => $('#cnt-' + w).textContent = pool({...s, who:w}).length);
   const n = pool(s).length;
@@ -310,7 +336,7 @@ function refreshStart(){
   lnRenderCta();
 }
 function startFlow(){
-  ui.betTheme = null;
+  ui.betTheme = null; ui.betSide = null;
   const s = settings();
   if (s.pre) return openFilter();
   openBet(pool(s), []);
@@ -353,7 +379,7 @@ function betTexts(forPartner){
 }
 function openBet(roster, removed, forPartner, theme){
   betTexts(forPartner);
-  ui.betTheme = forPartner ? null : theme || null;
+  ui.betTheme = forPartner ? null : theme || null; ui.betSide = null;
   if (ui.betTheme) $('#betEyebrow').textContent = `Мини-турнир «${themeOf(ui.betTheme)[1]}»`;
   ui.betRoster = roster; ui.betRemoved = removed; ui.bet = null;
   const g = $('#bgrid'); g.innerHTML = '';
@@ -375,9 +401,11 @@ function openBet(roster, removed, forPartner, theme){
   if (forPartner && PB && roster.includes(PB.id)) g.querySelector(`[data-id="${PB.id}"]`).click();
 }
 function newTournament(roster, removed, bet){
-  const s = settings();
-  S = {cfg:{v:ENGINE_VERSION, who:s.who, extra:s.extra, mode:s.mode, seed:(Math.random() * 4294967296) >>> 0, roster, removed, bet:bet || null}, dec:[]};
+  const s = settings(), side = ui.betTheme || ui.betSide;
+  if (side) sideCtx();
+  S = {cfg:{v:ENGINE_VERSION, who:s.who, extra:s.extra, mode:ui.betTheme ? 'deep' : s.mode, seed:(Math.random() * 4294967296) >>> 0, roster, removed, bet:bet || null}, dec:[]};
   if (ui.betTheme) S.cfg.theme = ui.betTheme;
+  else if (ui.betSide) S.cfg.side = ui.betSide;
   ui.ack = false; ui.toastKey = ''; ui.introKey = ''; ui.mode = 'play';
   saveLocal(); preloadAll(roster); go();
 }
@@ -432,8 +460,9 @@ if (document.fonts && document.fonts.ready) document.fonts.ready.then(refitNames
 function renderDuel(m, silent){
   if (ui.screen !== 'scr-duel') show('scr-duel');
   $('#stage').textContent = stageLabel(m);
-  $('#counter').textContent = (m.of > 1 ? `Дуэль ${m.k + 1} из ${m.of}` : 'Решающая дуэль') + ` · всего ${m.played} из ≈${m.est}`;
-  $('#barFill').style.width = Math.min(99.5, 100 * m.played / m.est).toFixed(2) + '%';
+  const est = S.cfg && S.cfg.theme && S.cfg.mode === 'deep' ? sideEst(m, S.cfg.roster.length) : m.est;
+  $('#counter').textContent = (m.of > 1 ? `Дуэль ${m.k + 1} из ${m.of}` : 'Решающая дуэль') + ` · всего ${m.played} из ≈${est}`;
+  $('#barFill').style.width = Math.min(99.5, 100 * m.played / est).toFixed(2) + '%';
   const egg = EGG[m.a + '|' + m.b], p = $('#prompt'), sp = $('#subprompt');
   p.classList.toggle('final', m.stage === 'final');
   p.classList.toggle('egg', !!egg && m.stage !== 'final');
@@ -588,8 +617,8 @@ function renderResult(m){
   const rk = S.cfg ? S.cfg.seed + ':' + m.champ : '';
   if (rk !== ui.revealKey && !reduced){ ui.revealKey = rk; const wn = $('#scr-result .winner'); wn.classList.remove('unveil'); void wn.offsetWidth; wn.classList.add('unveil'); }
   const w = BY[m.champ], pr = PROFILE[m.champ], V = !!VIEW;
-  const th = S.cfg.theme && themeOf(S.cfg.theme);
-  $('#wEyebrow').textContent = (V ? (VIEW.name ? `Выбор ${VIEW.name}` : 'Результат по ссылке') : th ? 'Твоя пара' : 'Твоя пара в Рунтерре') + (th ? ` · мини-турнир «${th[1]}»` : '');
+  const th = S.cfg.theme && themeOf(S.cfg.theme), sv = S.cfg.side === 'sv';
+  $('#wEyebrow').textContent = (V ? (VIEW.name ? `Выбор ${VIEW.name}` : 'Результат по ссылке') : th || sv ? 'Твоя пара' : 'Твоя пара в Рунтерре') + (th ? ` · мини-турнир «${th[1]}»` : sv ? ' · турнир звёздной свахи' : '');
   $('#typajH').textContent = V ? 'Типаж' : 'Твой типаж';
   if (V && VIEW.name) $('#certName').value = VIEW.name;
   $('#wImg').src = img(w.id); $('#wImg').alt = w.name;
@@ -645,7 +674,10 @@ function renderResult(m){
   $('#copyFallback').hidden = true;
   $('#toRoomBtn').hidden = V || !(ctx === 'room' && sess);
   $('#selfBtn').hidden = !V; $('#shareBtn').hidden = V; $('#newBtn').hidden = V; $('#refinalBtn').hidden = V;
-  $('#method').textContent = `${th ? `Мини-турнир «${th[1]}» на ${m.order.length} ${plural(m.order.length,'участника','участников','участников')}. ` : ''}Режим «${MODES[S.cfg.mode].label}», ${m.total} ${duelsWord(m.total)}: ${m.R} ${plural(m.R,'круг','круга','кругов')} отбора, ${MODES[S.cfg.mode].L ? 'короткие битвы за выход в плей-офф' : 'битвы за место'}${MODES[S.cfg.mode].D ? ', спорные места' : ''} и плей-офф с двойным выбыванием на ${m.P}. Первые ${m.P} мест решены плей-офф, остальные стоят по рейтингу всех дуэлей с учётом силы соперников; если соседи по списку встречались, выше стоит победитель. ${V ? 'Результат открыт по ссылке и в этом браузере не сохраняется.' : 'Результат сохранён в этом браузере.'}`;
+  /* побочный результат: можно пройти тему заново или вернуться к основному */
+  $('#miniAgainBtn').hidden = V || !th;
+  $('#mainResBtn').hidden = V || !sideOf(S) || !mainTour();
+  $('#method').textContent = `${th ? `Мини-турнир «${th[1]}» на ${m.order.length} ${plural(m.order.length,'участника','участников','участников')}, у него свой результат: основной турнир он не заменяет. ` : sv ? 'Турнир звёздной свахи из лучших совпадений, у него свой результат: основной турнир он не заменяет. ' : ''}Режим «${MODES[S.cfg.mode].label}», ${m.total} ${duelsWord(m.total)}: ${m.R} ${plural(m.R,'круг','круга','кругов')} отбора, ${MODES[S.cfg.mode].L ? 'короткие битвы за выход в плей-офф' : 'битвы за место'}${MODES[S.cfg.mode].D ? ', спорные места' : ''} и плей-офф с двойным выбыванием на ${m.P}. Первые ${m.P} мест решены плей-офф, остальные стоят по рейтингу всех дуэлей с учётом силы соперников; если соседи по списку встречались, выше стоит победитель. ${V ? 'Результат открыт по ссылке и в этом браузере не сохраняется.' : 'Результат сохранён в этом браузере.'}`;
   drawCertPreview();
   renderMuCta(m);
   renderFdCta(m);
@@ -785,29 +817,34 @@ function renderHeartMap(m){
   }, 260);
 }
 /* ================= статистика всех игроков: анонимно, только пара и топ-10 ================= */
-const STATS_MIN_ROSTER = 40;   // мини-турниры и совсем короткие составы в общую статистику не идут
+const STATS_MIN_ROSTER = 40;   // совсем короткие составы в статистику основного турнира не идут
+const newStatId = () => crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-8xxx-xxxxxxxxxxxx'.replace(/x/g, () => (Math.random() * 16 | 0).toString(16));
+/* у основного турнира, каждого мини-турнира и турнира свахи статистика своя */
+const statScope = T => sideOf(T) ? 'mini:' + sideOf(T) : 'main';
 async function renderGlobalStats(m){
   const sec = $('#gSec'), box = $('#gStats');
   if (!Room.configured() || TOOLS){ sec.hidden = true; return; }
-  const counted = !VIEW && !S.cfg.theme && S.cfg.roster.length >= STATS_MIN_ROSTER;
+  const scope = statScope(S), main = scope === 'main', th = S.cfg.theme && themeOf(S.cfg.theme);
+  const counted = !VIEW && (!main || S.cfg.roster.length >= STATS_MIN_ROSTER);
+  $('#gTitle').textContent = th ? `Мини-турнир «${th[1]}» у всех игроков` : S.cfg.side === 'sv' ? 'Турнир свахи у всех игроков' : 'Среди всех игроков';
   sec.hidden = false; box.innerHTML = '<p class="muted">Считаем…</p>';
   try {
     if (counted){
-      if (!S.statId){ S.statId = crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-8xxx-xxxxxxxxxxxx'.replace(/x/g, () => (Math.random() * 16 | 0).toString(16)); saveLocal(); }
-      await Room.stats.submit({id:S.statId, champ:m.champ, top:m.order.slice(0, 10), who:S.cfg.who, n:S.cfg.roster.length});
+      if (!S.statId){ S.statId = newStatId(); saveLocal(); }
+      await Room.stats.submit({id:S.statId, scope, champ:m.champ, top:m.order.slice(0, 10), who:S.cfg.who, n:S.cfg.roster.length});
     }
-    const g = await Room.stats.get(m.champ);
+    const g = await Room.stats.get(m.champ, scope);
     if (ui.cur !== m) return;
-    box.innerHTML = statsHTML(m.champ, g, counted);
+    box.innerHTML = statsHTML(m.champ, g, counted, scope);
   } catch(e){
     if (ui.cur === m) box.innerHTML = '<p class="muted">Статистика сейчас недоступна. Загляни позже.</p>';
   }
 }
-function statsHTML(id, g, counted){
-  const total = +g.total || 0, mine = +g.mine || 0, nm = name(id);
+function statsHTML(id, g, counted, scope = 'main'){
+  const total = +g.total || 0, mine = +g.mine || 0, nm = name(id), main = scope === 'main';
   const pc = n => { const v = total ? 100 * n / total : 0; return v > 0 && v < 1 ? '<1' : v.toLocaleString('ru-RU', {maximumFractionDigits: v < 10 ? 1 : 0}); };
-  const note = `<p class="muted">Анонимно: в статистику попадают только итоговая пара и топ-10, без имён.${counted ? '' : ' Мини-турниры и результаты по ссылке не считаются.'}</p>`;
-  if (!total) return `<div class="g-verdict"><h3>Пока пусто</h3><p>Полных турниров в статистике ещё нет. Она появится, когда наберутся первые результаты.</p>${note}</div>`;
+  const note = `<p class="muted">Анонимно: в статистику попадают только итоговая пара и топ-10, без имён. ${main ? 'Мини-турниры, турнир свахи и турниры образов считаются отдельно.' : 'Здесь только этот же побочный турнир у других игроков, основной турнир считается отдельно.'}${counted ? '' : ' Результаты по ссылке не считаются.'}</p>`;
+  if (!total) return `<div class="g-verdict"><h3>Пока пусто</h3><p>${main ? 'Полных турниров' : 'Результатов этого турнира'} в статистике ещё нет. Она появится, когда наберутся первые результаты.</p>${note}</div>`;
   const share = 100 * mine / total;
   let h, t;
   if (!mine){ h = 'Нетронутая пара'; t = `${nm} пока не ${verb(id,'стала','стал')} парой ни у кого из ${total} ${plural(total,'игрока','игроков','игроков')}.`; }
@@ -1400,7 +1437,7 @@ const DAILY_KEY = 'rp-daily';
 const dailyDay = (shift = 0) => new Date(Date.now() + 3 * 3600e3 + shift * 864e5).toISOString().slice(0, 10);   // сутки — по Москве
 const dailyDate = d => new Intl.DateTimeFormat('ru-RU', {day:'numeric', month:'long', timeZone:'UTC'}).format(new Date(d + 'T00:00:00Z'));
 /* новые участники попадают в дуэль дня со следующего дня после добавления — иначе пара текущего дня сменилась бы на ходу */
-const DAILY_FROM = {Ekko:'2026-11-27', Omika:'2026-11-27'};
+const DAILY_FROM = {Ekko:'2026-11-27', Omika:'2026-11-27', Lillia:'2026-11-28'};
 function dailyPair(day){
   let h = 2166136261; for (const ch of 'rp-daily:' + day){ h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); }
   const r = mulberry32(h >>> 0), ids = CH.filter(c => c[4] === 'core' && !(DAILY_FROM[c[0]] > day)).map(c => c[0]);
@@ -2058,6 +2095,8 @@ function bind(){
   $('#installBtn').addEventListener('click', async () => { if (!installEvt) return; const e = installEvt; installEvt = null; e.prompt(); try { await e.userChoice; } catch(err){} refreshInstall(); });
   $('#selfBtn').addEventListener('click', () => { location.href = location.pathname; });
   $('#newBtn').addEventListener('click', () => { show('scr-start'); refreshStart(); });
+  $('#miniAgainBtn').addEventListener('click', () => { if (S.cfg && S.cfg.theme) startMini(S.cfg.theme, true); });
+  $('#mainResBtn').addEventListener('click', () => { setCtx(ui.miniFrom === 'room' && sess ? 'room' : 'solo'); if (S.cfg){ preloadAll(S.cfg.roster); go(); } else { show('scr-start'); refreshStart(); } });
   $('#toRoomBtn').addEventListener('click', () => { show('scr-room'); renderRoom(); fetchRoom(); });
   $('#refinalBtn').addEventListener('click', undo);
   $('#certName').addEventListener('input', drawCertPreview);

@@ -75,12 +75,13 @@ const Room = (() => {
     }
   };
 
-  /* ---------- анонимная статистика всех игроков ---------- */
+  /* ---------- анонимная статистика всех игроков ----------
+     У каждой области своя: main — основной турнир, mini:<тема>, line:<линейка>, skins:<чемпион> */
   const SK = 'rp-local-stats';
   const statsLocal = {
-    async submit(r){ const a = JSON.parse(localStorage.getItem(SK) || '{}'); a[r.id] = r; localStorage.setItem(SK, JSON.stringify(a)); },
-    async get(champ){
-      const rows = Object.values(JSON.parse(localStorage.getItem(SK) || '{}')), w = {};
+    async submit(r){ const a = JSON.parse(localStorage.getItem(SK) || '{}'); a[r.id] = Object.assign({scope:'main'}, r); localStorage.setItem(SK, JSON.stringify(a)); },
+    async get(champ, scope = 'main'){
+      const rows = Object.values(JSON.parse(localStorage.getItem(SK) || '{}')).filter(r => (r.scope || 'main') === scope), w = {};
       rows.forEach(r => w[r.champ] = (w[r.champ] || 0) + 1);
       const mine = w[champ] || 0, ids = Object.keys(w).sort((a, b) => w[b] - w[a] || (a < b ? -1 : 1));
       return {total:rows.length, champs:ids.length, mine, rank:1 + ids.filter(id => w[id] > mine).length,
@@ -88,8 +89,8 @@ const Room = (() => {
     }
   };
   const statsRemote = {
-    submit: r => rpc('stats_submit', {p_id:r.id, p_champ:r.champ, p_top:r.top, p_who:r.who, p_n:r.n}),
-    get: champ => rpc('stats_get', {p_champ:champ})
+    submit: r => rpc('stats_submit_in', {p_id:r.id, p_scope:r.scope || 'main', p_champ:r.champ, p_top:r.top, p_who:r.who, p_n:r.n}),
+    get: (champ, scope) => rpc('stats_get_in', {p_scope:scope || 'main', p_champ:champ})
   };
 
   /* ---------- дуэль дня ---------- */
@@ -111,7 +112,7 @@ const Room = (() => {
     get: code => api().get(code),
     save: (code, token, state) => api().save(code, token, state),
     subscribe: (code, me, a, b) => api().subscribe(code, me, a, b),
-    stats: {submit: r => (localMode ? statsLocal : statsRemote).submit(r), get: id => (localMode ? statsLocal : statsRemote).get(id)},
+    stats: {submit: r => (localMode ? statsLocal : statsRemote).submit(r), get: (id, scope) => (localMode ? statsLocal : statsRemote).get(id, scope)},
     daily: {vote: (d, v, p) => (localMode ? dailyLocal : dailyRemote).vote(d, v, p), get: d => (localMode ? dailyLocal : dailyRemote).get(d)},
     errText
   };

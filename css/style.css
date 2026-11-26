@@ -1368,3 +1368,10 @@ button.qz-o:active{transform:scale(.98)}
 .lk-note{font-size:13px;color:var(--muted)}
 #lkBody .err:empty{display:none}
 @media (max-width:520px){.lk-box{grid-template-columns:minmax(0,1fr)}.lk-ic{width:60px;height:45px}.lk-row{justify-self:stretch}.lk-row .btn,.lk-join .input{flex:1 1 100%;width:100%}}
+
+/* мини-турниры: свой результат у каждого */
+.mini .ln-st{margin-top:6px}
+.mini.is-done{border-color:color-mix(in srgb,var(--rose) 35%,var(--line))}
+.mini .mini-n:empty{display:none}
+.sk-stat{display:block;margin-top:4px;font-size:12.5px;line-height:1.4;color:var(--muted)}
+.sk-stat:empty{display:none}

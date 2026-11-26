@@ -14,7 +14,7 @@ Losing once doesn't knock anyone out. Everyone plays a few Swiss rounds against 
 
 At the end you get a full tier list, your "type", a few joke achievements, three champions it would never work out with (and why), and a compatibility certificate you can save as a picture and send to whoever needs to see it. Every winner comes with a line from their official bio, shown on the results screen and on the certificate.
 
-There's also a heart map: a stylised map of Runeterra marking where your top 20 come from. And stats across all players: how rare your pick is and who ends up as someone's pair most often. They're anonymous: only the final pair and the top 10 are stored, no names.
+There's also a heart map: a stylised map of Runeterra marking where your top 20 come from. And stats across all players: how rare your pick is and who ends up as someone's pair most often. They're anonymous: only the final pair and the top 10 are stored, no names. The main tournament, each mini-tournament, the matchmaker's tournament, each skin line and each champion's skin tournament keep separate stats that never mix.
 
 You can also check whether it's mutual. The winner asks you seven questions (about dates, fights, their dark side and where you'd live together) and works out a mutual-feelings score based on their personality.
 
@@ -30,9 +30,9 @@ Achievements don't disappear with the tournament: they build up in a collection.
 
 The duel of the day is one pair a day, the same for every player. You vote and see how many people picked the same. A new pair appears at midnight Moscow time.
 
-There are 144 characters in the pool, adults only: no kids, no yordles. Rhaast and Kayn count as two different people, and so do Wolf and Lamb. Ekko is in as his Arcane season 2 self, when he's about twenty. And Sett's mother, Omika, is in too: she isn't a champion, but she's earned her spot. Monsters like Kha'Zix, Cho'Gath and Warwick can be switched off with one toggle.
+There are 145 characters in the pool, adults only: no kids, no yordles. Lillia is in: she's a spirit born from a dream bud, so age doesn't apply to her. Rhaast and Kayn count as two different people, and so do Wolf and Lamb. Ekko is in as his Arcane season 2 self, when he's about twenty. And Sett's mother, Omika, is in too: she isn't a champion, but she's earned her spot. Monsters like Kha'Zix, Cho'Gath and Warwick can be switched off with one toggle.
 
-A full run takes 10 to 40 minutes depending on the mode. The quick one finds your pair just as reliably; only the middle and bottom of the tier list come out rougher. If you don't have that long, there are mini-tournaments of 16 that take about three minutes: Ionia, Noxus, Demacia, Piltover and Zaun, villains, mages, assassins, or only the newest champions. On a phone you can swipe instead of tapping.
+A full run takes 10 to 40 minutes depending on the mode. The quick one finds your pair just as reliably; only the middle and bottom of the tier list come out rougher. There are also themed mini-tournaments: Ionia, Noxus, Demacia, Piltover and Zaun, villains, mages, assassins, or only the newest champions. A mini-tournament includes every champion of its theme and runs under the thorough rules. Each one keeps its own result, as do the matchmaker's tournament and the skin tournaments: none of them replaces your main result, and you can go back to it at any time. On a phone you can swipe instead of tapping.
 
 If you don't feel like picking from pairs, there's the Star Matchmaker. You answer 32 questions about yourself: your temperament, what you value, your ideal evening and how you fight. The matchmaker compares your answers with every champion's personality across nine traits, names your pair, explains why, and offers to check it with a tournament of your 16 best matches or to go straight on a first date with your pair.
 
@@ -98,7 +98,7 @@ Tournament:
 - [x] Undo the last pick and replay the final
 - [x] Progress is saved in the browser, so you can come back and continue
 - [x] Swipes on a phone
-- [x] Mini-tournaments of 16: Ionia, Noxus, Demacia, Piltover and Zaun, villains, mages, assassins, newest champions
+- [x] Themed mini-tournaments: Ionia, Noxus, Demacia, Piltover and Zaun, villains, mages, assassins, newest champions. Every champion of the theme, thorough rules, each with its own result and its own stats
 - [x] Skin line tournaments: 41 lines from K/DA, Pentakill and all the bands at once to Spirit Blossom, Coven, Empyrean and High Noon, under the thorough rules; band tournaments get their own phrases for members, their versions and cross-band meetings
 - [x] The Star Matchmaker: 32 questions about yourself instead of duels, a pair matched by personality with an explanation, and a tournament of your 16 best matches
 

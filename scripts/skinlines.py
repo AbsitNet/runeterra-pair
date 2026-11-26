@@ -56,6 +56,27 @@ LINES = [
   ('rose',   'Увядшая и Хрустальная роза',  'au',    r'Withered Rose|Crystal Rose'),
 ]
 MIN_SKINS = 8
+BANDS = ('kda', 'penta', 'td', 'hs')
+
+# эпоха образа внутри группы — для особых фраз между версиями одного участника
+def era(band, en):
+  pre = en.startswith('Prestige')
+  if band == 'kda':
+    if 'FIRESTARTER' in en: return 'fs'
+    if 'Hitmaker' in en: return 'hit'
+    for k, v in (('Indie', 'indie'), ('Rising Star', 'rising'), ('Superstar', 'super')):
+      if k in en: return v
+    if 'ALL OUT' in en: return 'aop' if pre else 'ao'
+  if band == 'penta':
+    if 'Lost Chapter' in en: return 'lc'
+    if 'Dissonance' in en: return 'dis'
+  if band == 'td':
+    if 'Know My Name' in en: return 'kmnp' if pre else 'kmn'
+    if 'Breakout' in en: return 'brk'
+  if band == 'hs':
+    if 'Live My Life' in en: return 'lmlp' if pre else 'lml'
+  if pre: return 'p22' if '(2022)' in en else 'p'
+  return 'base'
 
 def load(src):
   if src:
@@ -73,7 +94,7 @@ def main():
   en, ru = load(sys.argv[1] if len(sys.argv) > 1 else None)
   roster = set(re.findall(r'^\s*\["([A-Za-z]+)"', (ROOT / 'js/roster.js').read_text(encoding='utf-8'), re.M))
   ok = lambda cid: cid in roster or cid == 'Kindred'
-  out, used, built = [], set(), {}
+  out, used, built, tags = [], set(), {}, {}
   for key, title, group, pat in LINES:
     if isinstance(pat, list): continue
     rx, rows = re.compile(pat), []
@@ -83,6 +104,7 @@ def main():
       for s in en['data'][cid]['skins']:
         if s['num'] == 0 or s.get('parentSkin') is not None or not rx.search(s['name']): continue
         rows.append([cid, s['num'], ru_name(names.get(s['num'], s['name']))])
+        if key in BANDS: tags[f"{cid}_{s['num']}"] = [key, era(key, s['name'])]
     if len(rows) < MIN_SKINS:
       print('мало образов, пропускаю:', key, len(rows)); continue
     dup = [r for r in rows if (r[0], r[1]) in used]
@@ -100,6 +122,8 @@ def main():
     f'   Собрано скриптом scripts/skinlines.py из Data Dragon {en["version"]}: только образы чемпионов из теста, без цветовых вариаций.\n'
     '   Линейка: ключ (по нему хранится прогресс), название, группа, образы [чемпион в Data Dragon, номер образа, название]. */\n'
     "const LINE_GROUPS = [['music', 'Музыкальные группы'], ['au', 'Вселенные']];\n"
-    f'const LINES = [\n{body}\n];\n', encoding='utf-8')
+    f'const LINES = [\n{body}\n];\n'
+    '/* образы музыкальных групп: группа и эпоха — для особых фраз в турнирах по группам */\n'
+    f'const BAND_SKINS = {json.dumps(tags, ensure_ascii=False, separators=(",", ":"))};\n', encoding='utf-8')
 
 main()

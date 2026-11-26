@@ -171,10 +171,11 @@ function lnDuel(m, silent){
   $('#stage').textContent = `${lnLine(LN.k)[1]} · ${stageLabel(m)}`;
   $('#counter').textContent = (m.of > 1 ? `Дуэль ${m.k + 1} из ${m.of}` : 'Решающая дуэль') + ` · всего ${m.played} из ≈${est}`;
   $('#barFill').style.width = Math.min(99.5, 100 * m.played / est).toFixed(2) + '%';
-  const p = $('#prompt');
-  p.className = 'prompt' + (m.stage === 'final' ? ' final' : '');
-  p.textContent = m.stage === 'final' ? 'Гранд-финал. Какой образ лучший?' : (m.stage === 'lb' && m.last) ? 'Какой образ выйдет в гранд-финал?' : LN_PROMPTS[m.played % LN_PROMPTS.length];
-  $('#subprompt').hidden = true;
+  /* в турнирах по музыкальным группам у пар образов свои фразы */
+  const p = $('#prompt'), sp = $('#subprompt'), egg = lnEgg(m.a, m.b), final = m.stage === 'final';
+  p.className = 'prompt' + (final ? ' final' : egg ? ' egg' : '');
+  if (final){ p.textContent = 'Гранд-финал. Какой образ лучший?'; sp.hidden = !egg; sp.textContent = egg; }
+  else { p.textContent = egg || ((m.stage === 'lb' && m.last) ? 'Какой образ выйдет в гранд-финал?' : LN_PROMPTS[m.played % LN_PROMPTS.length]); sp.hidden = true; }
   lnCard(0, m.a); lnCard(1, m.b);
   const ar = $('#arena'); ar.className = 'arena' + (m.level ? ' lv' + m.level : ''); void ar.offsetWidth; ar.classList.add('enter');
   FX.setLevel(m.level || 0);

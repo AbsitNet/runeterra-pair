@@ -22,7 +22,7 @@ Or go straight on a first date. It's a short story in five scenes, set in your p
 
 Then you can find out which look you like best: Ahri, sure, but which Ahri? In the skin tournament your pair's skins face off in knockout duels, and your favourite shows up on the results screen. The skin list with Russian names and the art come from Data Dragon, so this part needs an internet connection.
 
-There are also tournaments for whole skin lines: K/DA, Pentakill, True Damage, HEARTSTEEL and all four bands together, Spirit Blossom, Coven, Empyrean, High Noon, Star Guardian and three dozen more universes, 41 in all. Skins from one line meet under the thorough rules: Swiss rounds, battles for placement, disputed spots and a double-elimination playoff. At the end you get the line's favourite skin and its tier list. You can take all skins, or only the men's or only the women's. Each line keeps its own tournament, so you can drop one and come back to it later.
+There are also tournaments for whole skin lines: K/DA, Pentakill, True Damage, HEARTSTEEL and all four bands together, Spirit Blossom, Coven, Empyrean, High Noon, Star Guardian and three dozen more universes, 41 in all. Skins from one line meet under the thorough rules: Swiss rounds, battles for placement, disputed spots and a double-elimination playoff. At the end you get the line's favourite skin and its tier list. Band tournaments have their own phrases for skin pairs: an Akali vs Kayn rap battle, brothers Yasuo and Yone in rival bands, "which Ahri: POP/STARS or ALL OUT?". The regular tournament doesn't use them; it sticks to lore ties. You can take all skins, or only the men's or only the women's. Each line keeps its own tournament, so you can drop one and come back to it later.
 
 You can share your result as a link. It opens your tier list for anyone, no room needed.
 
@@ -94,12 +94,12 @@ Tournament:
 - [x] Who's in: everyone, only men or only women, with or without monsters
 - [x] Remove anyone you definitely don't like before you start
 - [x] A bet before you start: who do you think will win
-- [x] Over 80 lore pairs with special questions: Kayn and Rhaast, Vi and Jinx, Thresh and Karthus, every Darkin with every other Darkin, and more. They also take turns on the main screen
+- [x] Over 100 lore pairs with special questions: Kayn and Rhaast, Vi and Jinx, Thresh and Karthus, LeBlanc and Mordekaiser, Hwei and Jhin, every Darkin with every other Darkin, and more. They also take turns on the main screen
 - [x] Undo the last pick and replay the final
 - [x] Progress is saved in the browser, so you can come back and continue
 - [x] Swipes on a phone
 - [x] Mini-tournaments of 16: Ionia, Noxus, Demacia, Piltover and Zaun, villains, mages, assassins, newest champions
-- [x] Skin line tournaments: 41 lines from K/DA, Pentakill and all the bands at once to Spirit Blossom, Coven, Empyrean and High Noon, under the thorough rules
+- [x] Skin line tournaments: 41 lines from K/DA, Pentakill and all the bands at once to Spirit Blossom, Coven, Empyrean and High Noon, under the thorough rules; band tournaments get their own phrases for members, their versions and cross-band meetings
 - [x] The Star Matchmaker: 32 questions about yourself instead of duels, a pair matched by personality with an explanation, and a tournament of your 16 best matches
 
 Results:

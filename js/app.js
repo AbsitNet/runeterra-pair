@@ -14,7 +14,7 @@ const PROMPTS = [
 ];
 const TIERS = [['S','Судьба','--tS'], ['A','Влюб­лён­ность','--tA'], ['B','Симпатия','--tB'], ['C','Дружба','--tC'], ['D','Не мой тип','--tD']];
 const EGG = {};
-EASTER.forEach(([a,b,t]) => { EGG[a + '|' + b] = t; EGG[b + '|' + a] = t; });
+EASTER.forEach(([a, b, t, rev]) => { EGG[a + '|' + b] = t; EGG[b + '|' + a] = rev || t; });   // rev — та же фраза, когда карточки стоят наоборот
 
 /* ---------- хранилище ---------- */
 const store = {
@@ -112,18 +112,15 @@ const showOrder = ids => ids.slice().sort((a, b) => SHOW_RANK[a] - SHOW_RANK[b])
 const face = (id, cls = '') => `<img class="${cls}" loading="lazy" alt="" src="${img(id)}">`;
 
 /* ================= главный экран: живое превью дуэли ================= */
-/* лорные пары с их вопросами из EASTER; первыми всегда Каин и Рааст */
-const HERO = [['Kayn','Rhaast'],['Xayah','Rakan'],['Leona','Diana'],['Caitlyn','Jinx'],['Garen','Katarina'],['Lucian','Senna'],
-  ['Sylas','Lux'],['Jayce','Viktor'],['KindredWolf','KindredLamb'],['Sett','Yasuo'],['Leblanc','Swain'],['Kayle','Morgana'],
-  ['Aatrox','Rhaast'],['Ashe','Tryndamere'],['Graves','TwistedFate']];
+/* главный экран: все лорные пары с их вопросами из EASTER, первыми всегда Каин и Рааст */
 const hero = {pairs:[], k:0, t:0, busy:false};
 const heroStill = () => window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 function heroInit(){
-  const q = (a, b) => (EASTER.find(e => e[0] === a && e[1] === b) || [])[2];
-  const list = HERO.filter(([a, b]) => BY[a] && BY[b] && q(a, b)).map(([a, b]) => [a, b, q(a, b)]);
-  const rest = list.slice(1);
+  const list = EASTER.filter(([a, b]) => BY[a] && BY[b]);
+  const first = list.find(([a, b]) => a === 'Kayn' && b === 'Rhaast') || list[0];
+  const rest = list.filter(x => x !== first);
   for (let i = rest.length - 1; i > 0; i--){ const j = Math.floor(Math.random() * (i + 1)); [rest[i], rest[j]] = [rest[j], rest[i]]; }
-  hero.pairs = [list[0], ...rest];
+  hero.pairs = [first, ...rest];
   heroPut(0);
   if (!heroStill()) heroLoop();
 }

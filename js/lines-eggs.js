@@ -45,6 +45,13 @@ const BAND_EGG = [
   ['penta:Olaf', 'penta:Sona', 'Олаф бьёт громче, Сона играет тоньше. Кого слушаешь?'],
   ['penta:Sona', 'penta:Yorick', 'Pentakill: клавиши Соны или бас Йорика?', 'Pentakill: бас Йорика или клавиши Соны?'],
   ['penta:Kayle', 'penta:Sona', 'Две дамы Pentakill: голос или клавиши?', 'Две дамы Pentakill: клавиши или голос?'],
+  ['penta:Karthus', 'penta:Olaf', 'Pentakill: вокал Картуса или барабаны Олафа?', 'Pentakill: барабаны Олафа или вокал Картуса?'],
+  ['penta:Karthus', 'penta:Sona', 'Pentakill: вокал Картуса или клавиши Соны?', 'Pentakill: клавиши Соны или вокал Картуса?'],
+  ['penta:Kayle', 'penta:Mordekaiser', 'Pentakill: голос Кейл или гитара Мордекайзера?', 'Pentakill: гитара Мордекайзера или голос Кейл?'],
+  ['penta:Kayle', 'penta:Olaf', 'Pentakill: голос Кейл или барабаны Олафа?', 'Pentakill: барабаны Олафа или голос Кейл?'],
+  ['penta:Kayle', 'penta:Yorick', 'Pentakill: голос Кейл или бас Йорика?', 'Pentakill: бас Йорика или голос Кейл?'],
+  ['penta:Olaf', 'penta:Yorick', 'Ритм-секция Pentakill: барабаны или бас?', 'Ритм-секция Pentakill: бас или барабаны?'],
+  ['penta:Mordekaiser', 'penta:Sona', 'Pentakill: тяжёлая гитара или тонкие клавиши?', 'Pentakill: тонкие клавиши или тяжёлая гитара?'],
   ['penta:Viego', 'penta:Mordekaiser', 'Злодей Lost Chapter или гитарист, который уложил его одним ударом?', 'Гитарист, уложивший злодея одним ударом, или сам злодей Lost Chapter?'],
   ['penta:Viego', 'penta:*', 'Диссонанс против Pentakill: злодей в белом или {nb}?', '{na} или злодей в белом? Pentakill против Диссонанса'],
   /* HEARTSTEEL */
@@ -60,6 +67,9 @@ const BAND_EGG = [
   ['hs:KSante', 'hs:Kayn', 'Советчик по любви или главный тролль HEARTSTEEL?', 'Главный тролль HEARTSTEEL или советчик по любви?'],
   ['hs:KSante', 'hs:Yone', 'Икона стиля или единственный здравомыслящий в HEARTSTEEL?', 'Единственный здравомыслящий в HEARTSTEEL или икона стиля?'],
   ['hs:Sett', 'hs:Ezreal', 'Качок с плюшевыми мишками или голос, от которого визжат фанатки?', 'Голос, от которого визжат фанатки, или качок с плюшевыми мишками?'],
+  ['hs:Kayn', 'hs:Sett', 'Дерзкий рэпер или качок с добрым сердцем?', 'Качок с добрым сердцем или дерзкий рэпер?'],
+  ['hs:Sett', 'hs:Yone', 'Качок, который всех обнимает, или продюсер, который не спит ночами?', 'Продюсер, который не спит ночами, или качок, который всех обнимает?'],
+  ['hs:Aphelios', 'hs:KSante', 'Молчаливый мультиинструменталист или икона стиля?', 'Икона стиля или молчаливый мультиинструменталист?'],
   /* между группами */
   ['*:Akali', 'hs:Kayn', 'Рэп-баттл: Акали из {a} или Каин из {b}?', 'Рэп-баттл: Каин из {a} или Акали из {b}?'],
   ['td:Yasuo', 'hs:Yone', 'Братья — и оба продюсеры: Ясуо из {a} или Ёнэ из {b}?', 'Братья — и оба продюсеры: Ёнэ из {a} или Ясуо из {b}?'],
@@ -83,9 +93,9 @@ const BAND_ROLE = {
 /* без особой пары: внутри группы — роли или общие фразы, между группами — роли, жанры или имена */
 const BAND_SAME = {
   kda:['K/DA: кто сегодня в центре сцены?', 'Кто твой биас в K/DA?'],
-  penta:['Pentakill: чьё соло ждёшь?', 'Pentakill выходит на сцену. Кто сыграет громче?', 'Кто в Pentakill главный по тяжести?'],
+  penta:['Pentakill: чьё соло ждёшь?', 'Pentakill выходит на сцену. Кто сыграет громче?', 'Кому в Pentakill отдашь главное соло?'],
   td:['True Damage: чей куплет лучше?', 'Кто задаёт ритм в True Damage?'],
-  hs:['HEARTSTEEL. Кто твой биас?', 'Оба из HEARTSTEEL. Чей фанклуб ты?', 'HEARTSTEEL выходит на сцену. Кого ждёшь первым?']
+  hs:['HEARTSTEEL: кто твой биас?', 'HEARTSTEEL: в чей фанклуб запишешься?', 'HEARTSTEEL выходит на сцену. Кого ждёшь первым?']
 };
 const BAND_SAME_T = ['{a}: {ra} или {rb}?', '{a}: {na} или {nb}?'];
 const BAND_CROSS = ['{Ra} {a} или {rb} {b}?', '{Ga} или {gb}: {na} или {nb}?', 'Чей концерт выберешь: {na} из {a} или {nb} из {b}?', '{Ra} {a} или {rb} {b}?'];
@@ -110,7 +120,10 @@ function lnEgg(a, b){
   for (const ka of [ba + ':' + da, '*:' + da, ba + ':*'])
     for (const kb of [bb + ':' + db, '*:' + db, bb + ':*']){ const t = BEGG[ka + '|' + kb]; if (t) return fill(t); }
   const h = bandHash([da, db].sort().join('|'));
-  if (ba === bb){ const all = BAND_SAME_T.concat(BAND_SAME[ba]); return fill(all[h % all.length]); }
+  /* одинаковые роли («вокалист или вокалист») звучат глупо — тогда без ролей */
+  if (ba === bb){ const all = (ra === rb ? BAND_SAME_T.slice(1) : BAND_SAME_T).concat(BAND_SAME[ba]); return fill(all[h % all.length]); }
   /* одинаковые роли («рэпер или рэпер») звучат глупо — тогда по именам */
-  return fill(ra === rb ? BAND_CROSS[2] : BAND_CROSS[h % BAND_CROSS.length]);
+  /* «поп или бойз-бэнд» — не жанры одного ряда, для HEARTSTEEL жанровую фразу не берём */
+  const cross = ba === 'hs' || bb === 'hs' ? BAND_CROSS.filter((t, i) => i !== 1) : BAND_CROSS;
+  return fill(ra === rb ? BAND_CROSS[2] : cross[h % cross.length]);
 }

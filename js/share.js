@@ -2,6 +2,22 @@
 const Share = (() => {
   const cache = {};
   const loadImg = id => cache[id] || (cache[id] = new Promise(res => { const im = new Image(); im.onload = () => res(im); im.onerror = () => res(null); im.src = img(id); }));
+  /* холст в k раз крупнее макета (k = 2 для сохранения, 1 для превью): на телефоне и при увеличении картинка остаётся чёткой.
+     Площадь ограничена, чтобы не упереться в предел холста в Safari (около 16,7 млн точек) */
+  function canvas(W, H, k = 2){
+    k = Math.min(k, Math.sqrt(16e6 / (W * H)));
+    const cv = document.createElement('canvas'); cv.width = Math.round(W * k); cv.height = Math.round(H * k);
+    const cx = cv.getContext('2d'); cx.scale(k, k); cx.imageSmoothingEnabled = true; cx.imageSmoothingQuality = 'high';
+    cv.k = k;
+    return [cv, cx, k];
+  }
+  /* вспомогательный холст под значок размера s в масштабе k; рисуется потом с явным размером */
+  function sub(s, k){
+    const t = document.createElement('canvas'); t.width = t.height = Math.ceil(s * k); t.sz = s;
+    const tx = t.getContext('2d'); tx.imageSmoothingQuality = 'high';
+    return [t, tx];
+  }
+  const put = (cx, t, x, y) => cx.drawImage(t, x, y, t.sz, t.sz);
   const C = {
     night:'#090E15', deep:'#0E1621', panel:'#131D2A', line:'#263445', gold:'#C8AA6E', hi:'#F0E6D2', lo:'#6E5530', text:'#E7E0D0', muted:'#8C9AA9', rose:'#E8668A',
     tiers:{S:'#E6C47A', A:'#E8668A', B:'#A28DE4', C:'#47B8AD', D:'#6E7D8C'}
@@ -48,7 +64,7 @@ const Share = (() => {
     cx.fillStyle = g; cx.fillRect(0, 0, w, h);
   }
 
-  async function tierList(m, removed, who){
+  async function tierList(m, removed, who, k = 2){
     await fontsReady();
     const W = 1080, pad = 48, lab = 150, th = 92, tw = 74, gap = 10, nameH = 20;
     const sizes = tierSizesOf(m), rows = [];
@@ -58,8 +74,7 @@ const Share = (() => {
     const perRow = Math.floor((W - pad * 2 - lab - 20 + gap) / (tw + gap));
     const rowH = r => Math.max(1, Math.ceil(r.ids.length / perRow)) * (th + nameH + gap) + 20;
     const H = 210 + rows.reduce((s, r) => s + rowH(r) + 10, 0) + 70;
-    const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
-    const cx = cv.getContext('2d'); bg(cx, W, H);
+    const [cv, cx] = canvas(W, H, k); bg(cx, W, H);
     cx.fillStyle = C.gold; cx.font = `600 18px ${FU}`; cx.fillText('ПАРА ИЗ РУНТЕРРЫ · ТИР-ЛИСТ', pad, 70);
     cx.fillStyle = C.hi; fitText(cx, who ? `Тир-лист: ${who}` : 'Мой тир-лист', W - pad * 2, 64, FD); cx.fillText(who ? `Тир-лист: ${who}` : 'Мой тир-лист', pad, 140);
     cx.fillStyle = C.muted; cx.font = `20px ${FU}`; cx.fillText(`Идеальная пара: ${BY[m.champ].name} · ${m.order.length} участников · ${m.total} дуэлей`, pad, 178);
@@ -115,10 +130,9 @@ const Share = (() => {
     return total / r;
   }
 
-  async function drawSeal(region, champ){
+  async function drawSeal(region, champ, k){
     const seal = SEAL[region] || SEAL.rt, R = 104, D = 2 * R + 16;
-    const cv = document.createElement('canvas'); cv.width = D; cv.height = D;
-    const cx = cv.getContext('2d'); cx.translate(D / 2, D / 2);
+    const [cv, cx] = sub(D, k); cx.scale(k, k); cx.translate(D / 2, D / 2);
     cx.strokeStyle = cx.fillStyle = seal.ink;
     const ring = (r, w) => { cx.lineWidth = w; cx.beginPath(); cx.arc(0, 0, r, 0, Math.PI * 2); cx.stroke(); };
     ring(R - 2.5, 5); ring(R - 10, 1.6); ring(R - 37, 1.6); ring(R - 42, 1);
@@ -135,10 +149,10 @@ const Share = (() => {
     /* герб края в центре, в цвет чернил */
     const em = await loadEmblem(region);
     if (em){
-      const s = 2 * (R - 42) - 22, t = document.createElement('canvas'); t.width = t.height = Math.ceil(s);
-      const tx = t.getContext('2d'); tx.drawImage(em, 0, 0, s, s);
-      tx.globalCompositeOperation = 'source-in'; tx.fillStyle = seal.ink; tx.fillRect(0, 0, s, s);
-      cx.drawImage(t, -s / 2, -s / 2);
+      const s = 2 * (R - 42) - 22, [t, tx] = sub(s, k);
+      tx.drawImage(em, 0, 0, t.width, t.height);
+      tx.globalCompositeOperation = 'source-in'; tx.fillStyle = seal.ink; tx.fillRect(0, 0, t.width, t.height);
+      put(cx, t, -s / 2, -s / 2);
     }
     /* потёртость оттиска: случайные проплешины, одинаковые для одного и того же победителя */
     const rnd = mulberry32(hashStr(champ + region));
@@ -157,11 +171,10 @@ const Share = (() => {
     return cv;
   }
 
-  async function certificate(m, person){
+  async function certificate(m, person, k = 2){
     await fontsReady();
     const W = 1080, H = 1350, champ = BY[m.champ], im = await loadImg(m.champ);
-    const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
-    const cx = cv.getContext('2d'); bg(cx, W, H);
+    const [cv, cx] = canvas(W, H, k); k = cv.k; bg(cx, W, H);
     /* рамка */
     cx.strokeStyle = C.gold; cx.lineWidth = 3; cx.strokeRect(36, 36, W - 72, H - 72);
     cx.strokeStyle = C.lo; cx.lineWidth = 1; cx.strokeRect(52, 52, W - 104, H - 104);
@@ -177,7 +190,8 @@ const Share = (() => {
     cx.font = `24px ${FU}`; cx.fillText('по итогам честного турнира отдано', W / 2, 334);
     /* портрет */
     const pw = 300, ph = 430, px = W / 2 - pw / 2, py = 366;
-    cx.save(); cx.shadowColor = 'rgba(232,102,138,.5)'; cx.shadowBlur = 50; cx.fillStyle = C.deep; cx.fillRect(px, py, pw, ph); cx.restore();
+    /* размытие тени не масштабируется вместе с холстом — умножаем на k вручную */
+    cx.save(); cx.shadowColor = 'rgba(232,102,138,.5)'; cx.shadowBlur = 50 * k; cx.fillStyle = C.deep; cx.fillRect(px, py, pw, ph); cx.restore();
     cover(cx, im, px, py, pw, ph, .3);
     cx.strokeStyle = C.gold; cx.lineWidth = 3; cx.strokeRect(px, py, pw, ph);
     const gr = cx.createLinearGradient(0, py + ph - 140, 0, py + ph); gr.addColorStop(0, 'rgba(9,14,21,0)'); gr.addColorStop(1, 'rgba(9,14,21,.92)');
@@ -203,10 +217,10 @@ const Share = (() => {
     cx.fillText(`Свидетели: ${wit}`, W / 2, 1142);
     /* печать и регистратор — того края, откуда родом победитель */
     const region = (PROFILE[m.champ] || ['rt'])[0], seal = SEAL[region] || SEAL.rt;
-    const stamp = await drawSeal(region, m.champ);
+    const stamp = await drawSeal(region, m.champ, k);
     cx.save(); cx.translate(W - 190, H - 188); cx.rotate(-.17);
-    cx.globalAlpha = .92; cx.shadowColor = seal.ink + '55'; cx.shadowBlur = 14;
-    cx.drawImage(stamp, -stamp.width / 2, -stamp.height / 2);
+    cx.globalAlpha = .92; cx.shadowColor = seal.ink + '55'; cx.shadowBlur = 14 * k;
+    put(cx, stamp, -stamp.sz / 2, -stamp.sz / 2);
     cx.restore();
     const reg = seal.reg.find(id => id !== m.champ && BY[id]) || seal.reg[0];
     cx.textAlign = 'left'; cx.fillStyle = C.muted; cx.font = `20px ${FU}`;
@@ -221,11 +235,10 @@ const Share = (() => {
   /* общий сертификат пары: два портрета, процент совпадения вкусов, общие любимцы — свидетели.
      Печать — того края, если обе пары оттуда, иначе общая печать Рунтерры */
   const heartPath = new Path2D('M12 21.4 10.6 20C5.4 15.4 2 12.3 2 8.5 2 5.4 4.4 3 7.5 3c1.7 0 3.4.8 4.5 2.1C13.1 3.8 14.8 3 16.5 3 19.6 3 22 5.4 22 8.5c0 3.8-3.4 6.9-8.6 11.5L12 21.4Z');
-  async function pairCertificate(d){
+  async function pairCertificate(d, k = 2){
     await fontsReady();
     const W = 1080, H = 1350, [ia, ib] = await Promise.all([loadImg(d.a.champ), loadImg(d.b.champ)]);
-    const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
-    const cx = cv.getContext('2d'); bg(cx, W, H);
+    const [cv, cx] = canvas(W, H, k); k = cv.k; bg(cx, W, H);
     cx.strokeStyle = C.gold; cx.lineWidth = 3; cx.strokeRect(36, 36, W - 72, H - 72);
     cx.strokeStyle = C.lo; cx.lineWidth = 1; cx.strokeRect(52, 52, W - 104, H - 104);
     [[52,52],[W-52,52],[52,H-52],[W-52,H-52]].forEach(([x,y]) => { cx.save(); cx.translate(x, y); cx.rotate(Math.PI / 4); cx.fillStyle = C.night; cx.fillRect(-12, -12, 24, 24); cx.strokeStyle = C.gold; cx.lineWidth = 2; cx.strokeRect(-12, -12, 24, 24); cx.restore(); });
@@ -242,7 +255,7 @@ const Share = (() => {
     [[d.a, ia, xs[0]], [d.b, ib, xs[1]]].forEach(([p, im, x]) => {
       const c = BY[p.champ], mid = x + pw / 2;
       cx.fillStyle = C.muted; fitText(cx, p.name, pw, 24, FU, '500'); cx.fillText(p.name, mid, py - 18);
-      cx.save(); cx.shadowColor = 'rgba(232,102,138,.45)'; cx.shadowBlur = 40; cx.fillStyle = C.deep; cx.fillRect(x, py, pw, ph); cx.restore();
+      cx.save(); cx.shadowColor = 'rgba(232,102,138,.45)'; cx.shadowBlur = 40 * k; cx.fillStyle = C.deep; cx.fillRect(x, py, pw, ph); cx.restore();
       cover(cx, im, x, py, pw, ph, .28);
       cx.strokeStyle = C.gold; cx.lineWidth = 3; cx.strokeRect(x, py, pw, ph);
       const gr = cx.createLinearGradient(0, py + ph - 130, 0, py + ph); gr.addColorStop(0, 'rgba(9,14,21,0)'); gr.addColorStop(1, 'rgba(9,14,21,.9)');
@@ -253,7 +266,7 @@ const Share = (() => {
     /* середина: сердце и процент */
     const mx = W / 2, my = py + ph / 2;
     cx.save(); cx.translate(mx - 30, my - 150); cx.scale(2.5, 2.5);
-    cx.shadowColor = 'rgba(232,102,138,.6)'; cx.shadowBlur = 16; cx.fillStyle = C.rose; cx.fill(heartPath); cx.restore();
+    cx.shadowColor = 'rgba(232,102,138,.6)'; cx.shadowBlur = 16 * k; cx.fillStyle = C.rose; cx.fill(heartPath); cx.restore();
     cx.fillStyle = C.hi; cx.font = `112px ${FD}`; cx.fillText(`${d.percent}%`, mx, my + 20);
     cx.fillStyle = C.text; cx.font = `22px ${FU}`; cx.fillText('совпадение вкусов', mx, my + 60);
     if (d.same){ cx.fillStyle = C.rose; cx.font = `22px ${FU}`; cx.fillText('одна пара на двоих', mx, my + 94); }
@@ -264,10 +277,10 @@ const Share = (() => {
     /* печать и регистратор */
     const ra = (PROFILE[d.a.champ] || ['rt'])[0], rb = (PROFILE[d.b.champ] || ['rt'])[0];
     const region = ra === rb ? ra : 'rt', seal = SEAL[region] || SEAL.rt;
-    const stamp = await drawSeal(region, d.a.champ + d.b.champ);
+    const stamp = await drawSeal(region, d.a.champ + d.b.champ, k);
     cx.save(); cx.translate(W - 190, H - 188); cx.rotate(-.17);
-    cx.globalAlpha = .92; cx.shadowColor = seal.ink + '55'; cx.shadowBlur = 14;
-    cx.drawImage(stamp, -stamp.width / 2, -stamp.height / 2); cx.restore();
+    cx.globalAlpha = .92; cx.shadowColor = seal.ink + '55'; cx.shadowBlur = 14 * k;
+    put(cx, stamp, -stamp.sz / 2, -stamp.sz / 2); cx.restore();
     const reg = seal.reg.find(id => id !== d.a.champ && id !== d.b.champ && BY[id]) || seal.reg[0];
     cx.textAlign = 'left'; cx.fillStyle = C.muted; cx.font = `20px ${FU}`;
     const dt = new Date();
@@ -324,13 +337,12 @@ const Share = (() => {
     P.forEach((p, i) => { const m = mid(p, P[(i + 1) % P.length]); cx.quadraticCurveTo(ox + p[0], oy + p[1], ox + m[0], oy + m[1]); });
     cx.closePath();
   }
-  function tinted(im, color, s){
-    const t = document.createElement('canvas'); t.width = t.height = Math.ceil(s);
-    const tx = t.getContext('2d'); tx.drawImage(im, 0, 0, s, s);
-    tx.globalCompositeOperation = 'source-in'; tx.fillStyle = color; tx.fillRect(0, 0, s, s);
+  function tinted(im, color, s, k){
+    const [t, tx] = sub(s, k); tx.drawImage(im, 0, 0, t.width, t.height);
+    tx.globalCompositeOperation = 'source-in'; tx.fillStyle = color; tx.fillRect(0, 0, t.width, t.height);
     return t;
   }
-  async function heartMap(m, who){
+  async function heartMap(m, who, k = 2){
     await fontsReady();
     const top = m.order.slice(0, 20), by = {};
     top.forEach(id => { const r = (PROFILE[id] || ['rt'])[0]; (by[r] = by[r] || []).push(id); });
@@ -340,8 +352,7 @@ const Share = (() => {
     const IM = {}, EM = {}; top.forEach((id, i) => IM[id] = ims[i]); keys.forEach((k, i) => EM[k] = ems[i]);
     const rows = Math.ceil(regs.length / 2), rowH = rows > 5 ? 74 : 84;
     const W = 1080, MX = 70, MY = 262, MW = 940, MH = 640, LY = MY + MH + 64, H = LY + rows * rowH + 150;
-    const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
-    const cx = cv.getContext('2d'); bg(cx, W, H);
+    const [cv, cx] = canvas(W, H, k), K = cv.k; bg(cx, W, H);   // K — масштаб; k ниже занят ключами краёв
     cx.strokeStyle = C.gold; cx.lineWidth = 3; cx.strokeRect(36, 36, W - 72, H - 72);
     cx.strokeStyle = C.lo; cx.lineWidth = 1; cx.strokeRect(52, 52, W - 104, H - 104);
     cx.textAlign = 'center';
@@ -377,7 +388,7 @@ const Share = (() => {
     Object.entries(SPOTS).sort((a, b) => (by[a[0]] || []).length - (by[b[0]] || []).length).forEach(([k, [x0, y0]]) => {
       const x = MX + x0, y = MY + y0, n = (by[k] || []).length, ink = (SEAL[k] || SEAL.rt).ink;
       if (!n){
-        if (EM[k]){ cx.globalAlpha = .38; const e = tinted(EM[k], C.muted, 26); cx.drawImage(e, x - 13, y - 13); cx.globalAlpha = 1; }
+        if (EM[k]){ cx.globalAlpha = .38; put(cx, tinted(EM[k], C.muted, 26, K), x - 13, y - 13); cx.globalAlpha = 1; }
         cx.fillStyle = 'rgba(140,154,169,.7)'; cx.font = `17px ${FD}`; cx.textAlign = 'center'; cx.fillText(REGIONS[k][0], inMap(cx, REGIONS[k][0], x), y + 32);
         return;
       }
@@ -387,7 +398,7 @@ const Share = (() => {
       cx.fillStyle = g; cx.beginPath(); cx.arc(x, y, r * 1.9, 0, Math.PI * 2); cx.fill();
       cx.fillStyle = C.night; cx.beginPath(); cx.arc(x, y, r, 0, Math.PI * 2); cx.fill();
       cx.strokeStyle = ink; cx.lineWidth = 2.5; cx.stroke();
-      if (EM[k]){ const s = r * 1.25, e = tinted(EM[k], ink, s); cx.drawImage(e, x - s / 2, y - s / 2); }
+      if (EM[k]){ const s = r * 1.25; put(cx, tinted(EM[k], ink, s, K), x - s / 2, y - s / 2); }
       /* число в плашке справа сверху */
       const bx = x + r * .74, by_ = y - r * .74;
       cx.fillStyle = ink; cx.beginPath(); cx.arc(bx, by_, 15, 0, Math.PI * 2); cx.fill();
@@ -399,7 +410,7 @@ const Share = (() => {
     const colW = (W - 140 - 40) / 2;
     regs.forEach((k, i) => {
       const col = i < rows ? 0 : 1, row = col ? i - rows : i, x = 70 + col * (colW + 40), y = LY + row * rowH, ids = by[k], ink = (SEAL[k] || SEAL.rt).ink;
-      if (EM[k]){ cx.drawImage(tinted(EM[k], ink, 30), x, y + 4); }
+      if (EM[k]){ put(cx, tinted(EM[k], ink, 30, K), x, y + 4); }
       cx.textAlign = 'left'; cx.fillStyle = C.hi; cx.font = `22px ${FD}`;
       const label = k === 'rt' ? 'Странники' : REGIONS[k][0];
       cx.fillText(label, x + 42, y + 26);

@@ -140,6 +140,7 @@ function renderSkinDuel(){
   const x = skBracket(sk);
   if (x.kind === 'done'){
     sk.fav = x.order[0]; sk.order = x.order; saveLocal();
+    collDuels('sk:' + sk.c + ':' + sk.seed, sk.d.length); collSkinDone(sk.c);
     if (ctx === 'room' && sess) pushState(true);
     ui.mode = 'play';
     toast(`Любимый образ: ${skName(sk, sk.fav)}`, 4200);

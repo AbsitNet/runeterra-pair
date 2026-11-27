@@ -812,7 +812,7 @@ function renderHeartMap(m){
   clearTimeout(mapT);
   mapT = setTimeout(async () => {
     if (ui.cur !== m) return;
-    const cv = await Share.heartMap(m, V && VIEW.name ? VIEW.name : ''), pv = $('#mapPreview');
+    const cv = await Share.heartMap(m, V && VIEW.name ? VIEW.name : '', 1), pv = $('#mapPreview');
     if (pv.width !== cv.width || pv.height !== cv.height){ pv.width = cv.width; pv.height = cv.height; }
     pv.getContext('2d').drawImage(cv, 0, 0);
   }, 260);
@@ -870,9 +870,9 @@ function drawCertPreview(){
   clearTimeout(certT);
   certT = setTimeout(async () => {
     const m = ui.cur; if (!m || m.kind !== 'done') return;
-    const cv = await Share.certificate(m, $('#certName').value);
+    const cv = await Share.certificate(m, $('#certName').value, 1);
     const pv = $('#certPreview'), cx = pv.getContext('2d');
-    cx.clearRect(0, 0, pv.width, pv.height); cx.drawImage(cv, 0, 0);
+    cx.clearRect(0, 0, pv.width, pv.height); cx.drawImage(cv, 0, 0, pv.width, pv.height);
   }, 200);
 }
 function tierRow(L, label, tok, ids, start, x){
@@ -1231,6 +1231,8 @@ function renderCompare(){
   const pp = partner(), mine = S.cfg ? simulate(S.cfg, S.dec) : null, their = playerState(pp);
   if (!pp || !mine || mine.kind !== 'done' || their.status !== 'done'){ $('#cTitle').textContent = 'Сравнение пока недоступно'; return; }
   const c = compareOrders(mine.order, their.m.order);
+  /* «Родственные души»: одна пара на двоих и вкусы совпали на 80%+ */
+  if (mine.champ === their.m.champ && c.percent >= 80) collEvent('kindred');
   $('#cTitle').textContent = `${sess.name} и ${pp.name}`;
   $('#cHead').innerHTML = `<div class="cmp-p">${face(mine.champ)}<small>${esc(sess.name)} · пара в Рунтерре</small><b>${esc(name(mine.champ))}</b></div>
     <div class="cmp-pct">${c.percent}%<small>совпадение вкусов</small></div>
@@ -1269,8 +1271,8 @@ function drawPairPreview(){
   clearTimeout(pairT);
   pairT = setTimeout(async () => {
     const d = pairData(); if (!d) return;
-    const cv = await Share.pairCertificate(d), pv = $('#pairPreview'), cx = pv.getContext('2d');
-    cx.clearRect(0, 0, pv.width, pv.height); cx.drawImage(cv, 0, 0);
+    const cv = await Share.pairCertificate(d, 1), pv = $('#pairPreview'), cx = pv.getContext('2d');
+    cx.clearRect(0, 0, pv.width, pv.height); cx.drawImage(cv, 0, 0, pv.width, pv.height);
   }, 150);
 }
 
@@ -1287,7 +1289,7 @@ function battleInfo(){
 }
 function battleVerdict(x){
   if (!x.my || !x.their) return null;
-  if (x.my === x.their) return {title:`Общая пара: ${name(x.my)}`, text: x.my === x.myChamp ? 'Партнёр проголосовал(а) за твою пару. Решено!' : 'Ты проголосовал(а) за пару партнёра. Решено!', win:x.my};
+  if (x.my === x.their) return {title:`Общая пара: ${name(x.my)}`, text: x.my === x.myChamp ? 'Голос партнёра — за твою пару. Решено!' : 'Твой голос — за пару партнёра. Решено!', win:x.my};
   if (x.my === x.myChamp) return {title:'Каждый остался при своём', text:'Никто не уступил. Похоже, вкусы у вас и правда разные — и это нормально.'};
   return {title:'Вы выбрали пары друг друга', text:'Каждый проголосовал за пару партнёра. Очень мило — или очень дипломатично.'};
 }
@@ -1314,6 +1316,7 @@ function battlePick(side){
   cards[side].classList.add('chosen'); cards[1 - side].classList.add('lost');
   Sound.pick(3); FX.burst(...cardCenter(side), 3);
   BT = {key:x.key, pick:id}; store.set(battleKey(sess.code), BT); pushState(true);
+  collDuels('bt:' + sess.code + ':' + x.key, 1);
   const r = $('#reveal'); r.className = 'reveal ok';
   r.textContent = x.their ? 'Голос принят — смотрим итог' : `Голос принят. Ждём, что выберет ${x.pp.name}`;
   setTimeout(() => {
@@ -1481,7 +1484,7 @@ async function dailyVote(side){
   store.set(DAILY_KEY, trimmed);
   Sound.pick(1);
   renderDailyAll();
-  collDaily();
+  collDaily(); collDuels('day:' + day, 1);
   if (sess) dkDaily(day, pick);
   if (sess) pushState(true);
   if (Room.configured()){ try { await Room.daily.vote(day, voterId(), pick); } catch(e){} await dailyLoad(day); renderDailyAll(); }
@@ -1998,7 +2001,7 @@ function renderSyncBox(){
 function renderSyncResult(){
   const x = syncCalc(); if (!x || x.phase !== 'done') return;
   ui.cur = null; show('scr-sync'); FX.setLevel(0);
-  collEvent('sync');
+  collEvent('sync'); collDuels('sy:' + SY.cfg.seed, x.log.length);
   /* «Одно сердце на двоих»: совпали с первого раза хотя бы в 90% дуэлей */
   if (x.log.length >= 20 && x.log.filter(l => l.how === 'agree').length >= .9 * x.log.length) collEvent('soul');
   dkSync(x);
@@ -2044,6 +2047,7 @@ function renderGuess(){
     G.done = true; store.set(guessKey(sess.code), G); pushState(true);
     const ok = G.picks.filter(p => p.ok).length;
     ui.mode = 'play'; show('scr-room'); renderRoom();
+    collDuels('gs:' + G.target + ':' + G.seed, G.list.length);
     if (ok >= G.list.length * .8) collEvent('mind');
     toast(`Угадано ${ok} из ${G.list.length}. ${ok >= G.list.length * .8 ? 'Вы прекрасно друг друга знаете!' : ok >= G.list.length * .6 ? 'Неплохо!' : 'Есть куда расти — и о чём поговорить.'}`, 6000);
     return;

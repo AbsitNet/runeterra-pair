@@ -58,7 +58,7 @@ function achievements(m, cfg){
   if (CANON[champ]) out.push({k:'taken', icon:'⚭', t:'Занято!', d:`По лору сердце этого персонажа отдано: ${CANON[champ]}`});
   SIBLINGS.forEach(([a,b]) => {
     if (inTop(a) && inTop(b)) out.push({k: a === 'Kayn' ? 'sib-kayn' : a === 'KindredWolf' ? 'sib-kindred' : 'sib-family', icon:'⚯', t: (a === 'Kayn' ? 'Одно тело, две души' : a === 'KindredWolf' ? 'Вечные охотники' : 'Любовь — семейное дело'),
-      d:`${BY[a].name} и ${BY[b].name} оба в топ-10`});
+      d:`${BY[a].name} и ${BY[b].name} ${BY[a].g === 'f' && BY[b].g === 'f' ? 'обе' : 'оба'} в топ-10`});
   });
   if (cfg.bet){
     const place = order.indexOf(cfg.bet) + 1;
@@ -70,6 +70,27 @@ function achievements(m, cfg){
   if (!m.st[champ].lost.length) out.push({k:'clean', icon:'★', t:'Без единой осечки', d:'Победитель не проиграл ни одной дуэли'});
   if (Object.keys(regionCount).length >= 7) out.push({k:'world', icon:'✈', t:'Роман без границ', d:`Топ-10 из ${Object.keys(regionCount).length} разных краёв`});
   if (NEWEST.includes(champ)) out.push({k:'fresh', icon:'✺', t:'Свежая кровь', d:'Твоя пара — один из новейших чемпионов'});
+  /* остальные типажи */
+  if (count(2,'rebel') >= 3) out.push({k:'rebel', icon:'↯', t:'Против правил', d:'Тебе по душе те, кто живёт не по правилам'});
+  if (count(2,'sage') >= 3) out.push({k:'sage', icon:'☯', t:'Тихая гавань', d:'Рядом с тобой — спокойные и мудрые'});
+  if (count(2,'ruler') >= 3) out.push({k:'ruler', icon:'♚', t:'Корона к лицу', d:'В топе сплошь лидеры и правители'});
+  if (count(2,'wild') >= 3) out.push({k:'wild', icon:'❂', t:'Зов природы', d:'Тебя тянет к первобытной силе и инстинктам'});
+  if (count(2,'mind') >= 2) out.push({k:'brains', icon:'⚛', t:'Ум — это красиво', d:'Для тебя нет ничего притягательнее острого ума'});
+  if (Object.keys(CLASSES).every(c => count(1, c))) out.push({k:'allclass', icon:'⚖', t:'Все в сборе', d:'В топ-10 есть все шесть классов'});
+  /* гранд-финал: связанные лором или земляки; через тернии; пьедестал одного края */
+  const ru = m.runner;
+  if (ru && EASTER.some(([a, b]) => (a === champ && b === ru) || (a === ru && b === champ)))
+    out.push({k:'lorefinal', icon:'❧', t:'Сюжет из лора', d:`В финале сошлись ${BY[champ].name} и ${BY[ru].name} — у них общая история`});
+  /* в мини-турнире по одному краю все и так земляки — там эти два значка не даются */
+  const oneLand = ['ion','nox','dem','pz'].includes(cfg.theme);
+  const land = id => P_(id)[0];
+  if (!oneLand && ru && land(champ) === land(ru) && land(champ) !== 'rt')
+    out.push({k:'neighbors', icon:'⌂', t:'Земляки', d:`Оба финалиста родом из ${REGIONS[land(champ)][1]}`});
+  const lostN = m.st[champ].lost.length;
+  if (lostN >= 3) out.push({k:'thorns', icon:'⚘', t:'Через тернии', d:`${lostN} ${pl(lostN,'поражение','поражения','поражений')} по пути — и всё равно победа`});
+  const top3 = order.slice(0, 3);
+  if (!oneLand && top3.length === 3 && top3.every(id => land(id) === land(champ)) && land(champ) !== 'rt')
+    out.push({k:'podium', icon:'♜', t:'Свои люди', d:`Вся тройка призёров — из ${REGIONS[land(champ)][1]}`});
   return out;
 }
 

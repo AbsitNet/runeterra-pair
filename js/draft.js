@@ -210,6 +210,7 @@ function renderDraftDuel(){
   const pairs = drPairs(x.toMe, drSeed()), i = DR.res.d.length;
   if (i >= pairs.length){
     DR.res.order = drRank(x.toMe, pairs, DR.res.d); drSave();
+    collDuels('dr:' + DR.id + ':' + sess.slot, pairs.length);
     dkDraft(DR.res.order[0]);
     ui.mode = 'play'; show('scr-draft'); renderDraft();
     Sound.fanfare(); FX.celebrate();

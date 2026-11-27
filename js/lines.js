@@ -239,7 +239,7 @@ function lnTierRow(L, label, tok, ids, start){
 function lnResult(m){
   ui.mode = 'play'; ui.cur = m; FX.setLevel(0);
   const L = lnLine(LN.k), first = !LN.fin;
-  if (first){ LN.fin = {fav:m.champ, at:Date.now()}; lnSave(); }
+  if (first){ LN.fin = {fav:m.champ, at:Date.now()}; lnSave(); collDuels('ln:' + LN.cfg.seed, LN.dec.length); collLineDone(LN.k); }
   show('scr-lnres');
   if (first && !reduced){ const wn = $('#scr-lnres .winner'); wn.classList.remove('unveil'); void wn.offsetWidth; wn.classList.add('unveil'); }
   const n = m.order.length;

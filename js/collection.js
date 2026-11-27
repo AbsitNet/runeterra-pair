@@ -1,5 +1,5 @@
 /* Пара из Рунтерры: коллекция значков.
-   Значки турниров копятся с каждым пройденным турниром, редкие — за особые случаи.
+   Значки турниров копятся с каждым пройденным турниром, редкие — за особые случаи, легендарные — когда сходится всё сразу.
    Хранится в браузере; если устройства связаны кодом, коллекции с них складываются. */
 
 const COLL_KEY = 'rp-collection';
@@ -8,43 +8,62 @@ const COLL_REGIONS = Object.keys(REGIONS).filter(k => k !== 'rt');
 /* порядок — как в витрине; ключи не менять: по ним хранится собранное */
 const COLL = [
   /* значки турниров: те же, что на экране итогов */
-  {k:'region',      g:'t', icon:'♥', t:'Сердце края',              h:'Трое из топ-10 родом из одного края', of:() => COLL_REGIONS.length, at:c => (c.regions || []).length},
-  {k:'dark',        g:'t', icon:'☾', t:'Тянет на тёмную сторону',  h:'Трое опасных соблазнителей в топ-10'},
-  {k:'knight',      g:'t', icon:'⛨', t:'Под надёжной защитой',     h:'Трое благородных защитников в топ-10'},
-  {k:'magic',       g:'t', icon:'✦', t:'Магия в крови',            h:'Пять магов в топ-10'},
-  {k:'joy',         g:'t', icon:'☀', t:'Смех продлевает любовь',   h:'Трое весельчаков в топ-10'},
-  {k:'tragic',      g:'t', icon:'❦', t:'Спасатель израненных душ', h:'Трое героев с тяжёлым прошлым в топ-10'},
-  {k:'monster',     g:'t', icon:'♞', t:'Монстры тоже люди',        h:'Пара — не совсем человек, или трое нелюдей в топ-10'},
-  {k:'taken',       g:'t', icon:'⚭', t:'Занято!',                  h:'Пара, чьё сердце по лору уже отдано'},
-  {k:'sib-kayn',    g:'t', icon:'⚯', t:'Одно тело, две души',      h:'Каин и Рааст вместе в топ-10'},
-  {k:'sib-kindred', g:'t', icon:'⚯', t:'Вечные охотники',          h:'Волк и Овечка вместе в топ-10'},
-  {k:'sib-family',  g:'t', icon:'⚯', t:'Любовь — семейное дело',   h:'Родные вместе в топ-10: братья, сёстры или мама с сыном'},
-  {k:'bet-win',     g:'t', icon:'◎', t:'Интуиция',                 h:'Угадать пару ставкой перед турниром'},
+  {k:'region',      g:'t', icon:'♥', t:'Сердце края',              h:'Трое из топ-10 родом из одного края. Края копятся: всего их двенадцать', of:() => COLL_REGIONS.length, at:c => (c.regions || []).length},
+  {k:'dark',        g:'t', icon:'☾', t:'Тянет на тёмную сторону',  h:'В топ-10 трое с типажом «Тёмный соблазн»'},
+  {k:'knight',      g:'t', icon:'⛨', t:'Под надёжной защитой',     h:'В топ-10 трое с типажом «Благородный защитник»'},
+  {k:'magic',       g:'t', icon:'✦', t:'Магия в крови',            h:'В топ-10 пять магов'},
+  {k:'joy',         g:'t', icon:'☀', t:'Смех продлевает любовь',   h:'В топ-10 трое с типажом «Душа компании»'},
+  {k:'tragic',      g:'t', icon:'❦', t:'Спасатель израненных душ', h:'В топ-10 трое с типажом «Раненое сердце»'},
+  {k:'rebel',       g:'t', icon:'↯', t:'Против правил',            h:'В топ-10 трое с типажом «Свободная душа»'},
+  {k:'sage',        g:'t', icon:'☯', t:'Тихая гавань',             h:'В топ-10 трое с типажом «Тихая мудрость»'},
+  {k:'ruler',       g:'t', icon:'♚', t:'Корона к лицу',            h:'В топ-10 трое с типажом «Сила и власть»'},
+  {k:'wild',        g:'t', icon:'❂', t:'Зов природы',              h:'В топ-10 трое с типажом «Дикая натура»'},
+  {k:'brains',      g:'t', icon:'⚛', t:'Ум — это красиво',         h:'В топ-10 двое с типажом «Холодный разум»'},
+  {k:'allclass',    g:'t', icon:'⚖', t:'Все в сборе',              h:'В топ-10 есть все шесть классов: маг, убийца, боец, стрелок, поддержка и защитник'},
+  {k:'monster',     g:'t', icon:'♞', t:'Монстры тоже люди',        h:'Пара — не совсем человек, или таких в топ-10 трое'},
+  {k:'taken',       g:'t', icon:'⚭', t:'Занято!',                  h:'Пара, чьё сердце по лору уже занято'},
+  {k:'sib-kayn',    g:'t', icon:'⚯', t:'Одно тело, две души',      h:'Каин и Рааст оба в топ-10'},
+  {k:'sib-kindred', g:'t', icon:'⚯', t:'Вечные охотники',          h:'Волк и Овечка оба в топ-10'},
+  {k:'sib-family',  g:'t', icon:'⚯', t:'Любовь — семейное дело',   h:'Двое родных вместе в топ-10 — например, Гарен и Люкс'},
+  {k:'bet-win',     g:'t', icon:'◎', t:'Интуиция',                 h:'Поставить на пару перед турниром — и угадать'},
   {k:'bet-near',    g:'t', icon:'◔', t:'Почти в точку',            h:'Ставка перед турниром заняла 2-е или 3-е место'},
   {k:'bet-miss',    g:'t', icon:'✧', t:'Сердце удивило',           h:'Ставка перед турниром не попала даже в топ-10'},
-  {k:'lower',       g:'t', icon:'↻', t:'Второй шанс',              h:'Пара пришла к победе через сетку второго шанса'},
+  {k:'lower',       g:'t', icon:'↻', t:'Второй шанс',              h:'Пара проиграла в плей-офф, но победила через сетку второго шанса'},
   {k:'clean',       g:'t', icon:'★', t:'Без единой осечки',        h:'Пара не проиграла ни одной дуэли'},
-  {k:'world',       g:'t', icon:'✈', t:'Роман без границ',         h:'Топ-10 из семи разных краёв'},
-  {k:'fresh',       g:'t', icon:'✺', t:'Свежая кровь',             h:'Пара — один из новейших чемпионов'},
+  {k:'thorns',      g:'t', icon:'⚘', t:'Через тернии',             h:'Пара проиграла три дуэли или больше — и всё равно победила'},
+  {k:'lorefinal',   g:'t', icon:'❧', t:'Сюжет из лора',            h:'В гранд-финале встретились двое, у которых общая история'},
+  {k:'neighbors',   g:'t', icon:'⌂', t:'Земляки',                  h:'В гранд-финале встретились двое из одного края'},
+  {k:'podium',      g:'t', icon:'♜', t:'Свои люди',                h:'Все трое призёров — из одного края'},
+  {k:'world',       g:'t', icon:'✈', t:'Роман без границ',         h:'В топ-10 герои из семи разных краёв'},
+  {k:'fresh',       g:'t', icon:'✺', t:'Свежая кровь',             h:'Пара — один из самых новых чемпионов'},
   /* редкие */
-  {k:'same3',   g:'r', icon:'∞', t:'Верность',               h:'Одна и та же пара три основных турнира подряд'},
-  {k:'minis',   g:'r', icon:'❖', t:'Знаток Рунтерры',        h:'Пройти все мини-турниры', of:() => THEMES.length, at:c => (c.themes || []).length},
-  {k:'deep',    g:'r', icon:'◈', t:'Без компромиссов',       h:'Пройти основной турнир в режиме «Подробно»'},
-  {k:'svaha',   g:'r', icon:'✶', t:'Звёзды не лгут',         h:'Пара из основного турнира — в тройке у Звёздной свахи'},
-  {k:'mutual',  g:'r', icon:'♡', t:'Половинки',              h:'Взаимность с парой — 90% и выше'},
-  {k:'date',    g:'r', icon:'❀', t:'Идеальное свидание',     h:'Первое свидание, где каждая сцена — в точку'},
-  {k:'room',    g:'r', icon:'☍', t:'Вдвоём веселее',         h:'Закончить свой турнир в комнате для двоих'},
-  {k:'sync',    g:'r', icon:'⚇', t:'В четыре руки',          h:'Пройти вдвоём «Общий турнир» в комнате до самых итогов'},
-  {k:'mind',    g:'r', icon:'◉', t:'Читаю мысли',            h:'Угадать 80% выборов партнёра'},
-  {k:'hearts',  g:'r', icon:'♦', t:'Азарт',                  h:'Выиграть пять ставок в прямом эфире', of:() => 5, at:c => Math.min(5, c.hearts || 0)},
-  {k:'daily7',  g:'r', icon:'☼', t:'Каждый день — свидание', h:'Голосовать в дуэли дня семь дней подряд', of:() => 7, at:() => Math.min(7, collDailyRun())},
-  {k:'night',   g:'r', icon:'☽', t:'Полуночное свидание',    h:'Закончить турнир между полуночью и пятью утра'},
-  {k:'duels',   g:'r', icon:'⚔', t:'Три тысячи свиданий',    h:'Три тысячи дуэлей в пройденных турнирах', of:() => 3000, at:c => Math.min(3000, c.duels || 0)},
-  {k:'collector', g:'r', icon:'✪', t:'Коллекционер',         h:'Собрать десять разных значков турниров', of:() => 10, at:c => Math.min(10, COLL.filter(x => x.g === 't' && c.got[x.k]).length)},
+  {k:'same3',    g:'r', icon:'∞', t:'Верность',               h:'Одна и та же пара в трёх основных турнирах подряд'},
+  {k:'deep',     g:'r', icon:'◈', t:'Без компромиссов',       h:'Пройти основной турнир в режиме «Подробно»'},
+  {k:'minis',    g:'r', icon:'❖', t:'Знаток Рунтерры',        h:'Пройти все мини-турниры', of:() => THEMES.length, at:c => (c.themes || []).length},
+  {k:'marathon', g:'r', icon:'⚑', t:'Марафон',                h:'Пройти десять любых турниров', of:() => 10, at:c => Math.min(10, collRuns(c))},
+  {k:'duels',    g:'r', icon:'⚔', t:'Три тысячи свиданий',    h:'Сыграть три тысячи дуэлей — в любых турнирах и играх', of:() => 3000, at:c => Math.min(3000, c.duels || 0)},
+  {k:'night',    g:'r', icon:'☽', t:'Полуночное свидание',    h:'Закончить турнир между полуночью и пятью утра'},
+  {k:'svaha',    g:'r', icon:'✶', t:'Звёзды не лгут',         h:'Пара основного турнира — в тройке у Звёздной свахи'},
+  {k:'mutual',   g:'r', icon:'♡', t:'Половинки',              h:'Взаимность 90% или выше'},
+  {k:'sympathy', g:'r', icon:'❥', t:'Всеобщая симпатия',      h:'Взаимность 90% или выше с тремя разными героями', of:() => 3, at:c => Math.min(3, collMuCount(c))},
+  {k:'date',     g:'r', icon:'❀', t:'Идеальное свидание',     h:'Первое свидание, где каждый выбор — в точку'},
+  {k:'dates5',   g:'r', icon:'✿', t:'Сезон свиданий',         h:'Сходить на первое свидание с пятью разными героями', of:() => 5, at:c => Math.min(5, (c.fd || []).length)},
+  {k:'wardrobe', g:'r', icon:'✄', t:'Модный приговор',        h:'Выбрать любимый образ у трёх разных чемпионов', of:() => 3, at:c => Math.min(3, (c.sk || []).length)},
+  {k:'lines5',   g:'r', icon:'❋', t:'Ценитель образов',       h:'Пройти пять разных линеек образов', of:() => 5, at:c => Math.min(5, collLines(c).length)},
+  {k:'tour',     g:'r', icon:'♫', t:'Мировое турне',          h:'Пройти линейку «Все музыкальные группы»'},
+  {k:'room',     g:'r', icon:'☍', t:'Вдвоём веселее',         h:'Пройти свой турнир в комнате для двоих'},
+  {k:'sync',     g:'r', icon:'⚇', t:'В четыре руки',          h:'Пройти «Общий турнир» вдвоём до самых итогов'},
+  {k:'mind',     g:'r', icon:'◉', t:'Читаю мысли',            h:'Угадать хотя бы 80% выборов партнёра'},
+  {k:'hearts',   g:'r', icon:'♦', t:'Азарт',                  h:'Выиграть пять ставок в прямом эфире', of:() => 5, at:c => Math.min(5, c.hearts || 0)},
+  {k:'daily7',   g:'r', icon:'☼', t:'Каждый день — свидание', h:'Голосовать в дуэли дня семь дней подряд', of:() => 7, at:() => Math.min(7, collDailyRun())},
+  {k:'daily30',  g:'r', icon:'◷', t:'Завсегдатай',            h:'Проголосовать в дуэли дня тридцать раз — не обязательно подряд', of:() => 30, at:() => Math.min(30, collDailyCount())},
+  {k:'collector', g:'r', icon:'✪', t:'Коллекционер',          h:'Собрать десять разных значков турниров', of:() => 10, at:c => Math.min(10, COLL.filter(x => x.g === 't' && c.got[x.k]).length)},
   /* легендарные: когда сходится всё сразу */
-  {k:'destiny', g:'l', icon:'☄', t:'Предначертано',          h:'Пара основного турнира — первая у Звёздной свахи, и взаимность с ней 90% или выше'},
-  {k:'soul',    g:'l', icon:'❣', t:'Одно сердце на двоих',   h:'Пройти вдвоём «Общий турнир» и совпасть с первого раза хотя бы в 90% дуэлей'},
-  {k:'legend',  g:'l', icon:'♛', t:'Легенда Рунтерры',       h:'Собрать все обычные и редкие значки', of:() => COLL.filter(x => x.g !== 'l').length, at:c => COLL.filter(x => x.g !== 'l' && c.got[x.k]).length}
+  {k:'destiny',   g:'l', icon:'☄', t:'Предначертано',          h:'Пара основного турнира — первая у Звёздной свахи, и взаимность с ней 90% или выше'},
+  {k:'fairytale', g:'l', icon:'❁', t:'Долго и счастливо',      h:'С одним и тем же героем — идеальное первое свидание и взаимность 90% или выше'},
+  {k:'soul',      g:'l', icon:'❣', t:'Одно сердце на двоих',   h:'Пройти «Общий турнир» вдвоём и сразу сойтись хотя бы в 90% дуэлей'},
+  {k:'kindred',   g:'l', icon:'❈', t:'Родственные души',       h:'В комнате у вас с партнёром одна и та же пара, а вкусы совпали на 80% или больше'},
+  {k:'legend',    g:'l', icon:'♛', t:'Легенда Рунтерры',       h:'Собрать все значки турниров и все редкие', of:() => COLL.filter(x => x.g !== 'l').length, at:c => COLL.filter(x => x.g !== 'l' && c.got[x.k]).length}
 ];
 const COLL_BY = Object.fromEntries(COLL.map(x => [x.k, x]));
 
@@ -55,6 +74,15 @@ function collLoad(){
 function collSave(c){ store.set(COLL_KEY, c); }
 const collCount = c => COLL.filter(x => c.got[x.k]).length;
 
+/* счётчики для значков с прогрессом */
+const collRuns = c => Math.max(c.runs || 0, (c.hist || []).length);   // пройденные турниры любых видов
+const collMuCount = c => Object.values(c.mu || {}).filter(v => v >= 90).length;
+const collDailyCount = () => Object.keys(dailyMine()).length;
+/* пройденные линейки: запомненные в коллекции плюс законченные сейчас (на случай, если линейку начали заново) */
+function collLines(c){
+  const now = typeof lnLoad === 'function' ? Object.keys(lnLoad().runs).filter(k => { const r = lnRun(k); return r && r.fin; }) : [];
+  return [...new Set((c.lines || []).concat(now))];
+}
 /* сколько дней подряд (по сегодня или по вчера) был голос в дуэли дня */
 function collDailyRun(){
   const mine = dailyMine(), d = new Date(dailyDay() + 'T00:00:00Z'), key = x => x.toISOString().slice(0, 10);
@@ -73,10 +101,21 @@ function collUnlock(c, k, quiet){
   return !was;
 }
 function collMeta(c){
-  if (!c.got.collector && COLL.filter(x => x.g === 't' && c.got[x.k]).length >= 10) collUnlock(c, 'collector');
-  if (!c.got.duels && (c.duels || 0) >= 3000) collUnlock(c, 'duels');
-  if (!c.got.minis && THEMES.every(t => (c.themes || []).includes(t[0]))) collUnlock(c, 'minis');
-  if (!c.got.destiny && collDestiny(c)) collUnlock(c, 'destiny');
+  const need = (k, ok) => { if (!c.got[k] && ok()) collUnlock(c, k); };
+  need('collector', () => COLL.filter(x => x.g === 't' && c.got[x.k]).length >= 10);
+  need('duels', () => (c.duels || 0) >= 3000);
+  need('minis', () => THEMES.every(t => (c.themes || []).includes(t[0])));
+  need('marathon', () => collRuns(c) >= 10);
+  need('mutual', () => collMuCount(c) >= 1);
+  need('sympathy', () => collMuCount(c) >= 3);
+  need('dates5', () => (c.fd || []).length >= 5);
+  need('wardrobe', () => (c.sk || []).length >= 3);
+  need('lines5', () => collLines(c).length >= 5);
+  need('tour', () => collLines(c).includes('bands'));
+  need('daily30', () => collDailyCount() >= 30);
+  need('destiny', () => collDestiny(c));
+  /* «Долго и счастливо»: идеальное свидание и взаимность 90%+ — с одним и тем же героем */
+  need('fairytale', () => (c.fdp || []).some(id => ((c.mu || {})[id] || 0) >= 90));
   /* последней — «Легенда»: она ждёт все остальные */
   if (!c.got.legend && COLL.filter(x => x.g !== 'l').every(x => c.got[x.k])) collUnlock(c, 'legend');
 }
@@ -98,6 +137,7 @@ function collTournament(m){
   if (VIEW || TOOLS || !S.cfg || m.kind !== 'done') return;
   const c = collLoad(), seed = S.cfg.seed, old = c.hist.find(h => h.s === seed);
   if (old){ if (old.c !== m.champ){ old.c = m.champ; collSave(c); } return; }
+  c.runs = collRuns(c) + 1;
   c.hist.push({s:seed, at:Date.now(), c:m.champ, mode:S.cfg.mode, theme:S.cfg.theme || null, side:S.cfg.side || null, room:ctx === 'room' && !!sess});
   c.hist = c.hist.slice(-30);
   c.duels = (c.duels || 0) + S.dec.length;
@@ -140,14 +180,39 @@ function collEvent(k){
   if (k && !c.got[k]) collUnlock(c, k);
   collMeta(c); collSave(c); collFlush();
 }
+/* дуэли из остальных режимов — общий турнир, линейки, образы, угадайка, драфт, битва вкусов, дуэль дня.
+   Каждый прогон засчитывается один раз: по своему ключу */
+function collDuels(key, n){
+  if (VIEW || TOOLS || !n) return;
+  const c = collLoad(); c.dk = c.dk || [];
+  if (c.dk.includes(key)) return;
+  c.dk.push(key); c.dk = c.dk.slice(-400);
+  c.duels = (c.duels || 0) + n;
+  if (/^(ln|sy|sk):/.test(key)) c.runs = collRuns(c) + 1;   // линейка, общий турнир, турнир образов — тоже турниры
+  collMeta(c); collSave(c); collFlush();
+}
+/* запомнить в коллекции: пройденную линейку, чемпиона с выбранным любимым образом, героя первого свидания */
+function collAdd(field, v){
+  if (VIEW || TOOLS || v == null) return;
+  const c = collLoad(); c[field] = c[field] || [];
+  if (!c[field].includes(v)) c[field].push(v);
+  collMeta(c); collSave(c); collFlush();
+}
+const collLineDone = k => collAdd('lines', k);
+const collSkinDone = id => collAdd('sk', id);
+function collDateDone(id, perfect){
+  if (VIEW || TOOLS) return;
+  if (perfect){ const c = collLoad(); c.fdp = c.fdp || []; if (!c.fdp.includes(id)) c.fdp.push(id); if (!c.got.date) collUnlock(c, 'date'); collSave(c); }
+  collAdd('fd', id);
+}
 function collHearts(won){
   if (!won || VIEW || TOOLS) return;
   const c = collLoad(); c.hearts = (c.hearts || 0) + won;
   if (c.hearts >= 5) collUnlock(c, 'hearts');
-  collSave(c); collFlush();
+  collMeta(c); collSave(c); collFlush();
 }
 function collDaily(){
-  if (collDailyRun() >= 7) collEvent('daily7');
+  collEvent(collDailyRun() >= 7 ? 'daily7' : null);
 }
 
 /* всплывающие окошки о новых значках — по одному */
@@ -190,8 +255,8 @@ function renderCollection(){
   $('#clTour').innerHTML = COLL.filter(x => x.g === 't').map(x => collCard(x, c)).join('');
   $('#clRare').innerHTML = COLL.filter(x => x.g === 'r').map(x => collCard(x, c)).join('');
   $('#clLeg').innerHTML = COLL.filter(x => x.g === 'l').map(x => collCard(x, c)).join('');
-  const done = c.hist.length;
-  $('#clNote').textContent = done ? `Пройдено турниров на этом устройстве: ${done}${done >= 30 ? '+' : ''}. Дуэлей всего: ${c.duels || 0}.` : 'Значки появляются после каждого пройденного турнира. Первые — уже в конце твоего.';
+  const done = collRuns(c);
+  $('#clNote').textContent = done ? `Пройдено турниров: ${done}. Дуэлей всего: ${c.duels || 0}.` : 'Значки появляются после каждого пройденного турнира. Первые — уже в конце твоего.';
 }
 /* полоска на главном экране */
 function collRenderCta(){

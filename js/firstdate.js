@@ -344,7 +344,7 @@ function renderDateEnd(){
     <ol class="fd-recap">${fd.ans.map((k, i) => `<li class="${FD_TIER[tiers[i]][1]}"><small>${esc(FD_SCENES[i].t)}</small><b>${esc(fdT(FD_SCENES[i].o[k].x, id))}</b><span>${FD_TIER[tiers[i]][0]}</span></li>`).join('')}</ol>
     <div class="res-actions"><button class="btn primary" type="button" id="fdDone">${fd.from === 'svaha' ? 'К свахе' : 'К итогам'}</button><button class="btn ghost" type="button" id="fdAgain">Ещё раз</button></div>`;
   if (v === 0){ Sound.fanfare(); if (!reduced) FX.celebrate(); }
-  if (p === FD_SCENES.length * 2) collEvent('date');
+  collDateDone(id, p === FD_SCENES.length * 2);
   $('#fdDone').addEventListener('click', fdLeave);
   $('#fdAgain').addEventListener('click', () => startDate(id, fd.from));
   try { $('#fdDone').focus({preventScroll:true}); } catch(e){}

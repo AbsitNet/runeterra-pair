@@ -1,0 +1,191 @@
+--- a/js/app.js
++++ b/js/app.js
+@@ -2,6 +2,10 @@
+ const BY = {};
+ CH.forEach(c => BY[c[0]] = {id:c[0], name:c[1], title:c[2], g:c[3], grp:c[4]});
+ const img = id => `img/${id}.webp`;
++/* крупные портреты (дуэль, итог, профиль) — в двойном разрешении; если такого нет (нет сети и кэша), берётся обычный */
++const imgHD = id => `img/hd/${id}.webp`;
++const faceHD = (id, cls = '') => `<img class="${cls}" alt="" src="${imgHD(id)}" onerror="this.onerror=null;this.src='${img(id)}'">`;
++function setHD(im, id){ im.onerror = () => { im.onerror = null; im.src = img(id); }; im.src = imgHD(id); }
+ const MIN_N = 8;
+ const $ = s => document.querySelector(s);
+ const esc = s => String(s).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+@@ -147,7 +151,7 @@
+   const [a, b, q] = hero.pairs[k];
+   [[$('#hcA'), a], [$('#hcB'), b]].forEach(([card, id]) => {
+     const imgs = card.querySelectorAll('img'), on = card.querySelector('img.on'), next = on === imgs[0] ? imgs[1] : imgs[0];
+-    next.src = img(id); next.classList.add('on'); if (on) on.classList.remove('on');
++    setHD(next, id); next.classList.add('on'); if (on) on.classList.remove('on');
+     card.querySelector('b').textContent = BY[id].name;
+     card.querySelector('small').textContent = BY[id].title;
+   });
+@@ -160,7 +164,7 @@
+     if (document.hidden || ui.screen !== 'scr-start'){ heroLoop(); return; }
+     const k = (hero.k + 1) % hero.pairs.length, [a, b] = hero.pairs[k];
+     /* сначала догружаем оба портрета, чтобы смена была без пустых кадров */
+-    await Promise.all([a, b].map(id => new Promise(res => { const im = new Image(); im.onload = im.onerror = res; im.src = img(id); })));
++    await Promise.all([a, b].map(id => new Promise(res => { const im = new Image(); im.onload = im.onerror = res; im.src = imgHD(id); })));
+     const h = $('.hero'); h.classList.add('swap');
+     setTimeout(() => { heroPut(k); h.classList.remove('swap'); heroLoop(); }, 360);
+   }, 4600);
+@@ -438,7 +442,7 @@
+ }
+ function setCard(i, id){
+   const c = BY[id], p = PROFILE[id], im = $('#img' + i);
+-  im.classList.remove('broken'); im.src = img(id); im.alt = c.name;
++  im.classList.remove('broken'); im.dataset.id = id; im.src = imgHD(id); im.alt = c.name;
+   $('#nm' + i).textContent = c.name;
+   $('#tt' + i).textContent = c.title;
+   $('#ds' + i).textContent = p[3];
+@@ -494,7 +498,7 @@
+   preloadNext();
+ }
+ function preloadNext(){
+-  [0,1].forEach(d => { const n = simulate(S.cfg, S.dec.concat(d)); if (n.kind === 'duel'){ new Image().src = img(n.a); new Image().src = img(n.b); } });
++  [0,1].forEach(d => { const n = simulate(S.cfg, S.dec.concat(d)); if (n.kind === 'duel'){ new Image().src = imgHD(n.a); new Image().src = imgHD(n.b); } });
+ }
+ function preloadAll(ids){ ids.forEach((id, i) => setTimeout(() => { new Image().src = img(id); }, 300 + i * 30)); }
+ 
+@@ -606,7 +610,7 @@
+ function closeModal(){ $('#modal').hidden = true; }
+ function openProfile(id){
+   const c = BY[id], p = PROFILE[id], place = ui.cur && ui.cur.order ? ui.cur.order.indexOf(id) + 1 : 0;
+-  openModal(`<div class="prof">${face(id)}<div><p class="eyebrow">${place ? place + '-е место' : ''}</p><h3>${esc(c.name)}</h3><p class="muted">${esc(c.title)}</p>
++  openModal(`<div class="prof">${faceHD(id)}<div><p class="eyebrow">${place ? place + '-е место' : ''}</p><h3>${esc(c.name)}</h3><p class="muted">${esc(c.title)}</p>
+     <div class="tags"><span>${esc(REGIONS[p[0]][0])}</span><span>${esc(CLASSES[p[1]][0])}</span><span>${esc(ARCH[p[2]][0])}</span></div>
+     <p>${esc(p[4])}</p><p class="no">Почему может не сложиться: ${esc(p[5])}</p></div></div>`);
+ }
+@@ -621,7 +625,7 @@
+   $('#wEyebrow').textContent = (V ? (VIEW.name ? `Выбор ${VIEW.name}` : 'Результат по ссылке') : th || sv ? 'Твоя пара' : 'Твоя пара в Рунтерре') + (th ? ` · мини-турнир «${th[1]}»` : sv ? ' · турнир звёздной свахи' : '');
+   $('#typajH').textContent = V ? 'Типаж' : 'Твой типаж';
+   if (V && VIEW.name) $('#certName').value = VIEW.name;
+-  $('#wImg').src = img(w.id); $('#wImg').alt = w.name;
++  setHD($('#wImg'), w.id); $('#wImg').alt = w.name;
+   $('#wName').textContent = w.name; $('#wTitle').textContent = w.title;
+   $('#wLong').textContent = pr[4];
+   const q = quoteOf(m.champ), wq = $('#wQuote');
+@@ -754,7 +758,7 @@
+ function startMutual(id){
+   mu.champ = id; mu.ans = [];
+   show('scr-mutual'); FX.setLevel(0);
+-  const im = $('#muImg'); im.src = img(id); im.alt = name(id);
++  const im = $('#muImg'); setHD(im, id); im.alt = name(id);
+   renderMutual();
+ }
+ function renderMutual(){
+@@ -1929,7 +1933,7 @@
+     FX.setLevel(m.level || 0);
+     if (x.i === 0) FX.intro(1, 'Общий турнир', syncTitle(SY.cfg), 'Вдвоём');
+     else if (m.stage === 'final') FX.intro(3, 'Гранд-финал', `${name(m.a)} или ${name(m.b)}`, 'Вдвоём');
+-    [0, 1].forEach(i => { const n = simulate(SY.cfg, x.dec.concat(i)); if (n.kind === 'duel'){ new Image().src = img(n.a); new Image().src = img(n.b); } });
++    [0, 1].forEach(i => { const n = simulate(SY.cfg, x.dec.concat(i)); if (n.kind === 'duel'){ new Image().src = imgHD(n.a); new Image().src = imgHD(n.b); } });
+   }
+   ui.sy = {i:x.i, a:m.a, b:m.b};
+   const agree = x.log.filter(l => l.how === 'agree').length, on = online.has(pp.slot);
+@@ -2008,7 +2012,7 @@
+   const it = $('#intro'); if (!it.hidden && it.onclick) it.onclick();
+   const m = x.m, w = BY[m.champ], pp = x.pp, n = x.log.length;
+   const agree = x.log.filter(l => l.how === 'agree').length, re = x.log.filter(l => l.how === 'revote').length, coin = n - agree - re;
+-  $('#syHead').innerHTML = `<div class="wimg"><img src="${img(w.id)}" alt="${esc(w.name)}"></div>
++  $('#syHead').innerHTML = `<div class="wimg">${faceHD(w.id).replace('alt=""', `alt="${esc(w.name)}"`)}</div>
+     <div class="wtext"><p class="eyebrow">Общий турнир ${esc(syncTitle(SY.cfg))}</p><h1>${esc(w.name)}</h1><p class="ttl">${esc(w.title)}</p>
+       <p class="path">Общая пара: ${esc(sess.name)} и ${esc(pp.name)}. ${PROFILE[m.champ] ? esc(PROFILE[m.champ][3]) : ''}</p></div>`;
+   $('#syStats').innerHTML = [[Math.round(100 * agree / Math.max(1, n)) + '%', `согласие: совпали с первого раза в ${agree} из ${n} ${duelsOf(n)}`], [re, `${plural(re,'раз','раза','раз')} договорились после переголосовки`], [coin, `${plural(coin,'раз','раза','раз')} решал жребий`]]
+@@ -2176,7 +2180,8 @@
+     }
+   });
+   document.addEventListener('visibilitychange', () => { if (document.hidden && saveT) pushState(true); else if (!document.hidden && sess) fetchRoom(); });
+-  document.querySelectorAll('.pick img').forEach(im => im.addEventListener('error', () => im.classList.add('broken')));
++  /* крупный портрет не загрузился — пробуем обычный, а если нет и его, прячем картинку */
++  document.querySelectorAll('.pick img').forEach(im => im.addEventListener('error', () => { if (im.src.includes('/hd/') && im.dataset.id) im.src = img(im.dataset.id); else im.classList.add('broken'); }));
+   bindSwipe();
+   bindTilt();
+   $('#updGo').addEventListener('click', updApply);
+--- a/js/share.js
++++ b/js/share.js
+@@ -1,7 +1,9 @@
+ /* ================= Картинка тир-листа и сертификат ================= */
+ const Share = (() => {
++  /* портреты: обычные — для мелких плиток, двойного разрешения — для крупных; если крупного нет, берётся обычный */
+   const cache = {};
+-  const loadImg = id => cache[id] || (cache[id] = new Promise(res => { const im = new Image(); im.onload = () => res(im); im.onerror = () => res(null); im.src = img(id); }));
++  const loadOne = src => new Promise(res => { const im = new Image(); im.onload = () => res(im); im.onerror = () => res(null); im.src = src; });
++  const loadImg = (id, hd) => cache[(hd ? 'hd:' : '') + id] || (cache[(hd ? 'hd:' : '') + id] = hd ? loadOne(imgHD(id)).then(im => im || loadImg(id)) : loadOne(img(id)));
+   /* холст в k раз крупнее макета (k = 2 для сохранения, 1 для превью): на телефоне и при увеличении картинка остаётся чёткой.
+      Площадь ограничена, чтобы не упереться в предел холста в Safari (около 16,7 млн точек) */
+   function canvas(W, H, k = 2){
+@@ -173,7 +175,7 @@
+ 
+   async function certificate(m, person, k = 2){
+     await fontsReady();
+-    const W = 1080, H = 1350, champ = BY[m.champ], im = await loadImg(m.champ);
++    const W = 1080, H = 1350, champ = BY[m.champ], im = await loadImg(m.champ, true);
+     const [cv, cx] = canvas(W, H, k); k = cv.k; bg(cx, W, H);
+     /* рамка */
+     cx.strokeStyle = C.gold; cx.lineWidth = 3; cx.strokeRect(36, 36, W - 72, H - 72);
+@@ -237,7 +239,7 @@
+   const heartPath = new Path2D('M12 21.4 10.6 20C5.4 15.4 2 12.3 2 8.5 2 5.4 4.4 3 7.5 3c1.7 0 3.4.8 4.5 2.1C13.1 3.8 14.8 3 16.5 3 19.6 3 22 5.4 22 8.5c0 3.8-3.4 6.9-8.6 11.5L12 21.4Z');
+   async function pairCertificate(d, k = 2){
+     await fontsReady();
+-    const W = 1080, H = 1350, [ia, ib] = await Promise.all([loadImg(d.a.champ), loadImg(d.b.champ)]);
++    const W = 1080, H = 1350, [ia, ib] = await Promise.all([loadImg(d.a.champ, true), loadImg(d.b.champ, true)]);
+     const [cv, cx] = canvas(W, H, k); k = cv.k; bg(cx, W, H);
+     cx.strokeStyle = C.gold; cx.lineWidth = 3; cx.strokeRect(36, 36, W - 72, H - 72);
+     cx.strokeStyle = C.lo; cx.lineWidth = 1; cx.strokeRect(52, 52, W - 104, H - 104);
+--- a/js/firstdate.js
++++ b/js/firstdate.js
+@@ -278,7 +278,7 @@
+   if (!BY[id]) return;
+   fd.id = id; fd.ans = []; fd.open = false; fd.from = from || 'result'; fd.lock = false;
+   show('scr-date'); FX.setLevel(0);
+-  const im = $('#fdImg'); im.src = img(id); im.alt = name(id);
++  const im = $('#fdImg'); setHD(im, id); im.alt = name(id);
+   renderDate();
+ }
+ function fdLeave(){
+--- a/js/svaha.js
++++ b/js/svaha.js
+@@ -314,7 +314,7 @@
+   const why = svReasons(m.u, id, best.home), alt = m.list.slice(1, 4), anti = m.list[m.list.length - 1];
+   const card = (r, txt) => `<button type="button" class="sv-card" data-id="${r.id}">${face(r.id)}<span><b>${esc(name(r.id))}</b><small>${r.pct}% · ${esc(txt)}</small></span></button>`;
+   box.innerHTML = `<div class="winner">
+-      <div class="wimg"><img src="${img(id)}" alt="${esc(c.name)}"></div>
++      <div class="wimg">${faceHD(id).replace('alt=""', `alt="${esc(c.name)}"`)}</div>
+       <div class="wtext">
+         <p class="eyebrow">Звёздная сваха нашла пару</p>
+         <h1>${esc(c.name)}</h1>
+--- a/sw.js
++++ b/sw.js
+@@ -1,10 +1,11 @@
+ /* Пара из Рунтерры: работа без интернета.
+    Код и страница — сначала из сети (чтобы обновления приходили сразу), без сети — из кэша.
+    Портреты и гербы — из кэша: при установке они скачиваются один раз в фоне.
++   Крупные портреты (img/hd) кэшируются по мере просмотра; без сети вместо них отдаётся обычный.
+    Запросы к живой комнате (Supabase) не кэшируются никогда. */
+ importScripts('js/roster.js');   // список чемпионов → список портретов
+ 
+-const CACHE = 'rp-app-v1', FONTS = 'rp-fonts-v1';
++const CACHE = 'rp-app-v2', FONTS = 'rp-fonts-v1';
+ const SHELL = ['./', 'index.html', 'manifest.webmanifest', 'css/style.css',
+   'js/config.js', 'js/vendor/supabase.js', 'js/roster.js', 'js/profiles.js', 'js/engine.js', 'js/analysis.js',
+   'js/fx.js', 'js/share.js', 'js/room.js', 'js/svaha.js', 'js/collection.js', 'js/draft.js', 'js/skins.js', 'js/deck.js', 'js/album.js', 'js/quiz.js', 'js/firstdate.js', 'js/lines-data.js', 'js/lines.js', 'js/lines-eggs.js', 'js/link.js', 'js/app.js',
+@@ -43,7 +44,17 @@
+   }
+   if (url.origin !== location.origin) return;   // Supabase и всё прочее — мимо кэша
+   if (isArt(url)){
+-    e.respondWith(caches.open(CACHE).then(async c => (await c.match(req, {ignoreSearch:true})) || fetch(req).then(r => { if (r.ok) c.put(req, r.clone()); return r; })));
++    e.respondWith(caches.open(CACHE).then(async c => {
++      const hit = await c.match(req, {ignoreSearch:true});
++      if (hit) return hit;
++      const hd = url.pathname.includes('/img/hd/');
++      try {
++        const r = await fetch(req);
++        if (r.ok){ c.put(req, r.clone()); return r; }
++        if (!hd) return r;
++      } catch(err){ if (!hd) throw err; }
++      return (await c.match('img/' + url.pathname.split('/').pop())) || Response.error();
++    }));
+     return;
+   }
+   /* страница и код: сеть, а без сети — кэш (для страницы с ?r= или ?room= — та же index.html) */

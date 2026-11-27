@@ -312,12 +312,13 @@ function refreshStart(){
   const banner = $('#roomBanner');
   if (ctx === 'room' && sess){
     banner.hidden = false;
-    banner.innerHTML = `Турнир пойдёт в зачёт комнаты <b>${esc(sess.code)}</b>. <button class="btn ghost" type="button" id="soloBtn" style="margin-left:8px">Играть без комнаты</button>`;
+    banner.innerHTML = `<span>Турнир пойдёт в зачёт комнаты <b>${esc(sess.code)}</b>.</span><span class="banner-acts"><button class="btn" type="button" id="toRoomStartBtn">Открыть комнату</button><button class="btn ghost" type="button" id="soloBtn">Играть без комнаты</button></span>`;
+    $('#toRoomStartBtn').onclick = () => enterRoom(false);
     $('#soloBtn').onclick = () => { setCtx('solo'); refreshStart(); };
   } else if (sess && !VIEW && !TOOLS){
     /* играем без комнаты, но комната никуда не делась — вернуться можно одной кнопкой */
     banner.hidden = false;
-    banner.innerHTML = `Сейчас игра без комнаты. Комната <b>${esc(sess.code)}</b> ждёт. <button class="btn ghost" type="button" id="backRoomBtn" style="margin-left:8px">Вернуться в комнату</button>`;
+    banner.innerHTML = `<span>Сейчас игра без комнаты. Комната <b>${esc(sess.code)}</b> ждёт.</span><span class="banner-acts"><button class="btn ghost" type="button" id="backRoomBtn">Вернуться в комнату</button></span>`;
     $('#backRoomBtn').onclick = () => enterRoom(false);
   } else banner.hidden = true;
   const r = $('#resume');
@@ -1008,7 +1009,8 @@ function switchRoom(next){
   live.key = ''; live.shown = null;
   enterRoom(true);
 }
-function enterRoom(fresh){
+/* stay — подключиться к комнате, но остаться на главном экране (так сайт открывается) */
+function enterRoom(fresh, stay){
   setCtx('room');
   G = store.get(guessKey(sess.code)); PB = store.get(pbetKey(sess.code)); BT = store.get(battleKey(sess.code)); SY = store.get(syKey(sess.code));
   LB = store.get(lbKey()) || {bets:[]};
@@ -1020,7 +1022,8 @@ function enterRoom(fresh){
   if (sub) sub.close();
   sub = Room.subscribe(sess.code, sess, () => fetchRoom(), slots => { online = new Set(slots); if (ui.screen === 'scr-room') renderRoom(); renderPartnerChip(); });
   clearInterval(pollT); pollT = setInterval(() => { if (!document.hidden) fetchRoom(); }, 20000);
-  show('scr-room'); renderRoom(); fetchRoom().then(() => { if (fresh) pushState(true); });
+  if (stay){ show('scr-start'); refreshStart(); } else { show('scr-room'); renderRoom(); }
+  fetchRoom().then(() => { if (fresh) pushState(true); });
 }
 /* выйти из комнаты насовсем: место в ней остаётся занятым, вернуться с этого устройства нельзя */
 function confirmLeave(){
@@ -2203,7 +2206,8 @@ function startTools(){
 function startNormal(){
   const qs = new URLSearchParams(location.search), inv = (qs.get('room') || '').toUpperCase();
   if (inv) $('#roomCode').value = inv;
-  if (sess && (!inv || inv === sess.code) && Room.configured()){ setCtx('room'); refreshStart(); enterRoom(false); return; }
+  /* сайт всегда открывается главным экраном; комната подключается в фоне, войти в неё — одной кнопкой */
+  if (sess && (!inv || inv === sess.code) && Room.configured()){ enterRoom(false, true); return; }
   if (inv && sess && inv !== sess.code){ ui.otherInvite = inv; $('#roomName').value = sess.name; }   // текущую комнату не бросаем, пока игрок сам не войдёт в новую
   setCtx(sstore.get('rp-ctx') === 'room' && sess ? 'room' : 'solo');
   refreshStart(); show('scr-start');

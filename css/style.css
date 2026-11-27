@@ -453,7 +453,8 @@ textarea#copyFallback{width:100%;min-height:160px;background:var(--deep);color:v
 .pbar i{display:block;height:100%;background:linear-gradient(90deg,var(--gold-lo),var(--gold-hi))}
 @media (max-width:620px){.players{grid-template-columns:1fr}}
 .room-actions{display:flex;flex-wrap:wrap;gap:10px}
-.banner{padding:10px 14px;border:1px solid var(--rose);background:color-mix(in srgb,var(--rose) 8%,var(--deep));font-size:14px}
+.banner{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;padding:10px 14px;border:1px solid var(--rose);background:color-mix(in srgb,var(--rose) 8%,var(--deep));font-size:14px}
+.banner-acts{display:flex;flex-wrap:wrap;gap:8px}
 
 /* сравнение */
 .cmp-head{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:14px;align-items:center;text-align:center}
